@@ -1,12 +1,7 @@
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "";
 const PAYSTACK_BASE_URL = "https://api.paystack.co";
 
-interface PaystackHeaders {
-  Authorization: string;
-  "Content-Type": string;
-}
-
-function getHeaders(): PaystackHeaders {
+function getHeaders(): Record<string, string> {
   return {
     Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
     "Content-Type": "application/json",
@@ -36,23 +31,26 @@ interface InitializePaymentResponse {
  * Initialize a payment transaction
  */
 export async function initializePayment(
-  params: InitializePaymentParams
+  params: InitializePaymentParams,
 ): Promise<InitializePaymentResponse> {
   try {
-    const response = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        email: params.email,
-        amount: params.amount,
-        reference: params.reference,
-        callback_url: params.callbackUrl,
-        metadata: params.metadata,
-        subaccount: params.subaccount,
-        bearer: params.bearer,
-        transaction_charge: params.transactionCharge,
-      }),
-    });
+    const response = await fetch(
+      `${PAYSTACK_BASE_URL}/transaction/initialize`,
+      {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          email: params.email,
+          amount: params.amount,
+          reference: params.reference,
+          callback_url: params.callbackUrl,
+          metadata: params.metadata,
+          subaccount: params.subaccount,
+          bearer: params.bearer,
+          transaction_charge: params.transactionCharge,
+        }),
+      },
+    );
 
     const data = await response.json();
 
@@ -86,7 +84,7 @@ interface VerifyPaymentResponse {
  * Verify a payment transaction
  */
 export async function verifyPayment(
-  reference: string
+  reference: string,
 ): Promise<VerifyPaymentResponse> {
   try {
     const response = await fetch(
@@ -94,7 +92,7 @@ export async function verifyPayment(
       {
         method: "GET",
         headers: getHeaders(),
-      }
+      },
     );
 
     const data = await response.json();
@@ -142,7 +140,7 @@ interface CreateSubaccountResponse {
  * Create a subaccount for an operator
  */
 export async function createSubaccount(
-  params: CreateSubaccountParams
+  params: CreateSubaccountParams,
 ): Promise<CreateSubaccountResponse> {
   try {
     const response = await fetch(`${PAYSTACK_BASE_URL}/subaccount`, {
@@ -181,7 +179,7 @@ export async function createSubaccount(
  */
 export async function updateSubaccount(
   subaccountCode: string,
-  params: Partial<CreateSubaccountParams>
+  params: Partial<CreateSubaccountParams>,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const response = await fetch(
@@ -196,7 +194,7 @@ export async function updateSubaccount(
           percentage_charge: params.percentageCharge,
           description: params.description,
         }),
-      }
+      },
     );
 
     const data = await response.json();
@@ -259,7 +257,7 @@ interface ResolveAccountResponse {
  */
 export async function resolveAccount(
   accountNumber: string,
-  bankCode: string
+  bankCode: string,
 ): Promise<ResolveAccountResponse> {
   try {
     const response = await fetch(
@@ -267,7 +265,7 @@ export async function resolveAccount(
       {
         method: "GET",
         headers: getHeaders(),
-      }
+      },
     );
 
     const data = await response.json();
@@ -353,7 +351,7 @@ export async function initializeEmptyLegPayment(params: {
  */
 export function validateWebhookSignature(
   payload: string,
-  signature: string
+  signature: string,
 ): boolean {
   const crypto = require("crypto");
   const hash = crypto
