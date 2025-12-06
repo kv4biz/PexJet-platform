@@ -9,6 +9,11 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "PexJet Operator",
   description: "PexJet Aviation Operator Dashboard",
+  icons: {
+    icon: "/X.png",
+    shortcut: "/X.png",
+    apple: "/X.png",
+  },
 };
 
 export default function RootLayout({
