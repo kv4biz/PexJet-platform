@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { referenceNumber: { contains: search, mode: "insensitive" } },
         { client: { email: { contains: search, mode: "insensitive" } } },
-        { client: { firstName: { contains: search, mode: "insensitive" } } },
-        { client: { lastName: { contains: search, mode: "insensitive" } } },
+        { client: { fullName: { contains: search, mode: "insensitive" } } },
+        { client: { phone: { contains: search, mode: "insensitive" } } },
       ];
     }
 
@@ -50,9 +50,9 @@ export async function GET(request: NextRequest) {
         include: {
           client: {
             select: {
-              firstName: true,
-              lastName: true,
+              fullName: true,
               email: true,
+              phone: true,
             },
           },
           legs: {
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     console.error("Quotes fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch quotes" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

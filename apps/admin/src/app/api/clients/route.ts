@@ -28,8 +28,7 @@ export async function GET(request: NextRequest) {
       ? {
           OR: [
             { email: { contains: search, mode: "insensitive" as const } },
-            { firstName: { contains: search, mode: "insensitive" as const } },
-            { lastName: { contains: search, mode: "insensitive" as const } },
+            { fullName: { contains: search, mode: "insensitive" as const } },
             { phone: { contains: search, mode: "insensitive" as const } },
           ],
         }
@@ -45,8 +44,7 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           email: true,
-          firstName: true,
-          lastName: true,
+          fullName: true,
           phone: true,
           createdAt: true,
           _count: {
@@ -71,7 +69,7 @@ export async function GET(request: NextRequest) {
     console.error("Clients fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch clients" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

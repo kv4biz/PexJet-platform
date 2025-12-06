@@ -34,8 +34,7 @@ import {
 interface Client {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   phone: string;
   createdAt: string;
   _count: {
@@ -153,7 +152,7 @@ export default function ClientsPage() {
                   {clients.map((client) => (
                     <TableRow key={client.id}>
                       <TableCell className="font-medium">
-                        {client.firstName} {client.lastName}
+                        {client.fullName || "N/A"}
                       </TableCell>
                       <TableCell>
                         <a
