@@ -125,6 +125,9 @@ enum ActivityAction {
   // Settings
   SETTINGS_UPDATE
   
+  // Airports
+  AIRPORT_IMPORT
+  
   // Announcements
   ANNOUNCEMENT_CREATE
   ANNOUNCEMENT_DELETE
