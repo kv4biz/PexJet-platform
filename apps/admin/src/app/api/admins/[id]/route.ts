@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
-import { verifyAccessToken, extractTokenFromHeader, isSuperAdmin, hashPassword, notifyStaffUpdate, notifyStaffDelete } from "@pexjet/lib";
+import {
+  verifyAccessToken,
+  extractTokenFromHeader,
+  isSuperAdmin,
+  hashPassword,
+} from "@pexjet/lib";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     const token = extractTokenFromHeader(request.headers.get("authorization"));
@@ -40,13 +45,16 @@ export async function GET(
     return NextResponse.json(admin);
   } catch (error: any) {
     console.error("Admin fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch admin" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch admin" },
+      { status: 500 },
+    );
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     const token = extractTokenFromHeader(request.headers.get("authorization"));
@@ -93,22 +101,19 @@ export async function PUT(
       },
     });
 
-    // Trigger real-time update
-    await notifyStaffUpdate({
-      id: admin.id,
-      fullName: admin.fullName,
-    });
-
     return NextResponse.json(admin);
   } catch (error: any) {
     console.error("Admin update error:", error);
-    return NextResponse.json({ error: "Failed to update admin" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update admin" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     const token = extractTokenFromHeader(request.headers.get("authorization"));
@@ -122,7 +127,10 @@ export async function DELETE(
     }
 
     if (params.id === payload.sub) {
-      return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Cannot delete yourself" },
+        { status: 400 },
+      );
     }
 
     const admin = await prisma.admin.findUnique({ where: { id: params.id } });
@@ -143,12 +151,12 @@ export async function DELETE(
       },
     });
 
-    // Trigger real-time update
-    await notifyStaffDelete({ id: params.id });
-
     return NextResponse.json({ message: "Admin deleted successfully" });
   } catch (error: any) {
     console.error("Admin delete error:", error);
-    return NextResponse.json({ error: "Failed to delete admin" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete admin" },
+      { status: 500 },
+    );
   }
 }

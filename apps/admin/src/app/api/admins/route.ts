@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
-import { verifyAccessToken, extractTokenFromHeader, isSuperAdmin, hashPassword, notifyNewStaff } from "@pexjet/lib";
+import {
+  verifyAccessToken,
+  extractTokenFromHeader,
+  isSuperAdmin,
+  hashPassword,
+} from "@pexjet/lib";
 
 export async function GET(request: NextRequest) {
   try {
@@ -63,7 +68,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Admins fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch admins" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch admins" },
+      { status: 500 },
+    );
   }
 }
 
@@ -83,7 +91,10 @@ export async function POST(request: NextRequest) {
     const { email, username, password, fullName, phone, role, address } = body;
 
     if (!email || !username || !password || !fullName || !phone) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     const existing = await prisma.admin.findFirst({
@@ -91,7 +102,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
-      return NextResponse.json({ error: "Email or username already exists" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Email or username already exists" },
+        { status: 400 },
+      );
     }
 
     const passwordHash = await hashPassword(password);
@@ -126,17 +140,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Trigger real-time update
-    await notifyNewStaff({
-      id: admin.id,
-      fullName: admin.fullName,
-      email: admin.email,
-      role: admin.role,
-    });
-
     return NextResponse.json(admin, { status: 201 });
   } catch (error: any) {
     console.error("Admin create error:", error);
-    return NextResponse.json({ error: "Failed to create admin" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create admin" },
+      { status: 500 },
+    );
   }
 }
