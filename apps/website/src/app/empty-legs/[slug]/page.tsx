@@ -1,0 +1,890 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { format } from "date-fns";
+import {
+  Plane,
+  Calendar,
+  Users,
+  ArrowLeft,
+  Clock,
+  Tag,
+  Check,
+  ArrowRight,
+  Loader2,
+} from "lucide-react";
+import {
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Badge,
+  Switch,
+  Label,
+  useToast,
+} from "@pexjet/ui";
+import { emptyLegsPageData } from "@/data";
+import Footer from "@/components/layout/footer";
+
+interface EmptyLegDetail {
+  id: string;
+  slug: string;
+  departureAirport: {
+    id: string;
+    name: string;
+    city: string;
+    country: string;
+    code: string;
+  };
+  arrivalAirport: {
+    id: string;
+    name: string;
+    city: string;
+    country: string;
+    code: string;
+  };
+  departureDateTime: string;
+  estimatedArrival: string | null;
+  estimatedDurationMin: number | null;
+  aircraft: {
+    id: string;
+    name: string;
+    manufacturer: string;
+    model: string;
+    category: string;
+    maxPassengers: number;
+    images: string[];
+  };
+  availableSeats: number;
+  totalSeats: number;
+  priceNgn: number;
+  originalPriceNgn: number;
+  priceUsd: number;
+  originalPriceUsd: number;
+  discountPercent: number;
+  ownerType: "admin" | "operator";
+  createdByAdminId: string | null;
+  createdByOperatorId: string | null;
+}
+
+interface ContactInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  company?: string;
+  notes?: string;
+}
+
+export default function EmptyLegDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const slug = params.slug as string;
+
+  // State
+  const [emptyLeg, setEmptyLeg] = useState<EmptyLegDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [showNgn, setShowNgn] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState(1650);
+
+  // Multi-step form
+  const [currentStep, setCurrentStep] = useState(1);
+  const [seatsRequested, setSeatsRequested] = useState(1);
+  const [contactInfo, setContactInfo] = useState<ContactInfo>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    company: "",
+    notes: "",
+  });
+
+  // Success state
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [referenceNumber, setReferenceNumber] = useState("");
+
+  useEffect(() => {
+    if (slug) {
+      fetchEmptyLegDetail();
+    }
+  }, [slug]);
+
+  const fetchEmptyLegDetail = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/empty-legs/${slug}`);
+      if (response.ok) {
+        const data = await response.json();
+        setEmptyLeg(data.emptyLeg);
+        setExchangeRate(data.exchangeRate || 1650);
+      } else {
+        router.push("/empty-legs");
+      }
+    } catch (error) {
+      console.error("Failed to fetch empty leg:", error);
+      router.push("/empty-legs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatPrice = (priceUsd: number, priceNgn: number) => {
+    if (showNgn) {
+      return `₦${priceNgn.toLocaleString()}`;
+    }
+    return `$${priceUsd.toLocaleString()}`;
+  };
+
+  const calculateTotalPrice = () => {
+    if (!emptyLeg) return { usd: 0, ngn: 0 };
+    return {
+      usd: emptyLeg.priceUsd * seatsRequested,
+      ngn: emptyLeg.priceNgn * seatsRequested,
+    };
+  };
+
+  const handleContactChange = (field: keyof ContactInfo, value: string) => {
+    setContactInfo((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const isContactValid = () => {
+    return (
+      contactInfo.firstName.trim() !== "" &&
+      contactInfo.lastName.trim() !== "" &&
+      contactInfo.email.trim() !== "" &&
+      contactInfo.phone.trim() !== ""
+    );
+  };
+
+  const handleSubmit = async () => {
+    if (!emptyLeg || !isContactValid()) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/quotes/empty-leg", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emptyLegId: emptyLeg.id,
+          seatsRequested,
+          contactInfo,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setReferenceNumber(data.referenceNumber);
+        setShowSuccess(true);
+        toast({
+          title: "Quote Request Submitted!",
+          description: `Your reference number is ${data.referenceNumber}`,
+        });
+      } else {
+        toast({
+          title: "Submission Failed",
+          description: data.error || "Failed to submit quote request",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const steps = [
+    { number: 1, title: "Contact Details" },
+    { number: 2, title: "Review & Submit" },
+  ];
+
+  if (loading) {
+    return (
+      <main className="h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center gap-4">
+          <Loader2 className="w-12 h-12 animate-spin text-[#D4AF37]" />
+          <p className="text-gray-600">Loading deal details...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!emptyLeg) {
+    return (
+      <main className="h-screen flex items-center justify-center">
+        <div className="pt-32 pb-16 flex items-center justify-center">
+          <div className="text-center">
+            <Plane className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Deal Not Found</h2>
+            <p className="text-gray-600 mb-6">
+              This empty leg deal may no longer be available.
+            </p>
+            <Button asChild>
+              <Link href="/empty-legs">Browse All Deals</Link>
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const totalPrice = calculateTotalPrice();
+
+  return (
+    <main className="min-h-screen bg-gray-50">
+      {/* Black Hero Section */}
+      <section className="bg-black pt-32 pb-12">
+        <div className="container mx-auto px-4">
+          <Button
+            variant="ghost"
+            asChild
+            className="gap-2 text-white hover:text-[#D4AF37] mb-6"
+          >
+            <Link href="/empty-legs">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Empty Legs
+            </Link>
+          </Button>
+          <div className="text-center">
+            <Badge className="bg-[#D4AF37] text-black text-sm px-4 py-1 mb-4">
+              {emptyLeg.discountPercent}% OFF
+            </Badge>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              {emptyLeg.departureAirport.city} → {emptyLeg.arrivalAirport.city}
+            </h1>
+            <p className="text-gray-400 text-lg">
+              {emptyLeg.aircraft.name} •{" "}
+              {format(new Date(emptyLeg.departureDateTime), "MMMM d, yyyy")}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Content */}
+      <section className="py-8">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Deal Details & Form */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Deal Header */}
+              <Card>
+                <CardContent className="p-6">
+                  {/* Discount Badge */}
+                  <div className="flex items-center justify-between mb-4">
+                    <Badge className="bg-[#D4AF37] text-black text-lg px-4 py-1">
+                      <Tag className="w-4 h-4 mr-2" />
+                      {emptyLeg.discountPercent}% OFF
+                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">USD</Label>
+                      <Switch checked={showNgn} onCheckedChange={setShowNgn} />
+                      <Label className="text-sm">NGN</Label>
+                    </div>
+                  </div>
+
+                  {/* Route */}
+                  <div className="flex items-center justify-between py-6">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold">
+                        {emptyLeg.departureAirport.code}
+                      </div>
+                      <div className="text-lg text-gray-600">
+                        {emptyLeg.departureAirport.city}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {emptyLeg.departureAirport.country}
+                      </div>
+                    </div>
+                    <div className="flex-1 px-8">
+                      <div className="flex items-center">
+                        <div className="h-px flex-1 bg-gray-300" />
+                        <Plane className="h-8 w-8 mx-4 text-[#D4AF37]" />
+                        <div className="h-px flex-1 bg-gray-300" />
+                      </div>
+                      {emptyLeg.estimatedDurationMin && (
+                        <div className="text-center text-sm text-gray-500 mt-2">
+                          ~{Math.floor(emptyLeg.estimatedDurationMin / 60)}h{" "}
+                          {emptyLeg.estimatedDurationMin % 60}m
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <div className="text-4xl font-bold">
+                        {emptyLeg.arrivalAirport.code}
+                      </div>
+                      <div className="text-lg text-gray-600">
+                        {emptyLeg.arrivalAirport.city}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {emptyLeg.arrivalAirport.country}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+                    <div className="text-center p-3 bg-gray-50">
+                      <Calendar className="w-5 h-5 mx-auto mb-1 text-[#D4AF37]" />
+                      <div className="text-sm text-gray-500">Date</div>
+                      <div className="font-semibold">
+                        {format(
+                          new Date(emptyLeg.departureDateTime),
+                          "MMM d, yyyy",
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50">
+                      <Clock className="w-5 h-5 mx-auto mb-1 text-[#D4AF37]" />
+                      <div className="text-sm text-gray-500">Time</div>
+                      <div className="font-semibold">
+                        {format(new Date(emptyLeg.departureDateTime), "h:mm a")}
+                      </div>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50">
+                      <Users className="w-5 h-5 mx-auto mb-1 text-[#D4AF37]" />
+                      <div className="text-sm text-gray-500">Seats</div>
+                      <div className="font-semibold">
+                        {emptyLeg.availableSeats} available
+                      </div>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50">
+                      <Plane className="w-5 h-5 mx-auto mb-1 text-[#D4AF37]" />
+                      <div className="text-sm text-gray-500">Aircraft</div>
+                      <div className="font-semibold text-sm">
+                        {emptyLeg.aircraft.name}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Multi-Step Form */}
+              {!showSuccess ? (
+                <Card>
+                  <CardContent className="p-6">
+                    {/* Step Indicator */}
+                    <div className="flex justify-center mb-8">
+                      <div className="flex items-center gap-4">
+                        {steps.map((step, index) => (
+                          <div key={step.number} className="flex items-center">
+                            <div className="flex flex-col items-center">
+                              <div
+                                className={`w-10 h-10 flex items-center justify-center border-2 ${
+                                  currentStep >= step.number
+                                    ? "bg-[#D4AF37] border-[#D4AF37] text-white"
+                                    : "border-gray-300 text-gray-300"
+                                }`}
+                              >
+                                {currentStep > step.number ? (
+                                  <Check className="w-5 h-5" />
+                                ) : (
+                                  step.number
+                                )}
+                              </div>
+                              <span
+                                className={`mt-2 text-sm ${
+                                  currentStep >= step.number
+                                    ? "text-[#D4AF37]"
+                                    : "text-gray-400"
+                                }`}
+                              >
+                                {step.title}
+                              </span>
+                            </div>
+                            {index < steps.length - 1 && (
+                              <div
+                                className={`w-16 h-1 mx-2 ${
+                                  currentStep > step.number
+                                    ? "bg-[#D4AF37]"
+                                    : "bg-gray-300"
+                                }`}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Step 1: Contact Details */}
+                    {currentStep === 1 && (
+                      <div className="space-y-6">
+                        <h3 className="text-xl font-semibold text-center mb-6">
+                          Enter Your Contact Details
+                        </h3>
+
+                        {/* Seats Selection */}
+                        <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/20">
+                          <Label className="text-sm font-medium mb-2 block">
+                            Number of Seats
+                          </Label>
+                          <div className="flex items-center gap-4">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() =>
+                                setSeatsRequested(
+                                  Math.max(1, seatsRequested - 1),
+                                )
+                              }
+                            >
+                              -
+                            </Button>
+                            <span className="text-2xl font-bold w-12 text-center">
+                              {seatsRequested}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() =>
+                                setSeatsRequested(
+                                  Math.min(
+                                    emptyLeg.availableSeats,
+                                    seatsRequested + 1,
+                                  ),
+                                )
+                              }
+                            >
+                              +
+                            </Button>
+                            <span className="text-sm text-gray-500">
+                              of {emptyLeg.availableSeats} available
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium mb-1 block">
+                              First Name *
+                            </Label>
+                            <Input
+                              value={contactInfo.firstName}
+                              onChange={(e) =>
+                                handleContactChange("firstName", e.target.value)
+                              }
+                              placeholder="John"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium mb-1 block">
+                              Last Name *
+                            </Label>
+                            <Input
+                              value={contactInfo.lastName}
+                              onChange={(e) =>
+                                handleContactChange("lastName", e.target.value)
+                              }
+                              placeholder="Doe"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium mb-1 block">
+                              Email *
+                            </Label>
+                            <Input
+                              type="email"
+                              value={contactInfo.email}
+                              onChange={(e) =>
+                                handleContactChange("email", e.target.value)
+                              }
+                              placeholder="john@example.com"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium mb-1 block">
+                              Phone (WhatsApp) *
+                            </Label>
+                            <Input
+                              value={contactInfo.phone}
+                              onChange={(e) =>
+                                handleContactChange("phone", e.target.value)
+                              }
+                              placeholder="+234..."
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <Label className="text-sm font-medium mb-1 block">
+                              Company
+                            </Label>
+                            <Input
+                              value={contactInfo.company}
+                              onChange={(e) =>
+                                handleContactChange("company", e.target.value)
+                              }
+                              placeholder="Company name (optional)"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <Label className="text-sm font-medium mb-1 block">
+                              Additional Notes
+                            </Label>
+                            <Input
+                              value={contactInfo.notes}
+                              onChange={(e) =>
+                                handleContactChange("notes", e.target.value)
+                              }
+                              placeholder="Any special requests..."
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4">
+                          <Button
+                            onClick={() => setCurrentStep(2)}
+                            disabled={!isContactValid()}
+                            className="bg-[#D4AF37] text-black hover:bg-[#D4AF37]/90"
+                          >
+                            Continue to Review
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 2: Review & Submit */}
+                    {currentStep === 2 && (
+                      <div className="space-y-6">
+                        <h3 className="text-xl font-semibold text-center mb-6">
+                          Review Your Quote Request
+                        </h3>
+
+                        {/* Flight Summary */}
+                        <div className="p-4 bg-gray-50 border">
+                          <h4 className="font-semibold mb-3">Flight Details</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500">Route:</span>
+                              <span className="ml-2 font-medium">
+                                {emptyLeg.departureAirport.code} →{" "}
+                                {emptyLeg.arrivalAirport.code}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Date:</span>
+                              <span className="ml-2 font-medium">
+                                {format(
+                                  new Date(emptyLeg.departureDateTime),
+                                  "MMM d, yyyy",
+                                )}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Time:</span>
+                              <span className="ml-2 font-medium">
+                                {format(
+                                  new Date(emptyLeg.departureDateTime),
+                                  "h:mm a",
+                                )}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Aircraft:</span>
+                              <span className="ml-2 font-medium">
+                                {emptyLeg.aircraft.name}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Seats:</span>
+                              <span className="ml-2 font-medium">
+                                {seatsRequested}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Contact Summary */}
+                        <div className="p-4 bg-gray-50 border">
+                          <h4 className="font-semibold mb-3">
+                            Contact Information
+                          </h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500">Name:</span>
+                              <span className="ml-2 font-medium">
+                                {contactInfo.firstName} {contactInfo.lastName}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Email:</span>
+                              <span className="ml-2 font-medium">
+                                {contactInfo.email}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Phone:</span>
+                              <span className="ml-2 font-medium">
+                                {contactInfo.phone}
+                              </span>
+                            </div>
+                            {contactInfo.company && (
+                              <div>
+                                <span className="text-gray-500">Company:</span>
+                                <span className="ml-2 font-medium">
+                                  {contactInfo.company}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          {contactInfo.notes && (
+                            <div className="mt-3 pt-3 border-t">
+                              <span className="text-gray-500 text-sm">
+                                Notes:
+                              </span>
+                              <p className="text-sm mt-1">
+                                {contactInfo.notes}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Price Summary */}
+                        <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/20">
+                          <h4 className="font-semibold mb-3">Price Summary</h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>Price per seat:</span>
+                              <span>
+                                {formatPrice(
+                                  emptyLeg.priceUsd,
+                                  emptyLeg.priceNgn,
+                                )}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span>Seats requested:</span>
+                              <span>× {seatsRequested}</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                              <span>Estimated Total:</span>
+                              <span className="text-[#D4AF37]">
+                                {formatPrice(totalPrice.usd, totalPrice.ngn)}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            * Final price will be confirmed upon approval
+                          </p>
+                        </div>
+
+                        <div className="flex justify-between pt-4">
+                          <Button
+                            variant="outline"
+                            onClick={() => setCurrentStep(1)}
+                          >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back
+                          </Button>
+                          <Button
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                            className="bg-[#D4AF37] text-black hover:bg-[#D4AF37]/90"
+                          >
+                            {submitting ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Submitting...
+                              </>
+                            ) : (
+                              <>
+                                Submit Quote Request
+                                <Check className="w-4 h-4 ml-2" />
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : null}
+            </div>
+
+            {/* Right Column - Summary Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="sticky top-24">
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="font-semibold text-lg mb-4">Deal Summary</h3>
+
+                    {/* Aircraft Image */}
+                    {emptyLeg.aircraft.images?.[0] && (
+                      <div className="mb-4">
+                        <img
+                          src={emptyLeg.aircraft.images[0]}
+                          alt={emptyLeg.aircraft.name}
+                          className="w-full h-auto max-h-80 lg:h-40 object-cover"
+                        />
+                      </div>
+                    )}
+
+                    {/* Route */}
+                    <div className="flex items-center justify-between py-3 border-b">
+                      <div className="text-center">
+                        <div className="text-xl font-bold">
+                          {emptyLeg.departureAirport.code}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {emptyLeg.departureAirport.city}
+                        </div>
+                      </div>
+                      <Plane className="w-5 h-5 text-[#D4AF37]" />
+                      <div className="text-center">
+                        <div className="text-xl font-bold">
+                          {emptyLeg.arrivalAirport.code}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {emptyLeg.arrivalAirport.city}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div className="py-3 space-y-2 text-sm border-b">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Date</span>
+                        <span>
+                          {format(
+                            new Date(emptyLeg.departureDateTime),
+                            "MMM d, yyyy",
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Time</span>
+                        <span>
+                          {format(
+                            new Date(emptyLeg.departureDateTime),
+                            "h:mm a",
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Aircraft</span>
+                        <span>{emptyLeg.aircraft.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Seats Available</span>
+                        <span>{emptyLeg.availableSeats}</span>
+                      </div>
+                    </div>
+
+                    {/* Price */}
+                    <div className="py-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-gray-500">Original Price</span>
+                        <span className="line-through text-gray-400">
+                          {formatPrice(
+                            emptyLeg.originalPriceUsd,
+                            emptyLeg.originalPriceNgn,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold">Price per Seat</span>
+                        <span className="text-2xl font-bold text-[#D4AF37]">
+                          {formatPrice(emptyLeg.priceUsd, emptyLeg.priceNgn)}
+                        </span>
+                      </div>
+                      <Badge className="mt-2 bg-[#D4AF37] text-black">
+                        Save {emptyLeg.discountPercent}%
+                      </Badge>
+                    </div>
+
+                    {/* Total if seats selected */}
+                    {seatsRequested > 0 && (
+                      <div className="pt-3 border-t">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-500">
+                            {seatsRequested} seat{seatsRequested > 1 ? "s" : ""}{" "}
+                            total:
+                          </span>
+                          <span className="text-xl font-bold text-[#D4AF37]">
+                            {formatPrice(totalPrice.usd, totalPrice.ngn)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Success Modal with Disclaimer */}
+      {showSuccess && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-8 border-b border-gray-200">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-green-100 mx-auto mb-4 flex items-center justify-center">
+                  <Check className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  Quote Request Submitted!
+                </h3>
+                {referenceNumber && (
+                  <p className="text-lg font-mono text-[#D4AF37] mb-2">
+                    Reference: {referenceNumber}
+                  </p>
+                )}
+                <p className="text-gray-600">
+                  We'll review your request and contact you via WhatsApp within
+                  24 hours.
+                </p>
+              </div>
+            </div>
+
+            {/* Disclaimer Content */}
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="max-w-3xl mx-auto">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+                  Empty Leg Terms & Disclaimer
+                </h4>
+                <div className="prose prose-sm max-w-none text-gray-600">
+                  {emptyLegsPageData.disclaimer
+                    .split("\n")
+                    .map((paragraph: string, index: number) => (
+                      <p key={index} className="mb-4 text-sm leading-relaxed">
+                        {paragraph.trim()}
+                      </p>
+                    ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="text-center">
+                <Button
+                  asChild
+                  className="bg-[#D4AF37] text-black hover:bg-[#D4AF37]/90"
+                >
+                  <Link href="/empty-legs">Browse More Deals</Link>
+                </Button>
+                <p className="text-xs text-gray-500 mt-3">
+                  By submitting this request, you acknowledge and accept these
+                  terms.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <Footer />
+    </main>
+  );
+}

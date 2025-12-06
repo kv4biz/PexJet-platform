@@ -1,0 +1,790 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum AdminRole {
+  SUPER_ADMIN
+  STAFF
+}
+
+enum AdminStatus {
+  ONLINE
+  OFFLINE
+}
+
+enum AircraftAvailability {
+  NONE
+  LOCAL
+  INTERNATIONAL
+  BOTH
+}
+
+enum AircraftCategory {
+  LIGHT_JET
+  MIDSIZE_JET
+  SUPER_MIDSIZE_JET
+  HEAVY_JET
+  ULTRA_LONG_RANGE
+  TURBOPROP
+}
+
+enum FlightType {
+  ONE_WAY
+  ROUND_TRIP
+  MULTI_LEG
+}
+
+enum QuoteStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  PAID
+  COMPLETED
+}
+
+enum EmptyLegStatus {
+  PUBLISHED
+  OPEN
+  CLOSED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  CHARTER
+  EMPTY_LEG
+}
+
+enum SubscriptionType {
+  CITY
+  ROUTE
+  ALL
+}
+
+enum RejectionReason {
+  AIRCRAFT_UNAVAILABLE
+  ROUTE_NOT_SERVICEABLE
+  INVALID_DATES
+  PRICING_ISSUE
+  CAPACITY_EXCEEDED
+  DEAL_NOT_AVAILABLE
+  NO_PAYMENT_MADE
+  OTHER
+}
+
+enum ActivityAction {
+  // Admin Management
+  ADMIN_CREATE
+  ADMIN_UPDATE
+  ADMIN_DELETE
+  
+  // Operator Management
+  OPERATOR_CREATE
+  OPERATOR_UPDATE
+  OPERATOR_DELETE
+  
+  // Aircraft Management
+  AIRCRAFT_CREATE
+  AIRCRAFT_UPDATE
+  AIRCRAFT_DELETE
+  
+  // Charter Quotes
+  CHARTER_QUOTE_CREATE
+  CHARTER_QUOTE_APPROVE
+  CHARTER_QUOTE_REJECT
+  CHARTER_QUOTE_EXPIRE
+  
+  // Empty Legs
+  EMPTY_LEG_CREATE
+  EMPTY_LEG_UPDATE
+  EMPTY_LEG_CLOSE
+  EMPTY_LEG_QUOTE_CREATE
+  EMPTY_LEG_QUOTE_APPROVE
+  EMPTY_LEG_QUOTE_REJECT
+  
+  // Payments
+  PAYMENT_INITIATED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  
+  // Settings
+  SETTINGS_UPDATE
+  
+  // Announcements
+  ANNOUNCEMENT_CREATE
+  ANNOUNCEMENT_DELETE
+  
+  // Subscriptions
+  SUBSCRIPTION_CREATE
+  SUBSCRIPTION_DELETE
+}
+
+enum AirportType {
+  large_airport
+  medium_airport
+  small_airport
+  heliport
+  seaplane_base
+  balloonport
+  closed
+}
+
+// ============================================================================
+// GEOGRAPHY - From OurAirports
+// ============================================================================
+
+model Country {
+  id            String    @id @default(cuid())
+  code          String    @unique // ISO 2-letter code (e.g., "NG", "US")
+  name          String
+  continent     String
+  wikipediaLink String?
+  keywords      String?
+  
+  regions       Region[]
+  airports      Airport[]
+  
+  createdAt     DateTime  @default(now())
+}
+
+model Region {
+  id            String    @id @default(cuid())
+  code          String    @unique // e.g., "NG-LA" for Lagos
+  localCode     String
+  name          String
+  continent     String
+  countryCode   String
+  wikipediaLink String?
+  keywords      String?
+  
+  country       Country   @relation(fields: [countryCode], references: [code])
+  airports      Airport[]
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([countryCode])
+}
+
+model Airport {
+  id               String      @id @default(cuid())
+  ident            String      @unique // Unique identifier from OurAirports
+  type             AirportType
+  name             String
+  latitude         Float
+  longitude        Float
+  elevationFt      Int?
+  continent        String
+  countryCode      String
+  regionCode       String
+  municipality     String?
+  scheduledService Boolean     @default(false)
+  icaoCode         String?
+  iataCode         String?
+  gpsCode          String?
+  localCode        String?
+  homeLink         String?
+  wikipediaLink    String?
+  keywords         String?
+  
+  country          Country     @relation(fields: [countryCode], references: [code])
+  region           Region      @relation(fields: [regionCode], references: [code])
+  
+  // Relations for flights
+  departures       CharterLeg[]     @relation("DepartureAirport")
+  arrivals         CharterLeg[]     @relation("ArrivalAirport")
+  emptyLegDepartures EmptyLeg[]     @relation("EmptyLegDeparture")
+  emptyLegArrivals   EmptyLeg[]     @relation("EmptyLegArrival")
+  
+  // Subscriptions
+  departureSubscriptions Subscription[] @relation("DepartureCity")
+  arrivalSubscriptions   Subscription[] @relation("ArrivalCity")
+  
+  createdAt        DateTime    @default(now())
+  
+  @@index([countryCode])
+  @@index([regionCode])
+  @@index([icaoCode])
+  @@index([iataCode])
+  @@index([name])
+  @@index([municipality])
+}
+
+// ============================================================================
+// AIRCRAFT
+// ============================================================================
+
+model Aircraft {
+  id                  String              @id @default(cuid())
+  name                String              // e.g., "Gulfstream G650"
+  manufacturer        String              // e.g., "Gulfstream"
+  model               String              // e.g., "G650"
+  category            AircraftCategory
+  availability        AircraftAvailability @default(NONE)
+  
+  // Specifications
+  passengerCapacityMin Int
+  passengerCapacityMax Int
+  rangeNm             Int                 // Range in nautical miles
+  cruiseSpeedKnots    Int                 // Cruise speed in knots
+  baggageCapacityCuFt Float?              // Baggage capacity in cubic feet
+  
+  // Dimensions - Interior
+  cabinLengthFt       Float?
+  cabinWidthFt        Float?
+  cabinHeightFt       Float?
+  
+  // Dimensions - Exterior
+  lengthFt            Float?
+  wingspanFt          Float?
+  heightFt            Float?
+  
+  // Additional Info
+  yearOfManufacture   Int?
+  hourlyRateUsd       Float?              // Internal pricing reference
+  description         String?
+  
+  // Images (Cloudinary URLs)
+  exteriorImages      String[]            @default([])
+  interiorImages      String[]            @default([])
+  thumbnailImage      String?
+  
+  // Relations
+  charterLegs         CharterLeg[]
+  charterQuoteAircraft CharterQuoteAircraft[]
+  emptyLegs           EmptyLeg[]
+  operatorFleets      OperatorFleet[]
+  
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  @@index([category])
+  @@index([availability])
+  @@index([manufacturer])
+}
+
+// ============================================================================
+// USERS - Admin, Operator, Client
+// ============================================================================
+
+model Admin {
+  id              String      @id @default(cuid())
+  email           String      @unique
+  username        String      @unique
+  passwordHash    String
+  fullName        String
+  phone           String      // WhatsApp number
+  role            AdminRole   @default(STAFF)
+  status          AdminStatus @default(OFFLINE)
+  avatar          String?     // Cloudinary URL
+  address         String?
+  
+  // Password Reset
+  resetOtp        String?
+  resetOtpExpiry  DateTime?
+  
+  // Refresh Token
+  refreshToken    String?
+  
+  // Relations
+  charterQuotesApproved  CharterQuote[]    @relation("ApprovedBy")
+  emptyLegsCreated       EmptyLeg[]        @relation("CreatedByAdmin")
+  emptyLegBookingsApproved EmptyLegBooking[] @relation("BookingApprovedBy")
+  activityLogs           ActivityLog[]
+  announcements          Announcement[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([email])
+  @@index([username])
+}
+
+model Operator {
+  id              String      @id @default(cuid())
+  email           String      @unique
+  username        String      @unique
+  passwordHash    String
+  fullName        String
+  phone           String      // WhatsApp number
+  avatar          String?     // Cloudinary URL
+  
+  // Bank Details (for Paystack subaccount)
+  bankName        String
+  bankAccountNumber String
+  bankAccountName String
+  paystackSubaccountCode String?  // Paystack subaccount code
+  commissionPercent Float       @default(10) // Admin takes this percentage
+  
+  // Password Reset
+  resetOtp        String?
+  resetOtpExpiry  DateTime?
+  
+  // Refresh Token
+  refreshToken    String?
+  
+  // Relations
+  fleet           OperatorFleet[]
+  emptyLegs       EmptyLeg[]      @relation("CreatedByOperator")
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([email])
+  @@index([username])
+}
+
+model OperatorFleet {
+  id          String    @id @default(cuid())
+  operatorId  String
+  aircraftId  String
+  
+  operator    Operator  @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  aircraft    Aircraft  @relation(fields: [aircraftId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+  
+  @@unique([operatorId, aircraftId])
+  @@index([operatorId])
+}
+
+model Client {
+  id              String      @id @default(cuid())
+  phone           String      @unique // WhatsApp number - unique identifier
+  fullName        String?
+  email           String?
+  
+  // Relations
+  charterQuotes   CharterQuote[]
+  emptyLegBookings EmptyLegBooking[]
+  subscriptions   Subscription[]
+  payments        Payment[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([phone])
+  @@index([email])
+}
+
+// ============================================================================
+// SUBSCRIPTIONS
+// ============================================================================
+
+model Subscription {
+  id              String          @id @default(cuid())
+  clientId        String
+  type            SubscriptionType
+  
+  // For CITY type - subscribe to departures from a city
+  departureCityId String?
+  
+  // For ROUTE type - subscribe to specific route
+  arrivalCityId   String?
+  
+  // Relations
+  client          Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  departureCity   Airport?        @relation("DepartureCity", fields: [departureCityId], references: [id])
+  arrivalCity     Airport?        @relation("ArrivalCity", fields: [arrivalCityId], references: [id])
+  
+  isActive        Boolean         @default(true)
+  
+  createdAt       DateTime        @default(now())
+  
+  @@index([clientId])
+  @@index([type])
+  @@index([departureCityId])
+}
+
+// ============================================================================
+// CHARTER QUOTES
+// ============================================================================
+
+model CharterQuote {
+  id                String        @id @default(cuid())
+  referenceNumber   String        @unique // PEX-QT-YYYY-XXXX
+  
+  // Client Info
+  clientId          String
+  clientName        String
+  clientEmail       String
+  clientPhone       String        // WhatsApp
+  
+  // Flight Details
+  flightType        FlightType
+  passengerCount    Int
+  specialRequests   String?
+  
+  // Status
+  status            QuoteStatus   @default(PENDING)
+  rejectionReason   RejectionReason?
+  rejectionNote     String?
+  
+  // Pricing (set by admin on approval) - NGN only
+  // USD calculated on-the-fly for website display
+  totalPriceNgn     Float?
+  
+  // Approval
+  approvedById      String?
+  approvedAt        DateTime?
+  
+  // Payment
+  paymentDeadline   DateTime?
+  paymentLink       String?
+  
+  // Documents
+  quoteDocumentUrl  String?       // Quote confirmation PDF
+  flightDocumentUrl String?       // Flight confirmation PDF
+  receiptUrl        String?       // Payment receipt PDF
+  
+  // Relations
+  client            Client        @relation(fields: [clientId], references: [id])
+  approvedBy        Admin?        @relation("ApprovedBy", fields: [approvedById], references: [id])
+  legs              CharterLeg[]
+  selectedAircraft  CharterQuoteAircraft[]
+  payment           Payment?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@index([clientId])
+  @@index([status])
+  @@index([referenceNumber])
+}
+
+model CharterQuoteAircraft {
+  id              String        @id @default(cuid())
+  charterQuoteId  String
+  aircraftId      String
+  
+  charterQuote    CharterQuote  @relation(fields: [charterQuoteId], references: [id], onDelete: Cascade)
+  aircraft        Aircraft      @relation(fields: [aircraftId], references: [id])
+  
+  @@unique([charterQuoteId, aircraftId])
+}
+
+model CharterLeg {
+  id                  String        @id @default(cuid())
+  charterQuoteId      String
+  legNumber           Int           // 1, 2, 3, etc.
+  
+  departureAirportId  String
+  arrivalAirportId    String
+  departureDateTime   DateTime
+  
+  // Calculated/Set by admin
+  estimatedArrival    DateTime?
+  estimatedDurationMin Int?         // Duration in minutes
+  
+  // Pricing per leg (set by admin) - NGN only
+  priceNgn            Float?
+  
+  // Assigned aircraft (set by admin)
+  aircraftId          String?
+  
+  // Relations
+  charterQuote        CharterQuote  @relation(fields: [charterQuoteId], references: [id], onDelete: Cascade)
+  departureAirport    Airport       @relation("DepartureAirport", fields: [departureAirportId], references: [id])
+  arrivalAirport      Airport       @relation("ArrivalAirport", fields: [arrivalAirportId], references: [id])
+  aircraft            Aircraft?     @relation(fields: [aircraftId], references: [id])
+  
+  @@index([charterQuoteId])
+  @@index([departureAirportId])
+  @@index([arrivalAirportId])
+}
+
+// ============================================================================
+// EMPTY LEG DEALS
+// ============================================================================
+
+model EmptyLeg {
+  id                  String          @id @default(cuid())
+  slug                String          @unique // SEO-friendly URL slug
+  
+  // Flight Details
+  departureAirportId  String
+  arrivalAirportId    String
+  departureDateTime   DateTime
+  estimatedArrival    DateTime
+  estimatedDurationMin Int
+  
+  // Aircraft
+  aircraftId          String
+  
+  // Capacity
+  totalSeats          Int
+  availableSeats      Int
+  
+  // Pricing (per seat) - Admin/Operators enter NGN only
+  // USD is calculated on-the-fly for website display using settings.usdToNgnRate
+  originalPriceNgn    Float
+  discountPriceNgn    Float
+  
+  // Status
+  status              EmptyLegStatus  @default(PUBLISHED)
+  
+  // Creator (either admin or operator)
+  createdByAdminId    String?
+  createdByOperatorId String?
+  
+  // Relations
+  departureAirport    Airport         @relation("EmptyLegDeparture", fields: [departureAirportId], references: [id])
+  arrivalAirport      Airport         @relation("EmptyLegArrival", fields: [arrivalAirportId], references: [id])
+  aircraft            Aircraft        @relation(fields: [aircraftId], references: [id])
+  createdByAdmin      Admin?          @relation("CreatedByAdmin", fields: [createdByAdminId], references: [id])
+  createdByOperator   Operator?       @relation("CreatedByOperator", fields: [createdByOperatorId], references: [id])
+  bookings            EmptyLegBooking[]
+  
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  
+  @@index([status])
+  @@index([departureAirportId])
+  @@index([arrivalAirportId])
+  @@index([departureDateTime])
+  @@index([slug])
+}
+
+model EmptyLegBooking {
+  id                String          @id @default(cuid())
+  referenceNumber   String          @unique // PEX-EL-YYYY-XXXX
+  
+  emptyLegId        String
+  clientId          String
+  
+  // Client Info (snapshot at time of booking)
+  clientName        String
+  clientEmail       String
+  clientPhone       String
+  
+  // Booking Details
+  seatsRequested    Int
+  
+  // Pricing (NGN only - USD calculated on-the-fly for website)
+  totalPriceNgn     Float
+  
+  // Status
+  status            QuoteStatus     @default(PENDING)
+  rejectionReason   RejectionReason?
+  rejectionNote     String?
+  
+  // Approval
+  approvedById      String?
+  approvedAt        DateTime?
+  
+  // Payment
+  paymentDeadline   DateTime?
+  paymentLink       String?
+  
+  // Documents
+  quoteDocumentUrl  String?
+  flightDocumentUrl String?
+  receiptUrl        String?
+  
+  // Relations
+  emptyLeg          EmptyLeg        @relation(fields: [emptyLegId], references: [id])
+  client            Client          @relation(fields: [clientId], references: [id])
+  approvedBy        Admin?          @relation("BookingApprovedBy", fields: [approvedById], references: [id])
+  payment           Payment?
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  @@index([emptyLegId])
+  @@index([clientId])
+  @@index([status])
+}
+
+// ============================================================================
+// PAYMENTS
+// ============================================================================
+
+model Payment {
+  id                  String        @id @default(cuid())
+  referenceNumber     String        @unique // PEX-RC-YYYY-XXXX
+  
+  clientId            String
+  
+  // Payment Type
+  type                PaymentType
+  charterQuoteId      String?       @unique
+  emptyLegBookingId   String?       @unique
+  
+  // Amounts (NGN only - USD calculated on-the-fly for website)
+  amountNgn           Float
+  
+  // Paystack
+  paystackReference   String        @unique
+  paystackAccessCode  String?
+  
+  // Split Payment (for operator empty legs)
+  operatorAmount      Float?
+  adminAmount         Float?
+  
+  // Status
+  status              PaymentStatus @default(PENDING)
+  paidAt              DateTime?
+  
+  // Relations
+  client              Client        @relation(fields: [clientId], references: [id])
+  charterQuote        CharterQuote? @relation(fields: [charterQuoteId], references: [id])
+  emptyLegBooking     EmptyLegBooking? @relation(fields: [emptyLegBookingId], references: [id])
+  
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  
+  @@index([clientId])
+  @@index([status])
+  @@index([paystackReference])
+}
+
+// ============================================================================
+// ACTIVITY LOGS
+// ============================================================================
+
+model ActivityLog {
+  id            String        @id @default(cuid())
+  
+  action        ActivityAction
+  description   String
+  
+  // Actor (who performed the action)
+  adminId       String?
+  operatorId    String?
+  clientPhone   String?       // For client actions
+  
+  // Target (what was affected)
+  targetType    String?       // e.g., "CharterQuote", "EmptyLeg", "Admin"
+  targetId      String?
+  
+  // Additional Data
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  
+  // Seen tracking - array of admin IDs who have seen this log
+  seenBy        String[]      @default([])
+  
+  // Relations
+  admin         Admin?        @relation(fields: [adminId], references: [id])
+  
+  createdAt     DateTime      @default(now())
+  
+  @@index([action])
+  @@index([adminId])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+// ============================================================================
+// ANNOUNCEMENTS
+// ============================================================================
+
+model Announcement {
+  id            String    @id @default(cuid())
+  title         String
+  message       String
+  imageUrl      String?   // Cloudinary URL
+  
+  createdById   String
+  createdBy     Admin     @relation(fields: [createdById], references: [id])
+  
+  sentAt        DateTime?
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([createdAt])
+}
+
+// ============================================================================
+// EMPTY LEG SUBSCRIPTIONS
+// ============================================================================
+
+model EmptyLegSubscription {
+  id            String            @id @default(cuid())
+  phone         String            // WhatsApp phone number (unique identifier)
+  type          SubscriptionType  @default(ALL)
+  
+  // For CITY type - list of cities to watch
+  cities        String[]          @default([])
+  
+  // For ROUTE type - specific route to watch
+  routeFrom     String?
+  routeTo       String?
+  
+  isActive      Boolean           @default(true)
+  
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  
+  @@index([phone])
+  @@index([type])
+  @@index([isActive])
+}
+
+// ============================================================================
+// SYSTEM SETTINGS
+// ============================================================================
+
+model Settings {
+  id                    String    @id @default("default")
+  
+  // Currency
+  usdToNgnRate          Float     @default(1650)
+  
+  // Payment
+  paymentWindowHours    Int       @default(3)
+  
+  // Empty Leg
+  dealDeadlineMinutes   Int       @default(30)  // Minutes before flight
+  minimumBookingNoticeHours Int   @default(24)
+  
+  // Default Operator Commission (can be overridden per operator)
+  defaultOperatorCommission Float @default(10)
+  
+  // Policies (rich text)
+  cancellationPolicy    String?
+  refundPolicy          String?
+  termsAndConditions    String?
+  privacyPolicy         String?
+  
+  // Contact
+  adminWhatsAppGroup    String?   // For notifications (not used - individual notifications)
+  supportEmail          String?
+  supportPhone          String?
+  
+  // Document Numbering (auto-increment counters)
+  quoteCounter          Int       @default(0)
+  emptyLegCounter       Int       @default(0)
+  receiptCounter        Int       @default(0)
+  flightConfirmCounter  Int       @default(0)
+  
+  updatedAt             DateTime  @updatedAt
+}
+
+// ============================================================================
+// DOCUMENT TEMPLATES (for future customization)
+// ============================================================================
+
+model DocumentTemplate {
+  id            String    @id @default(cuid())
+  name          String    @unique // e.g., "quote_confirmation", "flight_confirmation", "receipt"
+  content       String    // HTML template with placeholders
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}

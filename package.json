@@ -1,0 +1,36 @@
+{
+  "name": "pexjet-platform",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:admin": "turbo dev --filter=admin",
+    "dev:operator": "turbo dev --filter=operator",
+    "dev:website": "turbo dev --filter=@pexjet/website",
+    "build": "turbo build",
+    "build:admin": "turbo build --filter=admin",
+    "build:operator": "turbo build --filter=operator",
+    "build:website": "turbo build --filter=@pexjet/website",
+    "lint": "turbo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "db:generate": "turbo db:generate",
+    "db:push": "turbo db:push",
+    "db:seed": "turbo db:seed",
+    "db:studio": "turbo db:studio",
+    "clean": "turbo clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "prettier": "^3.1.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "npm@10.0.0"
+}
