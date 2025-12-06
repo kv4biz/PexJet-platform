@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform data to match frontend expectations
-    const transformedAircraft = aircraft.map((a) => ({
+    const transformedAircraft = aircraft.map((a: any) => ({
       id: a.id,
       name: a.name,
       model: a.model,
