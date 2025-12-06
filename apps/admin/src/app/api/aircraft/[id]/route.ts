@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
-import { verifyAccessToken, extractTokenFromHeader, notifyAircraftUpdate, notifyAircraftDelete } from "@pexjet/lib";
+import { verifyAccessToken, extractTokenFromHeader } from "@pexjet/lib";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     // Verify authentication
@@ -23,7 +23,10 @@ export async function GET(
     });
 
     if (!aircraft) {
-      return NextResponse.json({ error: "Aircraft not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Aircraft not found" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json(aircraft);
@@ -31,14 +34,14 @@ export async function GET(
     console.error("Aircraft fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch aircraft" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     const token = extractTokenFromHeader(request.headers.get("authorization"));
@@ -79,7 +82,10 @@ export async function PUT(
     });
 
     if (!existing) {
-      return NextResponse.json({ error: "Aircraft not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Aircraft not found" },
+        { status: 404 },
+      );
     }
 
     const aircraft = await prisma.aircraft.update({
@@ -90,19 +96,47 @@ export async function PUT(
         ...(manufacturer && { manufacturer }),
         ...(category && { category }),
         ...(availability && { availability }),
-        ...(passengerCapacityMin !== undefined && { passengerCapacityMin: parseInt(passengerCapacityMin) }),
-        ...(passengerCapacityMax !== undefined && { passengerCapacityMax: parseInt(passengerCapacityMax) }),
+        ...(passengerCapacityMin !== undefined && {
+          passengerCapacityMin: parseInt(passengerCapacityMin),
+        }),
+        ...(passengerCapacityMax !== undefined && {
+          passengerCapacityMax: parseInt(passengerCapacityMax),
+        }),
         ...(rangeNm !== undefined && { rangeNm: parseInt(rangeNm) }),
-        ...(cruiseSpeedKnots !== undefined && { cruiseSpeedKnots: parseInt(cruiseSpeedKnots) }),
-        ...(baggageCapacityCuFt !== undefined && { baggageCapacityCuFt: baggageCapacityCuFt ? parseFloat(baggageCapacityCuFt) : null }),
-        ...(cabinLengthFt !== undefined && { cabinLengthFt: cabinLengthFt ? parseFloat(cabinLengthFt) : null }),
-        ...(cabinWidthFt !== undefined && { cabinWidthFt: cabinWidthFt ? parseFloat(cabinWidthFt) : null }),
-        ...(cabinHeightFt !== undefined && { cabinHeightFt: cabinHeightFt ? parseFloat(cabinHeightFt) : null }),
-        ...(lengthFt !== undefined && { lengthFt: lengthFt ? parseFloat(lengthFt) : null }),
-        ...(wingspanFt !== undefined && { wingspanFt: wingspanFt ? parseFloat(wingspanFt) : null }),
-        ...(heightFt !== undefined && { heightFt: heightFt ? parseFloat(heightFt) : null }),
-        ...(yearOfManufacture !== undefined && { yearOfManufacture: yearOfManufacture ? parseInt(yearOfManufacture) : null }),
-        ...(hourlyRateUsd !== undefined && { hourlyRateUsd: hourlyRateUsd ? parseFloat(hourlyRateUsd) : null }),
+        ...(cruiseSpeedKnots !== undefined && {
+          cruiseSpeedKnots: parseInt(cruiseSpeedKnots),
+        }),
+        ...(baggageCapacityCuFt !== undefined && {
+          baggageCapacityCuFt: baggageCapacityCuFt
+            ? parseFloat(baggageCapacityCuFt)
+            : null,
+        }),
+        ...(cabinLengthFt !== undefined && {
+          cabinLengthFt: cabinLengthFt ? parseFloat(cabinLengthFt) : null,
+        }),
+        ...(cabinWidthFt !== undefined && {
+          cabinWidthFt: cabinWidthFt ? parseFloat(cabinWidthFt) : null,
+        }),
+        ...(cabinHeightFt !== undefined && {
+          cabinHeightFt: cabinHeightFt ? parseFloat(cabinHeightFt) : null,
+        }),
+        ...(lengthFt !== undefined && {
+          lengthFt: lengthFt ? parseFloat(lengthFt) : null,
+        }),
+        ...(wingspanFt !== undefined && {
+          wingspanFt: wingspanFt ? parseFloat(wingspanFt) : null,
+        }),
+        ...(heightFt !== undefined && {
+          heightFt: heightFt ? parseFloat(heightFt) : null,
+        }),
+        ...(yearOfManufacture !== undefined && {
+          yearOfManufacture: yearOfManufacture
+            ? parseInt(yearOfManufacture)
+            : null,
+        }),
+        ...(hourlyRateUsd !== undefined && {
+          hourlyRateUsd: hourlyRateUsd ? parseFloat(hourlyRateUsd) : null,
+        }),
         ...(description !== undefined && { description: description || null }),
       },
     });
@@ -118,25 +152,19 @@ export async function PUT(
       },
     });
 
-    // Trigger real-time update
-    await notifyAircraftUpdate({
-      id: aircraft.id,
-      name: aircraft.name,
-    });
-
     return NextResponse.json(aircraft);
   } catch (error: any) {
     console.error("Aircraft update error:", error);
     return NextResponse.json(
       { error: "Failed to update aircraft" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     // Verify authentication
@@ -156,7 +184,10 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json({ error: "Aircraft not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Aircraft not found" },
+        { status: 404 },
+      );
     }
 
     // Delete aircraft
@@ -176,15 +207,12 @@ export async function DELETE(
       },
     });
 
-    // Trigger real-time update
-    await notifyAircraftDelete({ id: params.id });
-
     return NextResponse.json({ message: "Aircraft deleted successfully" });
   } catch (error: any) {
     console.error("Aircraft delete error:", error);
     return NextResponse.json(
       { error: "Failed to delete aircraft" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

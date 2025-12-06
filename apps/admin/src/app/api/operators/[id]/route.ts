@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
-import { verifyAccessToken, extractTokenFromHeader, isSuperAdmin, notifyOperatorUpdate, notifyOperatorDelete } from "@pexjet/lib";
+import {
+  verifyAccessToken,
+  extractTokenFromHeader,
+  isSuperAdmin,
+} from "@pexjet/lib";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     const token = extractTokenFromHeader(request.headers.get("authorization"));
@@ -38,7 +42,10 @@ export async function GET(
     });
 
     if (!operator) {
-      return NextResponse.json({ error: "Operator not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Operator not found" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({
@@ -63,13 +70,16 @@ export async function GET(
     });
   } catch (error: any) {
     console.error("Operator fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch operator" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch operator" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     const token = extractTokenFromHeader(request.headers.get("authorization"));
@@ -87,26 +97,29 @@ export async function DELETE(
     });
 
     if (!operator) {
-      return NextResponse.json({ error: "Operator not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Operator not found" },
+        { status: 404 },
+      );
     }
 
     await prisma.operator.delete({
       where: { id: params.id },
     });
 
-    // Trigger real-time update
-    await notifyOperatorDelete({ id: params.id });
-
     return NextResponse.json({ message: "Operator deleted successfully" });
   } catch (error: any) {
     console.error("Operator delete error:", error);
-    return NextResponse.json({ error: "Failed to delete operator" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete operator" },
+      { status: 500 },
+    );
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     const token = extractTokenFromHeader(request.headers.get("authorization"));
@@ -120,21 +133,35 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { companyName, contactName, email, phone, bankName, bankAccountNumber, bankAccountName, commissionPercent } = body;
+    const {
+      companyName,
+      contactName,
+      email,
+      phone,
+      bankName,
+      bankAccountNumber,
+      bankAccountName,
+      commissionPercent,
+    } = body;
 
     const operator = await prisma.operator.findUnique({
       where: { id: params.id },
     });
 
     if (!operator) {
-      return NextResponse.json({ error: "Operator not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Operator not found" },
+        { status: 404 },
+      );
     }
 
     const updated = await prisma.operator.update({
       where: { id: params.id },
       data: {
         ...(companyName && { fullName: companyName }),
-        ...(contactName && { username: contactName.toLowerCase().replace(/\s+/g, "") }),
+        ...(contactName && {
+          username: contactName.toLowerCase().replace(/\s+/g, ""),
+        }),
         ...(email && { email: email.toLowerCase() }),
         ...(phone && { phone }),
         ...(bankName && { bankName }),
@@ -152,12 +179,6 @@ export async function PATCH(
       },
     });
 
-    // Trigger real-time update
-    await notifyOperatorUpdate({
-      id: updated.id,
-      companyName: updated.fullName,
-    });
-
     return NextResponse.json({
       id: updated.id,
       companyName: updated.fullName,
@@ -169,6 +190,9 @@ export async function PATCH(
     });
   } catch (error: any) {
     console.error("Operator update error:", error);
-    return NextResponse.json({ error: "Failed to update operator" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update operator" },
+      { status: 500 },
+    );
   }
 }

@@ -23,6 +23,9 @@
     "db:studio": "turbo db:studio",
     "clean": "turbo clean && rm -rf node_modules"
   },
+  "dependencies": {
+    "iconv-lite": "^0.6.3"
+  },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "prettier": "^3.1.0",

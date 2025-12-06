@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
-import { verifyAccessToken, extractTokenFromHeader, notifyNewAircraft } from "@pexjet/lib";
+import { verifyAccessToken, extractTokenFromHeader } from "@pexjet/lib";
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
           OR: [
             { name: { contains: search, mode: "insensitive" as const } },
             { model: { contains: search, mode: "insensitive" as const } },
-            { manufacturer: { contains: search, mode: "insensitive" as const } },
+            {
+              manufacturer: { contains: search, mode: "insensitive" as const },
+            },
           ],
         }
       : {};
@@ -81,7 +83,7 @@ export async function GET(request: NextRequest) {
     console.error("Aircraft fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch aircraft" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -126,10 +128,19 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!name || !model || !manufacturer || !category || !passengerCapacityMin || !passengerCapacityMax || !rangeNm || !cruiseSpeedKnots) {
+    if (
+      !name ||
+      !model ||
+      !manufacturer ||
+      !category ||
+      !passengerCapacityMin ||
+      !passengerCapacityMax ||
+      !rangeNm ||
+      !cruiseSpeedKnots
+    ) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -145,14 +156,18 @@ export async function POST(request: NextRequest) {
         passengerCapacityMax: parseInt(passengerCapacityMax),
         rangeNm: parseInt(rangeNm),
         cruiseSpeedKnots: parseInt(cruiseSpeedKnots),
-        baggageCapacityCuFt: baggageCapacityCuFt ? parseFloat(baggageCapacityCuFt) : null,
+        baggageCapacityCuFt: baggageCapacityCuFt
+          ? parseFloat(baggageCapacityCuFt)
+          : null,
         cabinLengthFt: cabinLengthFt ? parseFloat(cabinLengthFt) : null,
         cabinWidthFt: cabinWidthFt ? parseFloat(cabinWidthFt) : null,
         cabinHeightFt: cabinHeightFt ? parseFloat(cabinHeightFt) : null,
         lengthFt: lengthFt ? parseFloat(lengthFt) : null,
         wingspanFt: wingspanFt ? parseFloat(wingspanFt) : null,
         heightFt: heightFt ? parseFloat(heightFt) : null,
-        yearOfManufacture: yearOfManufacture ? parseInt(yearOfManufacture) : null,
+        yearOfManufacture: yearOfManufacture
+          ? parseInt(yearOfManufacture)
+          : null,
         hourlyRateUsd: hourlyRateUsd ? parseFloat(hourlyRateUsd) : null,
         description: description || null,
         exteriorImages: exteriorImages || [],
@@ -174,20 +189,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Trigger real-time update
-    await notifyNewAircraft({
-      id: aircraft.id,
-      name: aircraft.name,
-      manufacturer: aircraft.manufacturer,
-      model: aircraft.model,
-    });
-
     return NextResponse.json(aircraft, { status: 201 });
   } catch (error: any) {
     console.error("Aircraft create error:", error);
     return NextResponse.json(
       { error: "Failed to create aircraft" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

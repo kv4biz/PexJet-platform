@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
-import { verifyAccessToken, extractTokenFromHeader, isSuperAdmin, hashPassword, notifyNewOperator } from "@pexjet/lib";
+import {
+  verifyAccessToken,
+  extractTokenFromHeader,
+  isSuperAdmin,
+  hashPassword,
+} from "@pexjet/lib";
 
 export async function GET(request: NextRequest) {
   try {
@@ -84,7 +89,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Operators fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch operators" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch operators" },
+      { status: 500 },
+    );
   }
 }
 
@@ -101,19 +109,40 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { companyName, contactName, email, phone, password, website, address, city, country } = body;
+    const {
+      companyName,
+      contactName,
+      email,
+      phone,
+      password,
+      website,
+      address,
+      city,
+      country,
+    } = body;
 
     if (!companyName || !contactName || !email || !phone || !password) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     // Check if email or username already exists
     const existing = await prisma.operator.findFirst({
-      where: { OR: [{ email }, { username: contactName.toLowerCase().replace(/\s+/g, "") }] },
+      where: {
+        OR: [
+          { email },
+          { username: contactName.toLowerCase().replace(/\s+/g, "") },
+        ],
+      },
     });
 
     if (existing) {
-      return NextResponse.json({ error: "Email or username already exists" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Email or username already exists" },
+        { status: 400 },
+      );
     }
 
     const passwordHash = await hashPassword(password);
@@ -140,24 +169,23 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Trigger real-time update
-    await notifyNewOperator({
-      id: operator.id,
-      companyName: operator.fullName,
-      contactName: operator.username,
-    });
-
-    return NextResponse.json({
-      id: operator.id,
-      companyName: operator.fullName,
-      contactName: operator.username,
-      email: operator.email,
-      phone: operator.phone,
-      status: "ACTIVE",
-      createdAt: operator.createdAt,
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        id: operator.id,
+        companyName: operator.fullName,
+        contactName: operator.username,
+        email: operator.email,
+        phone: operator.phone,
+        status: "ACTIVE",
+        createdAt: operator.createdAt,
+      },
+      { status: 201 },
+    );
   } catch (error: any) {
     console.error("Operator create error:", error);
-    return NextResponse.json({ error: "Failed to create operator" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create operator" },
+      { status: 500 },
+    );
   }
 }

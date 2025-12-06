@@ -4,28 +4,28 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
-import { 
-  Plane, 
+import {
+  Plane,
   Calendar,
   Users,
   MapPin,
   Phone,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
 } from "lucide-react";
-import { 
-  Button, 
-  Card, 
-  CardContent, 
-  Input, 
-  Textarea, 
-  Label, 
+import {
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Textarea,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  useToast 
+  useToast,
 } from "@pexjet/ui";
 import Navbar from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
@@ -90,7 +90,9 @@ export default function QuotePage() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -108,7 +110,7 @@ export default function QuotePage() {
     return (
       <main className="min-h-screen">
         <Navbar />
-        
+
         <section className="pt-32 pb-20">
           <div className="container mx-auto px-4">
             <motion.div
@@ -127,9 +129,7 @@ export default function QuotePage() {
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button asChild>
-                  <Link href="/">
-                    {quotePageData.success.buttons.home}
-                  </Link>
+                  <Link href="/">{quotePageData.success.buttons.home}</Link>
                 </Button>
                 <Button variant="outline" asChild>
                   <Link href="/empty-legs">
@@ -227,7 +227,9 @@ export default function QuotePage() {
                         <Label>Flight Type *</Label>
                         <Select
                           value={formData.flightType}
-                          onValueChange={(value) => handleSelectChange("flightType", value)}
+                          onValueChange={(value) =>
+                            handleSelectChange("flightType", value)
+                          }
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select flight type" />
@@ -245,17 +247,24 @@ export default function QuotePage() {
                         <Label>Passengers *</Label>
                         <Select
                           value={formData.passengers}
-                          onValueChange={(value) => handleSelectChange("passengers", value)}
+                          onValueChange={(value) =>
+                            handleSelectChange("passengers", value)
+                          }
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select passengers" />
                           </SelectTrigger>
                           <SelectContent>
-                            {quotePageData.form.passengerOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
+                            {quotePageData.form.passengerOptions.map(
+                              (option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ),
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -314,7 +323,8 @@ export default function QuotePage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="returnDate">
-                          Return Date {formData.flightType === "ROUND_TRIP" && "*"}
+                          Return Date{" "}
+                          {formData.flightType === "ROUND_TRIP" && "*"}
                         </Label>
                         <div className="relative">
                           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -349,12 +359,17 @@ export default function QuotePage() {
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
                       <p className="text-sm text-muted-foreground">
                         {quotePageData.contactAlternative}{" "}
-                        <a href={`tel:${footerData.contact.phone.replace(/\s/g, "")}`} className="text-primary font-medium">
-                          {footerData.contact.phone}
+                        <a
+                          href={`tel:${footerData.contactInfo.phone.replace(/\s/g, "")}`}
+                          className="text-primary font-medium"
+                        >
+                          {footerData.contactInfo.phone}
                         </a>
                       </p>
                       <Button type="submit" size="lg" disabled={loading}>
-                        {loading ? "Submitting..." : quotePageData.form.submitButton}
+                        {loading
+                          ? "Submitting..."
+                          : quotePageData.form.submitButton}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </div>
