@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform and filter data
-    let transformedLegs = emptyLegs.map((leg) => {
+    let transformedLegs = emptyLegs.map((leg: any) => {
       const discountPercent = Math.round(
         ((leg.originalPriceNgn - leg.discountPriceNgn) / leg.originalPriceNgn) *
           100,
