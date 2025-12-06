@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
       });
 
       if (refAirport) {
-        transformedLegs = transformedLegs.filter((leg) => {
+        transformedLegs = transformedLegs.filter((leg: any) => {
           const distance = calculateDistanceKm(
             refAirport.latitude,
             refAirport.longitude,
@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
       });
 
       if (refAirport) {
-        transformedLegs = transformedLegs.filter((leg) => {
+        transformedLegs = transformedLegs.filter((leg: any) => {
           const distance = calculateDistanceKm(
             refAirport.latitude,
             refAirport.longitude,
@@ -242,19 +242,19 @@ export async function GET(request: NextRequest) {
     // Filter by minimum discount
     if (minDiscount > 0) {
       transformedLegs = transformedLegs.filter(
-        (leg) => leg.discountPercent >= minDiscount,
+        (leg: any) => leg.discountPercent >= minDiscount,
       );
     }
 
     // Filter by max price (in USD)
     if (maxPrice > 0) {
       transformedLegs = transformedLegs.filter(
-        (leg) => leg.priceUsd <= maxPrice,
+        (leg: any) => leg.priceUsd <= maxPrice,
       );
     }
 
     // Sorting
-    transformedLegs.sort((a, b) => {
+    transformedLegs.sort((a: any, b: any) => {
       let comparison = 0;
 
       switch (sortBy) {
