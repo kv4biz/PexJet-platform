@@ -12,18 +12,19 @@ export async function GET() {
       settings = await prisma.settings.create({
         data: {
           id: "default",
-          usdToNgnRate: 1650,
         },
       });
     }
 
     return NextResponse.json({
-      usdToNgnRate: settings.usdToNgnRate,
+      companyName: settings.companyName,
+      companyEmail: settings.companyEmail,
+      companyPhone: settings.companyPhone,
     });
   } catch (error: any) {
     console.error("Settings fetch error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch settings", usdToNgnRate: 1650 },
+      { error: "Failed to fetch settings" },
       { status: 500 },
     );
   }

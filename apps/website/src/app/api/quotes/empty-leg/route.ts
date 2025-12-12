@@ -107,8 +107,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Calculate total price
-    const totalPriceNgn = emptyLeg.discountPriceNgn * seatsRequested;
+    // Calculate total price (USD)
+    const totalPriceUsd = emptyLeg.discountPriceUsd * seatsRequested;
 
     // Create the booking/quote
     const booking = await prisma.emptyLegBooking.create({
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         clientEmail: contactInfo.email,
         clientPhone: contactInfo.phone,
         seatsRequested,
-        totalPriceNgn,
+        totalPriceUsd,
         status: "PENDING",
       },
       include: {
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         metadata: {
           emptyLegId: emptyLeg.id,
           seatsRequested,
-          totalPriceNgn,
+          totalPriceUsd,
         },
       },
     });
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
         `Route: ${departureCode} → ${arrivalCode}\n` +
         `Aircraft: ${emptyLeg.aircraft.name}\n` +
         `Seats: ${seatsRequested}\n` +
-        `Total: ₦${totalPriceNgn.toLocaleString()}\n\n` +
+        `Total: $${totalPriceUsd.toLocaleString()}\n\n` +
         `Please review in the dashboard.`;
 
       // Check Twilio credentials

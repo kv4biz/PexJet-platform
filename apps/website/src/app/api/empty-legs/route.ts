@@ -250,7 +250,7 @@ export async function GET(request: NextRequest) {
       switch (sortBy) {
         case "price":
         case "cheapest":
-          comparison = a.priceNgn - b.priceNgn;
+          comparison = a.priceUsd - b.priceUsd;
           break;
         case "discount":
           comparison = b.discountPercent - a.discountPercent; // Higher discount first

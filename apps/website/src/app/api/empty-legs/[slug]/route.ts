@@ -8,13 +8,6 @@ export async function GET(
   try {
     const { slug } = params;
 
-    // Get exchange rate from settings
-    const settings = await prisma.settings.findUnique({
-      where: { id: "default" },
-      select: { usdToNgnRate: true },
-    });
-    const exchangeRate = settings?.usdToNgnRate || 1650;
-
     const emptyLeg = await prisma.emptyLeg.findUnique({
       where: { slug },
       include: {
@@ -87,8 +80,8 @@ export async function GET(
     }
 
     const discountPercent = Math.round(
-      ((emptyLeg.originalPrice - emptyLeg.discountPrice) /
-        emptyLeg.originalPrice) *
+      ((emptyLeg.originalPriceUsd - emptyLeg.discountPriceUsd) /
+        emptyLeg.originalPriceUsd) *
         100,
     );
 
@@ -140,11 +133,8 @@ export async function GET(
       departureDate: emptyLeg.departureDateTime.toISOString(),
       availableSeats: emptyLeg.availableSeats,
       totalSeats: emptyLeg.totalSeats,
-      priceNgn: emptyLeg.discountPrice,
-      originalPriceNgn: emptyLeg.originalPrice,
-      priceUsd: Math.round((emptyLeg.discountPrice / exchangeRate) * 100) / 100,
-      originalPriceUsd:
-        Math.round((emptyLeg.originalPrice / exchangeRate) * 100) / 100,
+      priceUsd: emptyLeg.discountPriceUsd,
+      originalPriceUsd: emptyLeg.originalPriceUsd,
       discountPercent,
       ownerType: emptyLeg.createdByOperatorId ? "operator" : "admin",
       createdByAdminId: emptyLeg.createdByAdminId,
@@ -153,7 +143,6 @@ export async function GET(
 
     return NextResponse.json({
       emptyLeg: transformedLeg,
-      exchangeRate,
     });
   } catch (error: any) {
     console.error("Empty leg fetch error:", error);

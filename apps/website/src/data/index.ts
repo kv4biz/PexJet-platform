@@ -88,7 +88,6 @@ export const footerData = {
     ],
     Company: [
       { label: "About Us", href: "/about/our-company" },
-      { label: "For Operators", href: "/about/operator" },
       {
         label: "Acquisition & Financing",
         href: "/about/asset-acquisition-and-financing",
@@ -670,110 +669,6 @@ export const aboutCompanyPageData = {
 };
 
 // ============================================================================
-// ABOUT - OPERATOR PAGE DATA
-// ============================================================================
-export const aboutOperatorPageData = {
-  hero: {
-    title: "Partner With PexJet",
-    subtitle: "Join our network of trusted operators across Africa and beyond.",
-    backgroundImage:
-      "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765007837/d25f5436662_r8tmqc.jpg",
-  },
-
-  intro: {
-    title: "Grow With Us",
-    description:
-      "PexJet connects operators with real charter clients. We handle bookings, payments, and support so you can focus on flying.",
-    image:
-      "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765010655/broker_pm65zy.jpg",
-  },
-
-  benefits: {
-    title: "Why Partner With Us?",
-    items: [
-      {
-        icon: "TrendingUp",
-        title: "More Revenue",
-        description: "Fill flights and empty legs you would normally lose.",
-      },
-      {
-        icon: "Shield",
-        title: "Trusted Clients",
-        description:
-          "We verify every client to ensure secure and smooth operations.",
-      },
-      {
-        icon: "CreditCard",
-        title: "Safe Payments",
-        description: "Fast and secure payouts for every completed flight.",
-      },
-      {
-        icon: "Headphones",
-        title: "24/7 Support",
-        description: "Our team is always available to help with your needs.",
-      },
-      {
-        icon: "BarChart",
-        title: "Simple Dashboard",
-        description: "View bookings, earnings, and performance in one place.",
-      },
-      {
-        icon: "Globe",
-        title: "Wider Reach",
-        description:
-          "Get exposure to clients from different parts of the world.",
-      },
-    ],
-  },
-
-  process: {
-    title: "How It Works",
-    steps: [
-      {
-        step: "01",
-        title: "Apply",
-        description: "Send us your fleet details and certifications.",
-      },
-      {
-        step: "02",
-        title: "Verification",
-        description: "We review your safety records and documents.",
-      },
-      {
-        step: "03",
-        title: "Onboarding",
-        description: "We set up your account and guide you through the system.",
-      },
-      {
-        step: "04",
-        title: "Start Flying",
-        description: "Receive bookings and grow your business.",
-      },
-    ],
-  },
-
-  requirements: {
-    title: "Requirements",
-    items: [
-      "Valid AOC",
-      "Full insurance coverage",
-      "Qualified flight crew",
-      "Well-maintained aircraft",
-      "Strong customer service",
-    ],
-  },
-
-  cta: {
-    title: "Ready to Join?",
-    description: "Become a PexJet partner and start receiving bookings.",
-    button: {
-      text: "Apply Now",
-      href: "/contact?type=operator",
-    },
-  },
-};
-
-// ============================================================================
 // ABOUT - ASSET ACQUISITION & FINANCING PAGE DATA
 // ============================================================================
 export const aboutAssetPageData = {
@@ -1144,11 +1039,6 @@ export const seoData = {
       title: "About PexJet",
       description:
         "Learn about PexJet and our commitment to safe, reliable private aviation.",
-    },
-    aboutOperator: {
-      title: "Operator Partnership",
-      description:
-        "Partner with PexJet and reach more clients through our operator network.",
     },
     aboutAsset: {
       title: "Asset Acquisition & Financing",
