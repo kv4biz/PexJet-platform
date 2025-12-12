@@ -339,7 +339,7 @@ export default function EmptyLegDetailPage() {
                         {emptyLeg.arrivalAirport.code}
                       </div>
                       <div
-                        className="text-xs text-gray-400 truncate"
+                        className="text-xs text-gray-400 "
                         title={emptyLeg.arrivalAirport.name}
                       >
                         {emptyLeg.arrivalAirport.name}
