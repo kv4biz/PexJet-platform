@@ -31,7 +31,6 @@ export const navbarData = {
       label: "About",
       dropdown: [
         { label: "Our Company", href: "/about/our-company" },
-        { label: "For Operators", href: "/about/operator" },
         {
           label: "Asset Acquisition & Financing",
           href: "/about/asset-acquisition-and-financing",

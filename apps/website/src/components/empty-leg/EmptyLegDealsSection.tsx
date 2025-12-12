@@ -54,13 +54,9 @@ interface EmptyLeg {
     category: string;
     maxPassengers: number;
   };
-  departureDateTime: string;
-  estimatedArrival: string | null;
-  estimatedDurationMin: number | null;
+  departureDate: string;
   availableSeats: number;
   totalSeats: number;
-  priceNgn: number;
-  originalPriceNgn: number;
   priceUsd: number;
   originalPriceUsd: number;
   discountPercent: number;
@@ -279,10 +275,7 @@ export function EmptyLegDealsSection() {
     );
 
     // Calculate estimated arrival
-    const estArrivalTime = calculateArrivalTime(
-      deal.departureDateTime,
-      distanceNm,
-    );
+    const estArrivalTime = calculateArrivalTime(deal.departureDate, distanceNm);
 
     return (
       <Link href={`/empty-legs/${deal.slug}`}>
@@ -310,7 +303,7 @@ export function EmptyLegDealsSection() {
                     {deal.departureAirport.city}
                   </div>
                   <div className="text-xs text-gray-400">
-                    {formatTime(deal.departureDateTime)}
+                    {formatTime(deal.departureDate)}
                   </div>
                 </div>
 
@@ -345,7 +338,7 @@ export function EmptyLegDealsSection() {
               <div className="flex items-center justify-between text-sm border-t pt-3">
                 <div className="flex items-center gap-1 text-gray-600">
                   <Calendar className="w-4 h-4" />
-                  <span>{formatDate(deal.departureDateTime)}</span>
+                  <span>{formatDate(deal.departureDate)}</span>
                 </div>
                 <div className="flex items-center gap-1 text-gray-600">
                   <Users className="w-4 h-4" />
