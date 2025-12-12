@@ -50,9 +50,7 @@ interface EmptyLegDetail {
     latitude?: number;
     longitude?: number;
   };
-  departureDateTime: string;
-  estimatedArrival: string | null;
-  estimatedDurationMin: number | null;
+  departureDate: string;
   aircraft: {
     id: string;
     name: string;
@@ -64,8 +62,6 @@ interface EmptyLegDetail {
   };
   availableSeats: number;
   totalSeats: number;
-  priceNgn: number;
-  originalPriceNgn: number;
   priceUsd: number;
   originalPriceUsd: number;
   discountPercent: number;
@@ -239,7 +235,7 @@ export default function EmptyLegDetailPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Map Hero Section */}
-      <section className="relative pt-20">
+      <section className="relative">
         {/* Back Button - Absolute positioned */}
         <div className="absolute top-24 left-4 z-20">
           <Button
@@ -254,8 +250,22 @@ export default function EmptyLegDetailPage() {
           </Button>
         </div>
 
+        {/* Route Header */}
+        <div className="absolute top-20 left-0 right-0 z-10 text-center py-4">
+          <div className="inline-flex items-center gap-3 bg-black/60 px-6 py-3 backdrop-blur-sm">
+            <span className="text-white font-medium">
+              {emptyLeg.departureAirport.city},{" "}
+              {emptyLeg.departureAirport.country}
+            </span>
+            <Plane className="w-5 h-5 text-[#D4AF37] rotate-45" />
+            <span className="text-white font-medium">
+              {emptyLeg.arrivalAirport.city}, {emptyLeg.arrivalAirport.country}
+            </span>
+          </div>
+        </div>
+
         {/* Flight Route Map */}
-        <div className="h-[350px] md:h-[400px]">
+        <div className="h-[400px] md:h-[500px]">
           <FlightRouteMap
             departureAirport={emptyLeg.departureAirport}
             arrivalAirport={emptyLeg.arrivalAirport}
@@ -276,7 +286,7 @@ export default function EmptyLegDetailPage() {
               </h1>
               <p className="text-gray-300 text-sm md:text-base">
                 {emptyLeg.aircraft.name} •{" "}
-                {format(new Date(emptyLeg.departureDateTime), "MMM d, yyyy")}
+                {format(new Date(emptyLeg.departureDate), "MMM d, yyyy")}
               </p>
             </div>
           </div>
@@ -302,11 +312,15 @@ export default function EmptyLegDetailPage() {
 
                   {/* Route */}
                   <div className="flex items-center justify-between py-6">
-                    <div className="text-center flex-shrink-0">
+                    <div className="text-center flex-shrink-0 max-w-[100px] md:max-w-[200px]">
                       <div className="text-2xl md:text-4xl font-bold">
                         {emptyLeg.departureAirport.code}
                       </div>
-                      <div className="text-sm md:text-lg text-gray-600 max-w-[80px] md:max-w-none truncate">
+                      <div
+                        className="text-xs text-gray-400"
+                        title={emptyLeg.departureAirport.name}
+                      >
+                        {emptyLeg.departureAirport.name},{" "}
                         {emptyLeg.departureAirport.city}
                       </div>
                       <div className="text-xs md:text-sm text-gray-400 hidden md:block">
@@ -316,25 +330,23 @@ export default function EmptyLegDetailPage() {
                     <div className="flex-1 px-2 md:px-8">
                       <div className="flex items-center">
                         <div className="h-px flex-1 bg-gray-300" />
-                        <Plane className="h-6 w-6 md:h-8 md:w-8 mx-2 md:mx-4 text-[#D4AF37]" />
+                        <Plane className="h-6 w-6 md:h-8 md:w-8 mx-2 md:mx-4 text-[#D4AF37] rotate-45" />
                         <div className="h-px flex-1 bg-gray-300" />
                       </div>
-                      {emptyLeg.estimatedDurationMin && (
-                        <div className="text-center text-xs md:text-sm text-gray-500 mt-2">
-                          ~{Math.floor(emptyLeg.estimatedDurationMin / 60)}h{" "}
-                          {emptyLeg.estimatedDurationMin % 60}m
-                        </div>
-                      )}
                     </div>
-                    <div className="text-center flex-shrink-0">
+                    <div className="text-center flex-shrink-0 max-w-[100px] md:max-w-[200px]">
                       <div className="text-2xl md:text-4xl font-bold">
                         {emptyLeg.arrivalAirport.code}
                       </div>
-                      <div className="text-sm md:text-lg text-gray-600 max-w-[80px] md:max-w-none truncate">
-                        {emptyLeg.arrivalAirport.city}
+                      <div
+                        className="text-xs text-gray-400 truncate"
+                        title={emptyLeg.arrivalAirport.name}
+                      >
+                        {emptyLeg.arrivalAirport.name}
                       </div>
                       <div className="text-xs md:text-sm text-gray-400 hidden md:block">
-                        {emptyLeg.arrivalAirport.country}
+                        {emptyLeg.arrivalAirport.country},{" "}
+                        {emptyLeg.arrivalAirport.city}
                       </div>
                     </div>
                   </div>
@@ -346,7 +358,7 @@ export default function EmptyLegDetailPage() {
                       <div className="text-sm text-gray-500">Date</div>
                       <div className="font-semibold">
                         {format(
-                          new Date(emptyLeg.departureDateTime),
+                          new Date(emptyLeg.departureDate),
                           "MMM d, yyyy",
                         )}
                       </div>
@@ -355,7 +367,7 @@ export default function EmptyLegDetailPage() {
                       <Clock className="w-5 h-5 mx-auto mb-1 text-[#D4AF37]" />
                       <div className="text-sm text-gray-500">Time</div>
                       <div className="font-semibold">
-                        {format(new Date(emptyLeg.departureDateTime), "h:mm a")}
+                        {format(new Date(emptyLeg.departureDate), "h:mm a")}
                       </div>
                     </div>
                     <div className="text-center p-3 bg-gray-50">
@@ -366,7 +378,7 @@ export default function EmptyLegDetailPage() {
                       </div>
                     </div>
                     <div className="text-center p-3 bg-gray-50">
-                      <Plane className="w-5 h-5 mx-auto mb-1 text-[#D4AF37]" />
+                      <Plane className="w-5 h-5 mx-auto mb-1 text-[#D4AF37] rotate-45" />
                       <div className="text-sm text-gray-500">Aircraft</div>
                       <div className="font-semibold text-sm">
                         {emptyLeg.aircraft.name}
@@ -581,7 +593,7 @@ export default function EmptyLegDetailPage() {
                               <span className="text-gray-500">Date:</span>
                               <span className="ml-2 font-medium">
                                 {format(
-                                  new Date(emptyLeg.departureDateTime),
+                                  new Date(emptyLeg.departureDate),
                                   "MMM d, yyyy",
                                 )}
                               </span>
@@ -590,7 +602,7 @@ export default function EmptyLegDetailPage() {
                               <span className="text-gray-500">Time:</span>
                               <span className="ml-2 font-medium">
                                 {format(
-                                  new Date(emptyLeg.departureDateTime),
+                                  new Date(emptyLeg.departureDate),
                                   "h:mm a",
                                 )}
                               </span>
@@ -740,7 +752,7 @@ export default function EmptyLegDetailPage() {
                           {emptyLeg.departureAirport.city}
                         </div>
                       </div>
-                      <Plane className="w-5 h-5 text-[#D4AF37]" />
+                      <Plane className="w-5 h-5 text-[#D4AF37] rotate-45" />
                       <div className="text-center">
                         <div className="text-xl font-bold">
                           {emptyLeg.arrivalAirport.code}
@@ -757,7 +769,7 @@ export default function EmptyLegDetailPage() {
                         <span className="text-gray-500">Date</span>
                         <span>
                           {format(
-                            new Date(emptyLeg.departureDateTime),
+                            new Date(emptyLeg.departureDate),
                             "MMM d, yyyy",
                           )}
                         </span>
@@ -765,10 +777,7 @@ export default function EmptyLegDetailPage() {
                       <div className="flex justify-between">
                         <span className="text-gray-500">Time</span>
                         <span>
-                          {format(
-                            new Date(emptyLeg.departureDateTime),
-                            "h:mm a",
-                          )}
+                          {format(new Date(emptyLeg.departureDate), "h:mm a")}
                         </span>
                       </div>
                       <div className="flex justify-between">

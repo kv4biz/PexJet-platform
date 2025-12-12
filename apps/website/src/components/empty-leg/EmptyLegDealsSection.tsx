@@ -312,7 +312,7 @@ export function EmptyLegDealsSection() {
                   <div className="relative flex items-center justify-center">
                     <div className="absolute w-full border-t-2 border-dashed border-gray-300" />
                     <div className="relative bg-white px-2">
-                      <Plane className="w-5 h-5 text-[#D4AF37]" />
+                      <Plane className="w-5 h-5 text-[#D4AF37]  rotate-45" />
                     </div>
                   </div>
                   <div className="text-center mt-1">

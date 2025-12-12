@@ -1,0 +1,21 @@
+{
+  "name": "PexJet - Private Jet Charter",
+  "short_name": "PexJet",
+  "description": "Fly privately with PexJet. Charter private jets, find empty leg deals, and enjoy safe, comfortable, and premium air travel.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#D4AF37",
+  "icons": [
+    {
+      "src": "/X.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/X.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

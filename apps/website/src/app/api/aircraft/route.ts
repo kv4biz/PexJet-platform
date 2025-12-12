@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const aircraft = await prisma.aircraft.findMany({
+    const aircraftData = await prisma.aircraft.findMany({
       where,
       select: {
         id: true,
@@ -56,6 +56,56 @@ export async function GET(request: NextRequest) {
       },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     });
+
+    // Transform data to match frontend expectations
+    const aircraft = aircraftData.map((a) => ({
+      id: a.id,
+      name: a.name,
+      manufacturer: a.manufacturer,
+      model: a.model,
+      type: a.category
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase()),
+      category: a.category,
+      availability: a.availability,
+      // Transformed availability flags
+      availableForLocal:
+        a.availability === "LOCAL" || a.availability === "BOTH",
+      availableForInternational:
+        a.availability === "INTERNATIONAL" || a.availability === "BOTH",
+      // Specifications
+      passengerCapacity: a.passengerCapacityMax,
+      passengerCapacityMin: a.passengerCapacityMin,
+      passengerCapacityMax: a.passengerCapacityMax,
+      rangeNm: a.rangeNm,
+      range: a.rangeNm ? `${a.rangeNm.toLocaleString()} nm` : null,
+      cruiseSpeedKnots: a.cruiseSpeedKnots,
+      cruiseSpeed: a.cruiseSpeedKnots ? `${a.cruiseSpeedKnots} kts` : null,
+      luggageCapacity: a.baggageCapacityCuFt
+        ? `${a.baggageCapacityCuFt} cu ft`
+        : null,
+      baggageCapacityCuFt: a.baggageCapacityCuFt,
+      fuelCapacityGal: a.fuelCapacityGal,
+      // Interior Dimensions
+      cabinLengthFt: a.cabinLengthFt,
+      cabinWidthFt: a.cabinWidthFt,
+      cabinHeightFt: a.cabinHeightFt,
+      cabinLength: a.cabinLengthFt ? `${a.cabinLengthFt} ft` : null,
+      cabinWidth: a.cabinWidthFt ? `${a.cabinWidthFt} ft` : null,
+      cabinHeight: a.cabinHeightFt ? `${a.cabinHeightFt} ft` : null,
+      // Exterior Dimensions
+      lengthFt: a.lengthFt,
+      wingspanFt: a.wingspanFt,
+      heightFt: a.heightFt,
+      // Additional Info
+      yearOfManufacture: a.yearOfManufacture,
+      hourlyRateUsd: a.hourlyRateUsd,
+      description: a.description,
+      // Images
+      exteriorImages: a.exteriorImages,
+      interiorImages: a.interiorImages,
+      thumbnailImage: a.thumbnailImage,
+    }));
 
     return NextResponse.json({
       aircraft,

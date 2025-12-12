@@ -33,6 +33,7 @@ export const metadata: Metadata = {
     shortcut: "/X.png",
     apple: "/X.png",
   },
+  manifest: "/manifest.json",
   openGraph: {
     type: seoData.openGraph.type as "website",
     locale: seoData.openGraph.locale,
@@ -67,6 +68,12 @@ export const metadata: Metadata = {
       "max-image-preview": "large",
       "max-snippet": -1,
     },
+  },
+  verification: {
+    google: "your-google-verification-code",
+  },
+  alternates: {
+    canonical: seoData.siteUrl,
   },
 };
 
