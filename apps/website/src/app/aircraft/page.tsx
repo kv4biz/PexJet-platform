@@ -29,20 +29,31 @@ interface Aircraft {
   name: string;
   manufacturer: string;
   model: string;
-  type: string;
-  passengerCapacity: number;
-  luggageCapacity: string | null;
-  cruiseSpeed: string | null;
-  cruiseSpeedKnots: number;
-  range: string | null;
+  category: string;
+  availability: string;
+  // Specifications
+  passengerCapacityMin: number;
+  passengerCapacityMax: number;
   rangeNm: number;
-  cabinHeight: string | null;
-  cabinWidth: string | null;
-  cabinLength: string | null;
+  cruiseSpeedKnots: number;
+  baggageCapacityCuFt: number | null;
+  fuelCapacityGal: number | null;
+  // Interior Dimensions
+  cabinLengthFt: number | null;
+  cabinWidthFt: number | null;
+  cabinHeightFt: number | null;
+  // Exterior Dimensions
+  lengthFt: number | null;
+  wingspanFt: number | null;
+  heightFt: number | null;
+  // Additional Info
+  yearOfManufacture: number | null;
+  hourlyRateUsd: number | null;
+  description: string | null;
+  // Images
   exteriorImages: string[];
   interiorImages: string[];
-  availableForLocal: boolean;
-  availableForInternational: boolean;
+  thumbnailImage: string | null;
 }
 
 export default function AircraftPage() {
@@ -83,15 +94,22 @@ export default function AircraftPage() {
   const progress =
     aircraft.length > 0 ? ((currentIndex + 1) / aircraft.length) * 100 : 0;
 
-  // Get the primary image (first exterior image or thumbnail)
+  // Get the primary image (thumbnail, first exterior image, or first interior image)
   const getPrimaryImage = (plane: Aircraft) => {
+    if (plane.thumbnailImage) {
+      return plane.thumbnailImage;
+    }
     if (plane.exteriorImages && plane.exteriorImages.length > 0) {
       return plane.exteriorImages[0];
+    }
+    if (plane.interiorImages && plane.interiorImages.length > 0) {
+      return plane.interiorImages[0];
     }
     return null;
   };
 
-  const formatCategory = (category: string) => {
+  const formatCategory = (category: string | undefined | null) => {
+    if (!category) return "N/A";
     return category.replace(/_/g, " ");
   };
 
@@ -220,12 +238,14 @@ export default function AircraftPage() {
 
                     {/* Availability Badges */}
                     <div className="absolute top-4 left-4 flex gap-2">
-                      {currentAircraft.availableForLocal && (
+                      {(currentAircraft.availability === "LOCAL" ||
+                        currentAircraft.availability === "BOTH") && (
                         <Badge className="bg-[#D4AF37] text-white">
                           {aircraftPageData.badges.local}
                         </Badge>
                       )}
-                      {currentAircraft.availableForInternational && (
+                      {(currentAircraft.availability === "INTERNATIONAL" ||
+                        currentAircraft.availability === "BOTH") && (
                         <Badge className="bg-[#0C0C0C] text-white">
                           {aircraftPageData.badges.international}
                         </Badge>
@@ -234,7 +254,7 @@ export default function AircraftPage() {
 
                     {/* Category Badge */}
                     <Badge className="absolute top-4 right-4 bg-white/90 text-[#0C0C0C]">
-                      {formatCategory(currentAircraft.type)}
+                      {currentAircraft.category || "N/A"}
                     </Badge>
                   </div>
 
@@ -242,9 +262,14 @@ export default function AircraftPage() {
                   <h2 className="text-3xl md:text-4xl text-[#0C0C0C] mb-2 font-serif">
                     {currentAircraft.name}
                   </h2>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-600 mb-2">
                     {currentAircraft.manufacturer} {currentAircraft.model}
                   </p>
+                  {currentAircraft.description && (
+                    <p className="text-gray-500 mb-6 max-w-3xl">
+                      {currentAircraft.description}
+                    </p>
+                  )}
 
                   {/* Technical Specifications */}
                   <div className="bg-[#F7F7F7] p-8 border-l-4 border-[#D4AF37]">
@@ -252,202 +277,327 @@ export default function AircraftPage() {
                       {aircraftPageData.specifications.title}
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div className="border-b border-gray-300 pb-4">
-                        <div className="text-sm text-gray-500 mb-1">
-                          {aircraftPageData.specifications.labels.aircraftName}
+                    {/* Basic Information */}
+                    <div className="mb-8">
+                      <h4 className="text-lg font-semibold text-[#0C0C0C] mb-4 border-b border-gray-300 pb-2">
+                        Basic Information
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="border-b border-gray-300 pb-4">
+                          <div className="text-sm text-gray-500 mb-1">
+                            Aircraft Name
+                          </div>
+                          <div className="text-[#0C0C0C] font-medium">
+                            {currentAircraft.name}
+                          </div>
                         </div>
-                        <div className="text-[#0C0C0C] font-medium">
-                          {currentAircraft.name}
+                        <div className="border-b border-gray-300 pb-4">
+                          <div className="text-sm text-gray-500 mb-1">
+                            Manufacturer
+                          </div>
+                          <div className="text-[#0C0C0C] font-medium">
+                            {currentAircraft.manufacturer}
+                          </div>
+                        </div>
+                        <div className="border-b border-gray-300 pb-4">
+                          <div className="text-sm text-gray-500 mb-1">
+                            Model
+                          </div>
+                          <div className="text-[#0C0C0C] font-medium">
+                            {currentAircraft.model}
+                          </div>
+                        </div>
+                        <div className="border-b border-gray-300 pb-4">
+                          <div className="text-sm text-gray-500 mb-1">
+                            Category
+                          </div>
+                          <div className="text-[#0C0C0C] font-medium">
+                            {currentAircraft.category || "N/A"}
+                          </div>
+                        </div>
+                        {currentAircraft.yearOfManufacture && (
+                          <div className="border-b border-gray-300 pb-4">
+                            <div className="text-sm text-gray-500 mb-1">
+                              Year of Manufacture
+                            </div>
+                            <div className="text-[#0C0C0C] font-medium">
+                              {currentAircraft.yearOfManufacture}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Performance */}
+                    <div className="mb-8">
+                      <h4 className="text-lg font-semibold text-[#0C0C0C] mb-4 border-b border-gray-300 pb-2">
+                        Performance
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="border-b border-gray-300 pb-4">
+                          <div className="text-sm text-gray-500 mb-1">
+                            Range
+                          </div>
+                          <div className="text-[#0C0C0C] font-medium">
+                            {currentAircraft.rangeNm.toLocaleString()} nm
+                          </div>
+                        </div>
+                        <div className="border-b border-gray-300 pb-4">
+                          <div className="text-sm text-gray-500 mb-1">
+                            Cruise Speed
+                          </div>
+                          <div className="text-[#0C0C0C] font-medium">
+                            {currentAircraft.cruiseSpeedKnots.toLocaleString()}{" "}
+                            knots
+                          </div>
+                        </div>
+                        {currentAircraft.fuelCapacityGal && (
+                          <div className="border-b border-gray-300 pb-4">
+                            <div className="text-sm text-gray-500 mb-1">
+                              Fuel Capacity
+                            </div>
+                            <div className="text-[#0C0C0C] font-medium">
+                              {currentAircraft.fuelCapacityGal.toLocaleString()}{" "}
+                              gal
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Cabin Dimensions */}
+                    {(currentAircraft.cabinLengthFt ||
+                      currentAircraft.cabinWidthFt ||
+                      currentAircraft.cabinHeightFt) && (
+                      <div className="mb-8">
+                        <h4 className="text-lg font-semibold text-[#0C0C0C] mb-4 border-b border-gray-300 pb-2">
+                          Cabin Dimensions
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {currentAircraft.cabinLengthFt && (
+                            <div className="border-b border-gray-300 pb-4">
+                              <div className="text-sm text-gray-500 mb-1">
+                                Cabin Length
+                              </div>
+                              <div className="text-[#0C0C0C] font-medium">
+                                {currentAircraft.cabinLengthFt} ft
+                              </div>
+                            </div>
+                          )}
+                          {currentAircraft.cabinWidthFt && (
+                            <div className="border-b border-gray-300 pb-4">
+                              <div className="text-sm text-gray-500 mb-1">
+                                Cabin Width
+                              </div>
+                              <div className="text-[#0C0C0C] font-medium">
+                                {currentAircraft.cabinWidthFt} ft
+                              </div>
+                            </div>
+                          )}
+                          {currentAircraft.cabinHeightFt && (
+                            <div className="border-b border-gray-300 pb-4">
+                              <div className="text-sm text-gray-500 mb-1">
+                                Cabin Height
+                              </div>
+                              <div className="text-[#0C0C0C] font-medium">
+                                {currentAircraft.cabinHeightFt} ft
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
+                    )}
 
-                      <div className="border-b border-gray-300 pb-4">
-                        <div className="text-sm text-gray-500 mb-1">
-                          {aircraftPageData.specifications.labels.aircraftType}
-                        </div>
-                        <div className="text-[#0C0C0C] font-medium">
-                          {formatCategory(currentAircraft.type)}
+                    {/* Exterior Dimensions */}
+                    {(currentAircraft.lengthFt ||
+                      currentAircraft.wingspanFt ||
+                      currentAircraft.heightFt) && (
+                      <div className="mb-8">
+                        <h4 className="text-lg font-semibold text-[#0C0C0C] mb-4 border-b border-gray-300 pb-2">
+                          Exterior Dimensions
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {currentAircraft.lengthFt && (
+                            <div className="border-b border-gray-300 pb-4">
+                              <div className="text-sm text-gray-500 mb-1">
+                                Aircraft Length
+                              </div>
+                              <div className="text-[#0C0C0C] font-medium">
+                                {currentAircraft.lengthFt} ft
+                              </div>
+                            </div>
+                          )}
+                          {currentAircraft.wingspanFt && (
+                            <div className="border-b border-gray-300 pb-4">
+                              <div className="text-sm text-gray-500 mb-1">
+                                Wingspan
+                              </div>
+                              <div className="text-[#0C0C0C] font-medium">
+                                {currentAircraft.wingspanFt} ft
+                              </div>
+                            </div>
+                          )}
+                          {currentAircraft.heightFt && (
+                            <div className="border-b border-gray-300 pb-4">
+                              <div className="text-sm text-gray-500 mb-1">
+                                Aircraft Height
+                              </div>
+                              <div className="text-[#0C0C0C] font-medium">
+                                {currentAircraft.heightFt} ft
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
+                    )}
 
-                      <div className="border-b border-gray-300 pb-4">
-                        <div className="text-sm text-gray-500 mb-1">
-                          {
-                            aircraftPageData.specifications.labels
-                              .passengerCapacity
-                          }
+                    {/* Capacity */}
+                    <div>
+                      <h4 className="text-lg font-semibold text-[#0C0C0C] mb-4 border-b border-gray-300 pb-2">
+                        Capacity
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="border-b border-gray-300 pb-4">
+                          <div className="text-sm text-gray-500 mb-1">
+                            Passenger Capacity
+                          </div>
+                          <div className="text-[#0C0C0C] font-medium">
+                            {currentAircraft.passengerCapacityMin ===
+                            currentAircraft.passengerCapacityMax
+                              ? `${currentAircraft.passengerCapacityMax} passengers`
+                              : `${currentAircraft.passengerCapacityMin} - ${currentAircraft.passengerCapacityMax} passengers`}
+                          </div>
                         </div>
-                        <div className="text-[#0C0C0C] font-medium">
-                          {currentAircraft.passengerCapacity} passengers
-                        </div>
+                        {currentAircraft.baggageCapacityCuFt && (
+                          <div className="border-b border-gray-300 pb-4">
+                            <div className="text-sm text-gray-500 mb-1">
+                              Baggage Capacity
+                            </div>
+                            <div className="text-[#0C0C0C] font-medium">
+                              {currentAircraft.baggageCapacityCuFt} cu ft
+                            </div>
+                          </div>
+                        )}
                       </div>
-
-                      {currentAircraft.cabinHeight && (
-                        <div className="border-b border-gray-300 pb-4">
-                          <div className="text-sm text-gray-500 mb-1">
-                            {
-                              aircraftPageData.specifications.labels
-                                .interiorHeight
-                            }
-                          </div>
-                          <div className="text-[#0C0C0C] font-medium">
-                            {currentAircraft.cabinHeight}
-                          </div>
-                        </div>
-                      )}
-
-                      {currentAircraft.cabinWidth && (
-                        <div className="border-b border-gray-300 pb-4">
-                          <div className="text-sm text-gray-500 mb-1">
-                            {
-                              aircraftPageData.specifications.labels
-                                .interiorWidth
-                            }
-                          </div>
-                          <div className="text-[#0C0C0C] font-medium">
-                            {currentAircraft.cabinWidth}
-                          </div>
-                        </div>
-                      )}
-
-                      {currentAircraft.cabinLength && (
-                        <div className="border-b border-gray-300 pb-4">
-                          <div className="text-sm text-gray-500 mb-1">
-                            {aircraftPageData.specifications.labels.cabinLength}
-                          </div>
-                          <div className="text-[#0C0C0C] font-medium">
-                            {currentAircraft.cabinLength}
-                          </div>
-                        </div>
-                      )}
-
-                      {currentAircraft.luggageCapacity && (
-                        <div className="border-b border-gray-300 pb-4">
-                          <div className="text-sm text-gray-500 mb-1">
-                            {
-                              aircraftPageData.specifications.labels
-                                .luggageCapacity
-                            }
-                          </div>
-                          <div className="text-[#0C0C0C] font-medium">
-                            {currentAircraft.luggageCapacity}
-                          </div>
-                        </div>
-                      )}
-
-                      {currentAircraft.range && (
-                        <div className="border-b border-gray-300 pb-4">
-                          <div className="text-sm text-gray-500 mb-1">
-                            {aircraftPageData.specifications.labels.range}
-                          </div>
-                          <div className="text-[#0C0C0C] font-medium">
-                            {currentAircraft.range}
-                          </div>
-                        </div>
-                      )}
-
-                      {currentAircraft.cruiseSpeed && (
-                        <div className="border-b border-gray-300 pb-4">
-                          <div className="text-sm text-gray-500 mb-1">
-                            {aircraftPageData.specifications.labels.cruiseSpeed}
-                          </div>
-                          <div className="text-[#0C0C0C] font-medium">
-                            {currentAircraft.cruiseSpeed}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
 
                   {/* Image Gallery Accordion */}
-                  {((currentAircraft.exteriorImages &&
-                    currentAircraft.exteriorImages.length > 0) ||
+                  <div className="mt-10">
+                    <h3 className="text-2xl text-[#0C0C0C] mb-6 font-serif">
+                      {aircraftPageData.gallery.title}
+                    </h3>
+
+                    {/* Check if any images exist */}
+                    {(currentAircraft.exteriorImages &&
+                      currentAircraft.exteriorImages.length > 0) ||
                     (currentAircraft.interiorImages &&
-                      currentAircraft.interiorImages.length > 0)) && (
-                    <div className="mt-10">
-                      <h3 className="text-2xl text-[#0C0C0C] mb-6 font-serif">
-                        {aircraftPageData.gallery.title}
-                      </h3>
+                      currentAircraft.interiorImages.length > 0) ? (
                       <Accordion type="multiple" className="w-full">
                         {/* Exterior Images */}
-                        {currentAircraft.exteriorImages &&
-                          currentAircraft.exteriorImages.length > 0 && (
-                            <AccordionItem
-                              value="exterior"
-                              className="border-b border-gray-200 mb-4"
-                            >
-                              <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50">
-                                <div className="flex items-center gap-3">
-                                  <ImageIcon className="w-5 h-5 text-[#D4AF37]" />
-                                  <span className="text-lg font-medium text-[#0C0C0C]">
-                                    {aircraftPageData.gallery.exteriorLabel} (
-                                    {currentAircraft.exteriorImages.length})
-                                  </span>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="px-6 pb-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
-                                  {currentAircraft.exteriorImages.map(
-                                    (img, idx) => (
-                                      <div
-                                        key={`exterior-${idx}`}
-                                        className="relative h-48 lg:h-80 overflow-hidden bg-gray-100 group cursor-pointer"
-                                      >
-                                        <Image
-                                          src={img}
-                                          alt={`${currentAircraft.name} exterior ${idx + 1}`}
-                                          fill
-                                          className="object-cover scale-105 group-hover:scale-100 transition-transform duration-300"
-                                        />
-                                      </div>
-                                    ),
-                                  )}
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          )}
+                        <AccordionItem
+                          value="exterior"
+                          className="border-b border-gray-200 mb-4"
+                        >
+                          <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50">
+                            <div className="flex items-center gap-3">
+                              <ImageIcon className="w-5 h-5 text-[#D4AF37]" />
+                              <span className="text-lg font-medium text-[#0C0C0C]">
+                                {aircraftPageData.gallery.exteriorLabel} (
+                                {currentAircraft.exteriorImages?.length || 0})
+                              </span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-6 pb-6">
+                            {currentAircraft.exteriorImages &&
+                            currentAircraft.exteriorImages.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+                                {currentAircraft.exteriorImages.map(
+                                  (img, idx) => (
+                                    <div
+                                      key={`exterior-${idx}`}
+                                      className="relative h-48 lg:h-80 overflow-hidden bg-gray-100 group cursor-pointer"
+                                    >
+                                      <Image
+                                        src={img}
+                                        alt={`${currentAircraft.name} exterior ${idx + 1}`}
+                                        fill
+                                        className="object-cover scale-105 group-hover:scale-100 transition-transform duration-300"
+                                      />
+                                    </div>
+                                  ),
+                                )}
+                              </div>
+                            ) : (
+                              <div className="py-8 text-center text-gray-500">
+                                <ImageIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                <p>
+                                  No exterior images available for this
+                                  aircraft.
+                                </p>
+                              </div>
+                            )}
+                          </AccordionContent>
+                        </AccordionItem>
 
                         {/* Interior Images */}
-                        {currentAircraft.interiorImages &&
-                          currentAircraft.interiorImages.length > 0 && (
-                            <AccordionItem
-                              value="interior"
-                              className="border border-gray-200"
-                            >
-                              <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50">
-                                <div className="flex items-center gap-3">
-                                  <ImageIcon className="w-5 h-5 text-[#D4AF37]" />
-                                  <span className="text-lg font-medium text-[#0C0C0C]">
-                                    {aircraftPageData.gallery.interiorLabel} (
-                                    {currentAircraft.interiorImages.length})
-                                  </span>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="px-6 pb-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
-                                  {currentAircraft.interiorImages.map(
-                                    (img, idx) => (
-                                      <div
-                                        key={`interior-${idx}`}
-                                        className="relative h-48 overflow-hidden bg-gray-100 group cursor-pointer"
-                                      >
-                                        <Image
-                                          src={img}
-                                          alt={`${currentAircraft.name} interior ${idx + 1}`}
-                                          fill
-                                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                        />
-                                      </div>
-                                    ),
-                                  )}
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          )}
+                        <AccordionItem
+                          value="interior"
+                          className="border border-gray-200"
+                        >
+                          <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50">
+                            <div className="flex items-center gap-3">
+                              <ImageIcon className="w-5 h-5 text-[#D4AF37]" />
+                              <span className="text-lg font-medium text-[#0C0C0C]">
+                                {aircraftPageData.gallery.interiorLabel} (
+                                {currentAircraft.interiorImages?.length || 0})
+                              </span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-6 pb-6">
+                            {currentAircraft.interiorImages &&
+                            currentAircraft.interiorImages.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+                                {currentAircraft.interiorImages.map(
+                                  (img, idx) => (
+                                    <div
+                                      key={`interior-${idx}`}
+                                      className="relative h-48 overflow-hidden bg-gray-100 group cursor-pointer"
+                                    >
+                                      <Image
+                                        src={img}
+                                        alt={`${currentAircraft.name} interior ${idx + 1}`}
+                                        fill
+                                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                      />
+                                    </div>
+                                  ),
+                                )}
+                              </div>
+                            ) : (
+                              <div className="py-8 text-center text-gray-500">
+                                <ImageIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                <p>
+                                  No interior images available for this
+                                  aircraft.
+                                </p>
+                              </div>
+                            )}
+                          </AccordionContent>
+                        </AccordionItem>
                       </Accordion>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="py-12 text-center bg-gray-50 border border-gray-200">
+                        <ImageIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                        <p className="text-gray-500 text-lg">
+                          No images available for this aircraft.
+                        </p>
+                        <p className="text-gray-400 text-sm mt-2">
+                          Check back later for updated gallery.
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
                   {/* CTA Button */}
                   <div className="mt-10 text-center">

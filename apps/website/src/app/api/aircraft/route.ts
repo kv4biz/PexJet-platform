@@ -30,54 +30,36 @@ export async function GET(request: NextRequest) {
         model: true,
         category: true,
         availability: true,
+        // Specifications
         passengerCapacityMin: true,
         passengerCapacityMax: true,
         rangeNm: true,
         cruiseSpeedKnots: true,
-        cabinHeightFt: true,
-        cabinWidthFt: true,
-        cabinLengthFt: true,
         baggageCapacityCuFt: true,
+        fuelCapacityGal: true,
+        // Interior Dimensions
+        cabinLengthFt: true,
+        cabinWidthFt: true,
+        cabinHeightFt: true,
+        // Exterior Dimensions
+        lengthFt: true,
+        wingspanFt: true,
+        heightFt: true,
+        // Additional Info
+        yearOfManufacture: true,
         hourlyRateUsd: true,
         description: true,
-        thumbnailImage: true,
+        // Images
         exteriorImages: true,
         interiorImages: true,
+        thumbnailImage: true,
       },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     });
 
-    // Transform data to match frontend expectations
-    const transformedAircraft = aircraft.map((a: any) => ({
-      id: a.id,
-      name: a.name,
-      model: a.model,
-      type: a.category,
-      manufacturer: a.manufacturer,
-      passengerCapacity: a.passengerCapacityMax || a.passengerCapacityMin || 0,
-      luggageCapacity: a.baggageCapacityCuFt
-        ? `${a.baggageCapacityCuFt} cu ft`
-        : null,
-      cruiseSpeed: a.cruiseSpeedKnots ? `${a.cruiseSpeedKnots} knots` : null,
-      cruiseSpeedKnots: a.cruiseSpeedKnots || 0,
-      range: a.rangeNm ? `${a.rangeNm} nm` : null,
-      rangeNm: a.rangeNm || 0,
-      cabinHeight: a.cabinHeightFt ? `${a.cabinHeightFt} ft` : null,
-      cabinWidth: a.cabinWidthFt ? `${a.cabinWidthFt} ft` : null,
-      cabinLength: a.cabinLengthFt ? `${a.cabinLengthFt} ft` : null,
-      hourlyRateUsd: a.hourlyRateUsd || 0,
-      exteriorImages: a.exteriorImages || [],
-      interiorImages: a.interiorImages || [],
-      // Derive availability flags from enum
-      availableForLocal:
-        a.availability === "LOCAL" || a.availability === "BOTH",
-      availableForInternational:
-        a.availability === "INTERNATIONAL" || a.availability === "BOTH",
-    }));
-
     return NextResponse.json({
-      aircraft: transformedAircraft,
-      total: transformedAircraft.length,
+      aircraft,
+      total: aircraft.length,
     });
   } catch (error: any) {
     console.error("Aircraft fetch error:", error);

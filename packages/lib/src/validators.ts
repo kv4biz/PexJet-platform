@@ -19,7 +19,10 @@ export const usernameSchema = z
   .string()
   .min(3, "Username must be at least 3 characters")
   .max(30, "Username must be at most 30 characters")
-  .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores");
+  .regex(
+    /^[a-zA-Z0-9_]+$/,
+    "Username can only contain letters, numbers, and underscores",
+  );
 
 // Auth validators
 export const loginSchema = z.object({
@@ -66,7 +69,9 @@ export const createOperatorSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   phone: phoneSchema,
   bankName: z.string().min(2, "Bank name is required"),
-  bankAccountNumber: z.string().min(10, "Account number must be at least 10 digits"),
+  bankAccountNumber: z
+    .string()
+    .min(10, "Account number must be at least 10 digits"),
   bankAccountName: z.string().min(2, "Account name is required"),
   commissionPercent: z.number().min(0).max(100),
 });
@@ -86,7 +91,9 @@ export const createAircraftSchema = z.object({
     "ULTRA_LONG_RANGE",
     "TURBOPROP",
   ]),
-  availability: z.enum(["NONE", "LOCAL", "INTERNATIONAL", "BOTH"]).default("NONE"),
+  availability: z
+    .enum(["NONE", "LOCAL", "INTERNATIONAL", "BOTH"])
+    .default("NONE"),
   passengerCapacityMin: z.number().int().min(1),
   passengerCapacityMax: z.number().int().min(1),
   rangeNm: z.number().int().min(1),
@@ -123,7 +130,10 @@ export const charterQuoteRequestSchema = z.object({
   passengerCount: z.number().int().min(1, "At least 1 passenger required"),
   specialRequests: z.string().optional(),
   legs: z.array(charterLegSchema).min(1, "At least one leg is required"),
-  selectedAircraftIds: z.array(z.string()).min(1).max(5, "Select up to 5 aircraft"),
+  selectedAircraftIds: z
+    .array(z.string())
+    .min(1)
+    .max(5, "Select up to 5 aircraft"),
 });
 
 export const approveCharterQuoteSchema = z.object({
@@ -134,7 +144,7 @@ export const approveCharterQuoteSchema = z.object({
       priceNgn: z.number().min(0),
       priceUsd: z.number().min(0),
       estimatedDurationMin: z.number().int().min(1),
-    })
+    }),
   ),
 });
 
@@ -159,10 +169,8 @@ export const createEmptyLegSchema = z.object({
   departureDateTime: z.string().min(1, "Departure date/time is required"),
   aircraftId: z.string().min(1, "Aircraft is required"),
   totalSeats: z.number().int().min(1, "At least 1 seat required"),
-  originalPriceNgn: z.number().min(0),
-  discountPriceNgn: z.number().min(0),
-  originalPriceUsd: z.number().min(0),
-  discountPriceUsd: z.number().min(0),
+  originalPrice: z.number().min(0),
+  discountPrice: z.number().min(0),
 });
 
 export const updateEmptyLegSchema = createEmptyLegSchema.partial().extend({
@@ -198,27 +206,33 @@ export const createAnnouncementSchema = z.object({
 });
 
 // Subscription validators
-export const createSubscriptionSchema = z.object({
-  phone: phoneSchema,
-  email: emailSchema.optional(),
-  fullName: z.string().optional(),
-  type: z.enum(["CITY", "ROUTE", "ALL"]),
-  departureCityId: z.string().optional(),
-  arrivalCityId: z.string().optional(),
-}).refine(
-  (data) => {
-    if (data.type === "CITY" && !data.departureCityId) {
-      return false;
-    }
-    if (data.type === "ROUTE" && (!data.departureCityId || !data.arrivalCityId)) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: "City subscription requires departure city, Route subscription requires both cities",
-  }
-);
+export const createSubscriptionSchema = z
+  .object({
+    phone: phoneSchema,
+    email: emailSchema.optional(),
+    fullName: z.string().optional(),
+    type: z.enum(["CITY", "ROUTE", "ALL"]),
+    departureCityId: z.string().optional(),
+    arrivalCityId: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.type === "CITY" && !data.departureCityId) {
+        return false;
+      }
+      if (
+        data.type === "ROUTE" &&
+        (!data.departureCityId || !data.arrivalCityId)
+      ) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message:
+        "City subscription requires departure city, Route subscription requires both cities",
+    },
+  );
 
 // Profile validators
 export const updateProfileSchema = z.object({
@@ -236,12 +250,18 @@ export type CreateOperatorInput = z.infer<typeof createOperatorSchema>;
 export type UpdateOperatorInput = z.infer<typeof updateOperatorSchema>;
 export type CreateAircraftInput = z.infer<typeof createAircraftSchema>;
 export type UpdateAircraftInput = z.infer<typeof updateAircraftSchema>;
-export type CharterQuoteRequestInput = z.infer<typeof charterQuoteRequestSchema>;
-export type ApproveCharterQuoteInput = z.infer<typeof approveCharterQuoteSchema>;
+export type CharterQuoteRequestInput = z.infer<
+  typeof charterQuoteRequestSchema
+>;
+export type ApproveCharterQuoteInput = z.infer<
+  typeof approveCharterQuoteSchema
+>;
 export type RejectQuoteInput = z.infer<typeof rejectQuoteSchema>;
 export type CreateEmptyLegInput = z.infer<typeof createEmptyLegSchema>;
 export type UpdateEmptyLegInput = z.infer<typeof updateEmptyLegSchema>;
-export type EmptyLegBookingRequestInput = z.infer<typeof emptyLegBookingRequestSchema>;
+export type EmptyLegBookingRequestInput = z.infer<
+  typeof emptyLegBookingRequestSchema
+>;
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 export type CreateSubscriptionInput = z.infer<typeof createSubscriptionSchema>;

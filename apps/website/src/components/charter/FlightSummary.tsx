@@ -7,14 +7,19 @@ import {
   Calendar,
   Users,
   Clock,
-  DollarSign,
   ChevronLeft,
   ChevronRight,
   ArrowDown,
   ArrowUp,
+  Plane,
+  DollarSign,
 } from "lucide-react";
 
-// Haversine formula to calculate distance between two points
+// Average cruise speed for private jets (knots)
+// Using 350 knots as average accounting for climb, descent, and routing
+const STANDARD_CRUISE_SPEED_KNOTS = 350;
+
+// Haversine formula to calculate distance between two points in nautical miles
 function calculateDistanceNm(
   lat1: number,
   lon1: number,
@@ -34,6 +39,39 @@ function calculateDistanceNm(
   return R * c;
 }
 
+// Calculate flight time in hours based on distance and standard cruise speed
+function calculateFlightTimeHours(distanceNm: number): number {
+  // Add 30 minutes for taxi, takeoff, climb, descent, and landing procedures
+  const flightTime = distanceNm / STANDARD_CRUISE_SPEED_KNOTS;
+  return flightTime + 0.5; // Add 30 min buffer for ground ops
+}
+
+// Format flight time as hours and minutes
+function formatFlightTime(hours: number): string {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} hr`;
+  return `${h} hr ${m} min`;
+}
+
+// Calculate estimated arrival time
+function calculateArrivalTime(
+  departureTime: string,
+  flightTimeHours: number,
+): string {
+  if (!departureTime) return "TBD";
+
+  const [hours, minutes] = departureTime.split(":").map(Number);
+  const departureMinutes = hours * 60 + minutes;
+  const arrivalMinutes = departureMinutes + Math.round(flightTimeHours * 60);
+
+  const arrivalHours = Math.floor(arrivalMinutes / 60) % 24;
+  const arrivalMins = arrivalMinutes % 60;
+
+  return `${arrivalHours.toString().padStart(2, "0")}:${arrivalMins.toString().padStart(2, "0")}`;
+}
+
 interface FlightSummaryProps {
   formData: any;
   currentStep: number;
@@ -42,14 +80,17 @@ interface FlightSummaryProps {
 export function FlightSummary({ formData, currentStep }: FlightSummaryProps) {
   const { searchData, selectedAircraft, contactInfo } = formData;
   const [currentFlightIndex, setCurrentFlightIndex] = useState(0);
+  const [flightInfo, setFlightInfo] = useState<{
+    distanceNm: number;
+    flightTimeHours: number;
+    arrivalTime: string;
+  } | null>(null);
   const [usdToNgnRate, setUsdToNgnRate] = useState(1650);
   const [priceRanges, setPriceRanges] = useState<{
     minPriceUsd: number;
     maxPriceUsd: number;
     minPriceNgn: number;
     maxPriceNgn: number;
-    minFlightHours: number;
-    maxFlightHours: number;
   } | null>(null);
 
   // Fetch USD to NGN rate
@@ -68,66 +109,220 @@ export function FlightSummary({ formData, currentStep }: FlightSummaryProps) {
     fetchSettings();
   }, []);
 
-  // Calculate price ranges based on aircraft hourly rates and estimated flight hours
+  // Calculate price ranges based on aircraft hourly rates and flight time
   useEffect(() => {
+    console.log("FlightSummary - Price calc effect:", {
+      selectedAircraft: selectedAircraft?.length,
+      searchData: !!searchData,
+      flightInfo: !!flightInfo,
+    });
+
     if (!selectedAircraft || selectedAircraft.length === 0 || !searchData) {
       setPriceRanges(null);
       return;
     }
 
-    const calculatePriceRanges = async () => {
+    const hourlyRates = selectedAircraft
+      .map((a: any) => a.hourlyRateUsd || 0)
+      .filter((rate: number) => rate > 0);
+
+    console.log("FlightSummary - Hourly rates:", hourlyRates);
+
+    if (hourlyRates.length === 0) {
+      setPriceRanges(null);
+      return;
+    }
+
+    const minHourlyRate = Math.min(...hourlyRates);
+    const maxHourlyRate = Math.max(...hourlyRates);
+
+    // Use calculated flight time if available, otherwise estimate 2 hours per leg
+    let flightHours: number;
+    if (flightInfo) {
+      flightHours = flightInfo.flightTimeHours;
+    } else {
+      const flights = searchData.flights || [
+        {
+          from: searchData.departureAirport,
+          to: searchData.destinationAirport,
+        },
+      ];
+      const legCount = searchData.tripType === "roundTrip" ? 2 : flights.length;
+      flightHours = 2 * legCount; // Fallback: 2 hours per leg
+    }
+
+    const minPriceUsd = minHourlyRate * flightHours;
+    const maxPriceUsd = maxHourlyRate * flightHours;
+
+    const newPriceRanges = {
+      minPriceUsd,
+      maxPriceUsd,
+      minPriceNgn: minPriceUsd * usdToNgnRate,
+      maxPriceNgn: maxPriceUsd * usdToNgnRate,
+    };
+    console.log("FlightSummary - Setting price ranges:", newPriceRanges);
+    setPriceRanges(newPriceRanges);
+  }, [selectedAircraft, flightInfo, searchData, usdToNgnRate]);
+
+  // Calculate distance and flight time when we have airport data
+  useEffect(() => {
+    if (!searchData) {
+      setFlightInfo(null);
+      return;
+    }
+
+    const calculateFlightInfo = async () => {
       try {
-        // Get flights
         const flights = searchData.flights || [
           {
             from: searchData.departureAirport,
             to: searchData.destinationAirport,
+            time: searchData.departureTime,
           },
         ];
 
-        // For round trip, count as 2 legs
-        const legCount =
-          searchData.tripType === "roundTrip" ? 2 : flights.length;
+        // For now, we'll use a placeholder distance
+        // In production, you'd fetch airport coordinates from the API
+        // and calculate actual distance
+        let totalDistanceNm = 0;
 
-        // Estimate total flight hours (we'll use a rough estimate based on average speed)
-        // In a real scenario, you'd calculate distance between airports
-        // For now, estimate 2 hours per leg as a baseline
-        const estimatedHoursPerLeg = 2;
-        const totalEstimatedHours = estimatedHoursPerLeg * legCount;
+        // Extract airport info and fetch coordinates
+        for (const flight of flights) {
+          if (flight.from && flight.to) {
+            // Format is "CODE - Name" (e.g., "LOS - Lagos")
+            const fromParts = flight.from.split(" - ");
+            const toParts = flight.to.split(" - ");
+            const fromCode = fromParts[0]?.trim();
+            const toCode = toParts[0]?.trim();
+            const fromName = fromParts[1]?.trim() || fromParts[0]?.trim();
+            const toName = toParts[1]?.trim() || toParts[0]?.trim();
 
-        // Get hourly rates from selected aircraft
-        const hourlyRates = selectedAircraft
-          .map((a: any) => a.hourlyRateUsd || 0)
-          .filter((rate: number) => rate > 0);
+            if (fromName && toName) {
+              try {
+                console.log("FlightSummary - Fetching airports:", {
+                  fromCode,
+                  toCode,
+                  fromName,
+                  toName,
+                });
+                // Fetch airport coordinates using name for better matching
+                const [fromRes, toRes] = await Promise.all([
+                  fetch(
+                    `/api/airports?q=${encodeURIComponent(fromName)}&limit=10`,
+                  ),
+                  fetch(
+                    `/api/airports?q=${encodeURIComponent(toName)}&limit=10`,
+                  ),
+                ]);
 
-        if (hourlyRates.length === 0) {
-          setPriceRanges(null);
-          return;
+                const fromData = await fromRes.json();
+                const toData = await toRes.json();
+
+                // Find exact match by IATA/ICAO code first, then by name
+                const fromAirport =
+                  fromData.airports?.find(
+                    (a: any) =>
+                      a.iataCode === fromCode || a.icaoCode === fromCode,
+                  ) ||
+                  fromData.airports?.find(
+                    (a: any) =>
+                      a.municipality?.toLowerCase() ===
+                        fromName.toLowerCase() ||
+                      a.name?.toLowerCase().includes(fromName.toLowerCase()),
+                  ) ||
+                  fromData.airports?.[0];
+                const toAirport =
+                  toData.airports?.find(
+                    (a: any) => a.iataCode === toCode || a.icaoCode === toCode,
+                  ) ||
+                  toData.airports?.find(
+                    (a: any) =>
+                      a.municipality?.toLowerCase() === toName.toLowerCase() ||
+                      a.name?.toLowerCase().includes(toName.toLowerCase()),
+                  ) ||
+                  toData.airports?.[0];
+
+                console.log("FlightSummary - Airport data:", {
+                  fromCode,
+                  toCode,
+                  fromAirport: fromAirport
+                    ? {
+                        name: fromAirport.name,
+                        lat: fromAirport.latitude,
+                        lng: fromAirport.longitude,
+                        iata: fromAirport.iataCode,
+                      }
+                    : null,
+                  toAirport: toAirport
+                    ? {
+                        name: toAirport.name,
+                        lat: toAirport.latitude,
+                        lng: toAirport.longitude,
+                        iata: toAirport.iataCode,
+                      }
+                    : null,
+                });
+
+                if (
+                  fromAirport?.latitude &&
+                  fromAirport?.longitude &&
+                  toAirport?.latitude &&
+                  toAirport?.longitude
+                ) {
+                  const distance = calculateDistanceNm(
+                    fromAirport.latitude,
+                    fromAirport.longitude,
+                    toAirport.latitude,
+                    toAirport.longitude,
+                  );
+                  console.log(
+                    "FlightSummary - Calculated distance:",
+                    distance,
+                    "nm",
+                  );
+                  totalDistanceNm += distance;
+                } else {
+                  console.log("FlightSummary - Missing coordinates:", {
+                    fromAirport,
+                    toAirport,
+                  });
+                }
+              } catch (err) {
+                console.error("Error fetching airport coordinates:", err);
+              }
+            }
+          }
         }
 
-        const minHourlyRate = Math.min(...hourlyRates);
-        const maxHourlyRate = Math.max(...hourlyRates);
+        // For round trip, double the distance
+        if (searchData.tripType === "roundTrip") {
+          totalDistanceNm *= 2;
+        }
 
-        // Calculate price range (hourly rate × flight hours)
-        const minPriceUsd = minHourlyRate * totalEstimatedHours;
-        const maxPriceUsd = maxHourlyRate * totalEstimatedHours;
+        if (totalDistanceNm > 0) {
+          const flightTimeHours = calculateFlightTimeHours(totalDistanceNm);
+          const departureTime = flights[0]?.time || "";
+          const arrivalTime = calculateArrivalTime(
+            departureTime,
+            flightTimeHours,
+          );
 
-        setPriceRanges({
-          minPriceUsd,
-          maxPriceUsd,
-          minPriceNgn: minPriceUsd * usdToNgnRate,
-          maxPriceNgn: maxPriceUsd * usdToNgnRate,
-          minFlightHours: totalEstimatedHours,
-          maxFlightHours: totalEstimatedHours,
-        });
+          setFlightInfo({
+            distanceNm: Math.round(totalDistanceNm),
+            flightTimeHours,
+            arrivalTime,
+          });
+        } else {
+          setFlightInfo(null);
+        }
       } catch (error) {
-        console.error("Error calculating price ranges:", error);
-        setPriceRanges(null);
+        console.error("Error calculating flight info:", error);
+        setFlightInfo(null);
       }
     };
 
-    calculatePriceRanges();
-  }, [selectedAircraft, searchData, usdToNgnRate]);
+    calculateFlightInfo();
+  }, [searchData]);
 
   if (!searchData) return null;
 
@@ -585,45 +780,38 @@ export function FlightSummary({ formData, currentStep }: FlightSummaryProps) {
           </div>
         )}
 
-        {/* Price Range */}
-        {priceRanges && (
+        {/* Est. Arrival & Price */}
+        {(flightInfo || priceRanges) && (
           <div className="space-y-2 pt-2 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-gray-800">
-                <DollarSign className="w-4 h-4" />
-                <p className="font-medium">Est. Price (USD):</p>
+            {flightInfo && flightInfo.arrivalTime !== "TBD" && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-gray-800">
+                  <Plane className="w-4 h-4" />
+                  <p className="font-medium">Est. Arrival:</p>
+                </div>
+                <p className="font-semibold text-gray-900">
+                  {flightInfo.arrivalTime}
+                </p>
               </div>
-              <p className="font-semibold text-[#D4AF37]">
-                {formatCurrency(priceRanges.minPriceUsd, "USD")} -{" "}
-                {formatCurrency(priceRanges.maxPriceUsd, "USD")}
-              </p>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-gray-800">
-                <DollarSign className="w-4 h-4" />
-                <p className="font-medium">Est. Price (NGN):</p>
+            )}
+            {priceRanges && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-gray-800">
+                  <DollarSign className="w-4 h-4" />
+                  <p className="font-medium">Est. Price (USD):</p>
+                </div>
+                <p className="font-semibold text-gray-900">
+                  {priceRanges.minPriceUsd === priceRanges.maxPriceUsd
+                    ? formatCurrency(priceRanges.minPriceUsd, "USD")
+                    : `${formatCurrency(priceRanges.minPriceUsd, "USD")} - ${formatCurrency(priceRanges.maxPriceUsd, "USD")}`}
+                </p>
               </div>
-              <p className="font-semibold text-[#D4AF37]">
-                {formatCurrency(priceRanges.minPriceNgn, "NGN")} -{" "}
-                {formatCurrency(priceRanges.maxPriceNgn, "NGN")}
-              </p>
-            </div>
+            )}
             {isMultiLeg && (
               <p className="text-xs text-gray-500 text-right">
                 ({flights.length} legs total)
               </p>
             )}
-          </div>
-        )}
-
-        {/* Flight Time Estimate */}
-        {priceRanges && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-gray-800">
-              <Clock className="w-4 h-4" />
-              <p className="font-medium">Est. Flight Time:</p>
-            </div>
-            <p className="font-medium">~{priceRanges.minFlightHours} hrs</p>
           </div>
         )}
       </div>

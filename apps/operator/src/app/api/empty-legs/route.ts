@@ -11,6 +11,57 @@ function generateSlug(departure: string, arrival: string, date: Date): string {
   return slug;
 }
 
+// Haversine formula to calculate distance between two coordinates
+function calculateDistanceNm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 3440.065; // Earth's radius in nautical miles
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Helper to calculate estimated arrival and duration using average cruise speed
+function calculateFlightDetails(
+  departureDateTime: Date,
+  distanceNm: number,
+  cruiseSpeedKnots: number,
+): { estimatedArrival: Date; estimatedDurationMin: number } {
+  // Use 90% of cruise speed as average (accounts for climb/descent phases)
+  const averageCruiseSpeed = cruiseSpeedKnots * 0.9;
+
+  // Calculate cruise time
+  const cruiseTimeHours = distanceNm / averageCruiseSpeed;
+  const cruiseTimeMin = cruiseTimeHours * 60;
+
+  // Add fixed overhead for taxi, takeoff, climb, descent, and landing
+  const taxiAndOverheadMin = 30;
+
+  // Adjust overhead based on distance
+  let adjustedOverhead = taxiAndOverheadMin;
+  if (distanceNm < 300) {
+    adjustedOverhead = 25;
+  } else if (distanceNm > 1500) {
+    adjustedOverhead = 40;
+  }
+
+  const estimatedDurationMin = Math.round(cruiseTimeMin + adjustedOverhead);
+  const estimatedArrival = new Date(
+    departureDateTime.getTime() + estimatedDurationMin * 60 * 1000,
+  );
+  return { estimatedArrival, estimatedDurationMin };
+}
+
 export async function GET(request: NextRequest) {
   const operator = await verifyAuth(request);
   if (!operator) return unauthorizedResponse();
@@ -69,8 +120,8 @@ export async function POST(request: NextRequest) {
       departureDateTime,
       totalSeats,
       availableSeats,
-      originalPriceNgn,
-      discountPriceNgn,
+      originalPrice,
+      discountPrice,
     } = body;
 
     // Validate required fields
@@ -81,8 +132,8 @@ export async function POST(request: NextRequest) {
       !departureDateTime ||
       !totalSeats ||
       !availableSeats ||
-      !originalPriceNgn ||
-      !discountPriceNgn
+      !originalPrice ||
+      !discountPrice
     ) {
       return NextResponse.json(
         { error: "All fields are required" },
@@ -105,20 +156,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get airports for slug
-    const [departureAirport, arrivalAirport] = await Promise.all([
+    // Get airports and aircraft for calculations
+    const [departureAirport, arrivalAirport, aircraft] = await Promise.all([
       prisma.airport.findUnique({
         where: { id: departureAirportId },
-        select: { iataCode: true, icaoCode: true, municipality: true },
+        select: {
+          iataCode: true,
+          icaoCode: true,
+          municipality: true,
+          latitude: true,
+          longitude: true,
+        },
       }),
       prisma.airport.findUnique({
         where: { id: arrivalAirportId },
-        select: { iataCode: true, icaoCode: true, municipality: true },
+        select: {
+          iataCode: true,
+          icaoCode: true,
+          municipality: true,
+          latitude: true,
+          longitude: true,
+        },
+      }),
+      prisma.aircraft.findUnique({
+        where: { id: aircraftId },
+        select: { cruiseSpeedKnots: true },
       }),
     ]);
 
     if (!departureAirport || !arrivalAirport) {
       return NextResponse.json({ error: "Invalid airport" }, { status: 400 });
+    }
+
+    if (!aircraft) {
+      return NextResponse.json({ error: "Invalid aircraft" }, { status: 400 });
     }
 
     // Generate slug
@@ -144,14 +215,10 @@ export async function POST(request: NextRequest) {
       counter++;
     }
 
-    // Calculate estimated arrival (rough estimate based on distance)
+    // Create empty leg - normalize datetime to only include date, hour, and minute
     const departureDate = new Date(departureDateTime);
-    const estimatedDurationMin = 120; // Default 2 hours, should be calculated
-    const estimatedArrival = new Date(
-      departureDate.getTime() + estimatedDurationMin * 60 * 1000,
-    );
+    departureDate.setSeconds(0, 0); // Set seconds and milliseconds to 0
 
-    // Create empty leg
     const emptyLeg = await prisma.emptyLeg.create({
       data: {
         slug,
@@ -159,12 +226,10 @@ export async function POST(request: NextRequest) {
         arrivalAirportId,
         aircraftId,
         departureDateTime: departureDate,
-        estimatedArrival,
-        estimatedDurationMin,
         totalSeats,
         availableSeats,
-        originalPriceNgn,
-        discountPriceNgn,
+        originalPrice,
+        discountPrice,
         status: "PUBLISHED",
         createdByOperatorId: operator.id,
       },

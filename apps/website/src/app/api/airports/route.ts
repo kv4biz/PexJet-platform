@@ -14,15 +14,33 @@ export async function GET(request: NextRequest) {
             { municipality: { contains: query, mode: "insensitive" as const } },
             { iataCode: { contains: query, mode: "insensitive" as const } },
             { icaoCode: { contains: query, mode: "insensitive" as const } },
-            { country: { name: { contains: query, mode: "insensitive" as const } } },
-            { region: { name: { contains: query, mode: "insensitive" as const } } },
+            {
+              country: {
+                name: { contains: query, mode: "insensitive" as const },
+              },
+            },
+            {
+              region: {
+                name: { contains: query, mode: "insensitive" as const },
+              },
+            },
           ],
         }
       : {};
 
     const airports = await prisma.airport.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        ident: true,
+        type: true,
+        name: true,
+        latitude: true,
+        longitude: true,
+        elevationFt: true,
+        municipality: true,
+        icaoCode: true,
+        iataCode: true,
         country: {
           select: {
             id: true,
@@ -39,9 +57,7 @@ export async function GET(request: NextRequest) {
         },
       },
       take: limit,
-      orderBy: [
-        { name: "asc" },
-      ],
+      orderBy: [{ name: "asc" }],
     });
 
     return NextResponse.json({ airports });
@@ -49,7 +65,7 @@ export async function GET(request: NextRequest) {
     console.error("Failed to fetch airports:", error);
     return NextResponse.json(
       { error: "Failed to fetch airports" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

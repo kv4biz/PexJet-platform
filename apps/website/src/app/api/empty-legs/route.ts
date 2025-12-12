@@ -40,12 +40,7 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "date"; // date, price, discount, alphabetic, cheapest
     const sortOrder = searchParams.get("sortOrder") || "asc";
 
-    // Get exchange rate from settings
-    const settings = await prisma.settings.findUnique({
-      where: { id: "default" },
-      select: { usdToNgnRate: true },
-    });
-    const exchangeRate = settings?.usdToNgnRate || 1650;
+    // Prices are now in USD directly, no conversion needed
 
     // Build where clause
     const where: any = {
@@ -132,7 +127,7 @@ export async function GET(request: NextRequest) {
     // Transform and filter data
     let transformedLegs = emptyLegs.map((leg: any) => {
       const discountPercent = Math.round(
-        ((leg.originalPriceNgn - leg.discountPriceNgn) / leg.originalPriceNgn) *
+        ((leg.originalPriceUsd - leg.discountPriceUsd) / leg.originalPriceUsd) *
           100,
       );
 
@@ -172,17 +167,12 @@ export async function GET(request: NextRequest) {
             ? [leg.aircraft.thumbnailImage, ...leg.aircraft.exteriorImages]
             : leg.aircraft.exteriorImages,
         },
-        departureDateTime: leg.departureDateTime.toISOString(),
-        estimatedArrival: leg.estimatedArrival?.toISOString(),
-        estimatedDurationMin: leg.estimatedDurationMin,
+        departureDate: leg.departureDateTime.toISOString(),
         availableSeats: leg.availableSeats,
         totalSeats: leg.totalSeats,
-        // Pricing
-        priceNgn: leg.discountPriceNgn,
-        originalPriceNgn: leg.originalPriceNgn,
-        priceUsd: Math.round((leg.discountPriceNgn / exchangeRate) * 100) / 100,
-        originalPriceUsd:
-          Math.round((leg.originalPriceNgn / exchangeRate) * 100) / 100,
+        // Pricing (USD)
+        priceUsd: leg.discountPriceUsd,
+        originalPriceUsd: leg.originalPriceUsd,
         discountPercent,
         status: leg.status,
         // Owner info
@@ -284,7 +274,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       emptyLegs: transformedLegs,
       total: transformedLegs.length,
-      exchangeRate,
     });
   } catch (error: any) {
     console.error("Empty legs fetch error:", error);

@@ -78,9 +78,14 @@
   background: hsl(var(--primary) / 0.8);
 }
 
-/* Smooth scroll */
+/* Smooth scroll and prevent horizontal overflow */
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
 }
 
 /* Hero gradient overlay */
@@ -95,7 +100,7 @@ html {
 
 /* Gold text gradient */
 .text-gold-gradient {
-  background: linear-gradient(135deg, #C9A962 0%, #D4BC7E 50%, #B8944D 100%);
+  background: linear-gradient(135deg, #c9a962 0%, #d4bc7e 50%, #b8944d 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

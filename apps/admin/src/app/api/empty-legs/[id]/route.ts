@@ -121,8 +121,8 @@ export async function PUT(
       departureDateTime,
       totalSeats,
       availableSeats,
-      originalPriceNgn,
-      discountPriceNgn,
+      originalPrice,
+      discountPrice,
       status,
     } = body;
 
@@ -149,65 +149,11 @@ export async function PUT(
     if (totalSeats !== undefined) updateData.totalSeats = parseInt(totalSeats);
     if (availableSeats !== undefined)
       updateData.availableSeats = parseInt(availableSeats);
-    if (originalPriceNgn !== undefined)
-      updateData.originalPriceNgn = parseFloat(originalPriceNgn);
-    if (discountPriceNgn !== undefined)
-      updateData.discountPriceNgn = parseFloat(discountPriceNgn);
+    if (originalPrice !== undefined)
+      updateData.originalPrice = parseFloat(originalPrice);
+    if (discountPrice !== undefined)
+      updateData.discountPrice = parseFloat(discountPrice);
     if (status) updateData.status = status;
-
-    // Recalculate flight details if route or aircraft changed
-    if (
-      departureAirportId ||
-      arrivalAirportId ||
-      aircraftId ||
-      departureDateTime
-    ) {
-      const [depAirport, arrAirport, aircraft] = await Promise.all([
-        prisma.airport.findUnique({
-          where: {
-            id: departureAirportId || existingEmptyLeg.departureAirportId,
-          },
-          select: { latitude: true, longitude: true },
-        }),
-        prisma.airport.findUnique({
-          where: { id: arrivalAirportId || existingEmptyLeg.arrivalAirportId },
-          select: { latitude: true, longitude: true },
-        }),
-        prisma.aircraft.findUnique({
-          where: { id: aircraftId || existingEmptyLeg.aircraftId },
-          select: { cruiseSpeedKnots: true },
-        }),
-      ]);
-
-      if (depAirport && arrAirport && aircraft) {
-        // Haversine formula
-        const R = 3440.065;
-        const dLat =
-          ((arrAirport.latitude - depAirport.latitude) * Math.PI) / 180;
-        const dLon =
-          ((arrAirport.longitude - depAirport.longitude) * Math.PI) / 180;
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos((depAirport.latitude * Math.PI) / 180) *
-            Math.cos((arrAirport.latitude * Math.PI) / 180) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distanceNm = R * c;
-
-        const flightTimeHours = distanceNm / aircraft.cruiseSpeedKnots;
-        const estimatedDurationMin = Math.round(flightTimeHours * 60);
-        const depDT = departureDateTime
-          ? new Date(departureDateTime)
-          : existingEmptyLeg.departureDateTime;
-        const estimatedArrival = new Date(
-          depDT.getTime() + estimatedDurationMin * 60 * 1000,
-        );
-
-        updateData.estimatedDurationMin = estimatedDurationMin;
-        updateData.estimatedArrival = estimatedArrival;
-      }
-    }
 
     const emptyLeg = await prisma.emptyLeg.update({
       where: { id },

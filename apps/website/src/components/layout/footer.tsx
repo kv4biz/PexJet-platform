@@ -23,25 +23,25 @@ const socialIcons: Record<string, typeof Facebook> = {
 
 export function Footer() {
   return (
-    <footer className="bg-[#0C0C0C] text-white pt-16 pb-8">
+    <footer className="bg-[#0C0C0C] text-white pt-10 md:pt-16 pb-6 md:pb-8">
       <div className="w-full lg:w-10/12 mx-auto px-4">
         {/* Main Footer Content */}
-        <div className="flex flex-col lg:flex-row items-end gap-10 mb-12">
+        <div className="flex flex-col lg:flex-row items-start lg:items-end gap-8 lg:gap-10 mb-8 md:mb-12">
           {/* Logo & Description */}
-          <div className="lg:w-2/2">
+          <div className="w-full lg:w-auto">
             <Image
               src={footerData.logo}
               alt="PexJet"
               width={120}
               height={40}
-              className="h-10 w-auto mb-4"
+              className="h-8 md:h-10 w-auto mb-3 md:mb-4"
             />
-            <p className="text-gray-400 mb-6 max-w-xs">
+            <p className="text-gray-400 mb-4 md:mb-6 max-w-xs text-sm md:text-base">
               {footerData.description}
             </p>
 
             {/* Contact Info */}
-            <div className="space-y-3 text-sm w-full">
+            <div className="space-y-2 md:space-y-3 text-sm w-full">
               <div className="flex items-start gap-3 text-gray-400">
                 <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
                 <span>

@@ -6,7 +6,7 @@ import { homePageData } from "@/data";
 
 export default function HeroSection() {
   return (
-    <section className="relative h-screen lg:h-[70vh] w-full overflow-hidden">
+    <section className="relative h-[75vh] lg:h-[70vh] w-full overflow-hidden">
       {/* Image Background */}
       <div className="absolute inset-0 bg-[#0C0C0C]">
         <Image
@@ -22,7 +22,7 @@ export default function HeroSection() {
       </div>
 
       {/* Content */}
-      <div className="relative h-full flex items-center md:items-center">
+      <div className="relative z-0 h-full flex items-center md:items-center">
         <div className="mx-auto px-6 pb-28 md:pb-32 w-full">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -47,7 +47,7 @@ export default function HeroSection() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.3, duration: 1 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-0"
       >
         <div className="w-6 h-10 border-2 border-white/40 flex justify-center rounded-full pt-2">
           <motion.div

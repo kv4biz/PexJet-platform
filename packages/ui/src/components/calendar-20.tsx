@@ -147,21 +147,13 @@ export function Calendar20({
       </PopoverTrigger>
 
       <PopoverContent
-        className="p-0 w-full sm:w-auto max-w-[95vw]"
+        className="p-0 w-auto max-w-[95vw]"
         align="start"
         sideOffset={8}
       >
-        <div
-          className={`flex ${
-            isReturnDate ? "flex-col" : "flex-col sm:flex-row"
-          }`}
-        >
+        <div className={`flex ${isReturnDate ? "flex-col" : "flex-row"}`}>
           {/* Calendar */}
-          <div
-            className={`p-3 ${
-              isReturnDate ? "" : "border-b sm:border-b-0 sm:border-r"
-            }`}
-          >
+          <div className={`p-2 sm:p-3 ${isReturnDate ? "" : "border-r"}`}>
             <Calendar
               mode="single"
               selected={date}
@@ -169,6 +161,7 @@ export function Calendar20({
               captionLayout="dropdown"
               fromDate={today}
               toDate={maxDate}
+              className="text-xs sm:text-sm"
             />
 
             {/* Clear button */}
@@ -178,7 +171,7 @@ export function Calendar20({
                   variant="outline"
                   size="sm"
                   onClick={handleClear}
-                  className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
+                  className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950 text-xs sm:text-sm"
                 >
                   Clear
                 </Button>
@@ -188,13 +181,13 @@ export function Calendar20({
 
           {/* Time Slots - Only show for departure dates */}
           {!isReturnDate && (
-            <div className="max-h-80 overflow-y-auto p-3 w-full sm:w-48">
+            <div className="max-h-72 sm:max-h-80 overflow-y-auto p-2 sm:p-3 w-24 sm:w-32">
               {timeSlots.map((time) => (
                 <Button
                   key={time}
                   variant={selectedTime === time ? "gold" : "outline"}
                   onClick={() => handleTimeSelect(time)}
-                  className="w-full mb-2"
+                  className="w-full mb-1 sm:mb-2 text-xs sm:text-sm py-1 sm:py-2"
                 >
                   {time}
                 </Button>

@@ -11,9 +11,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Label,
-  Input,
   Badge,
   useToast,
 } from "@pexjet/ui";
@@ -74,7 +72,6 @@ export function EmptyLegDealsSection() {
   const [emptyLegs, setEmptyLegs] = useState<EmptyLeg[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [showNgn, setShowNgn] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const { toast } = useToast();
 
@@ -176,11 +173,8 @@ export function EmptyLegDealsSection() {
     fetchEmptyLegs(params);
   };
 
-  // Format price based on currency toggle
-  const formatPrice = (priceUsd: number, priceNgn: number) => {
-    if (showNgn) {
-      return `₦${priceNgn.toLocaleString()}`;
-    }
+  // Format price in USD
+  const formatPrice = (priceUsd: number) => {
     return `$${priceUsd.toLocaleString()}`;
   };
 
@@ -192,9 +186,18 @@ export function EmptyLegDealsSection() {
     return `${hours}h ${mins}m`;
   };
 
+  // Parse datetime string (handles "2025-12-13 21:24:13.819" format)
+  const parseDateTime = (dateString: string | null | undefined): Date => {
+    if (!dateString) return new Date(NaN); // Return invalid date if no string
+    // Replace space with T to make it ISO 8601 compliant
+    const isoString = dateString.replace(" ", "T");
+    return new Date(isoString);
+  };
+
   // Format date
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = parseDateTime(dateString);
+    if (isNaN(date.getTime())) return "TBD";
     return date.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
@@ -204,7 +207,8 @@ export function EmptyLegDealsSection() {
 
   // Format time
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = parseDateTime(dateString);
+    if (isNaN(date.getTime())) return "TBD";
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
@@ -224,9 +228,61 @@ export function EmptyLegDealsSection() {
     element?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // Calculate distance between two airports using Haversine formula
+  const calculateDistanceNm = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number => {
+    const R = 3440.065; // Earth's radius in nautical miles
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Calculate estimated arrival time
+  const calculateArrivalTime = (
+    departureDateTime: string,
+    distanceNm: number,
+  ): string => {
+    const CRUISE_SPEED_KNOTS = 350;
+    const flightTimeHours = distanceNm / CRUISE_SPEED_KNOTS + 0.5; // 30 min buffer
+    const departure = parseDateTime(departureDateTime);
+    if (isNaN(departure.getTime())) return "TBD";
+    const arrivalMs = departure.getTime() + flightTimeHours * 60 * 60 * 1000;
+    const arrival = new Date(arrivalMs);
+    return arrival.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
   // Ticket-style Deal Card
   const TicketCard = ({ deal }: { deal: EmptyLeg }) => {
     const isSoldOut = deal.availableSeats === 0;
+
+    // Calculate distance
+    const distanceNm = calculateDistanceNm(
+      deal.departureAirport.latitude,
+      deal.departureAirport.longitude,
+      deal.arrivalAirport.latitude,
+      deal.arrivalAirport.longitude,
+    );
+
+    // Calculate estimated arrival
+    const estArrivalTime = calculateArrivalTime(
+      deal.departureDateTime,
+      distanceNm,
+    );
 
     return (
       <Link href={`/empty-legs/${deal.slug}`}>
@@ -241,9 +297,6 @@ export function EmptyLegDealsSection() {
                 <Badge className="bg-red-500 text-white px-3 py-1">
                   {deal.discountPercent}% OFF
                 </Badge>
-                <span className="text-sm text-gray-500 capitalize">
-                  {deal.aircraft.category.replace("_", " ")}
-                </span>
               </div>
 
               {/* Route */}
@@ -266,12 +319,12 @@ export function EmptyLegDealsSection() {
                   <div className="relative flex items-center justify-center">
                     <div className="absolute w-full border-t-2 border-dashed border-gray-300" />
                     <div className="relative bg-white px-2">
-                      <Plane className="w-5 h-5 text-[#D4AF37] rotate-90" />
+                      <Plane className="w-5 h-5 text-[#D4AF37]" />
                     </div>
                   </div>
                   <div className="text-center mt-1">
                     <span className="text-xs text-gray-500">
-                      {formatDuration(deal.estimatedDurationMin)}
+                      {Math.round(distanceNm).toLocaleString()} nm
                     </span>
                   </div>
                 </div>
@@ -284,11 +337,7 @@ export function EmptyLegDealsSection() {
                   <div className="text-sm text-gray-600 max-w-[100px] truncate">
                     {deal.arrivalAirport.city}
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {deal.estimatedArrival
-                      ? formatTime(deal.estimatedArrival)
-                      : "Est. arrival"}
-                  </div>
+                  <div className="text-xs text-gray-400">{estArrivalTime}</div>
                 </div>
               </div>
 
@@ -314,12 +363,12 @@ export function EmptyLegDealsSection() {
             <div className="bg-gray-50 p-4 md:p-6 md:w-48 flex flex-col justify-center items-center border-t md:border-t-0 md:border-l border-dashed border-gray-300">
               {/* Original Price */}
               <div className="text-sm text-gray-400 line-through">
-                {formatPrice(deal.originalPriceUsd, deal.originalPriceNgn)}
+                {formatPrice(deal.originalPriceUsd)}
               </div>
 
               {/* Discounted Price */}
               <div className="text-2xl md:text-3xl font-bold text-[#D4AF37]">
-                {formatPrice(deal.priceUsd, deal.priceNgn)}
+                {formatPrice(deal.priceUsd)}
               </div>
               <div className="text-xs text-gray-500 mb-3">per seat</div>
 
@@ -424,13 +473,6 @@ export function EmptyLegDealsSection() {
       {/* Action Row */}
       <div className="flex items-center justify-between mt-4 pt-4 border-t">
         <div className="flex items-center gap-4">
-          {/* Currency Toggle */}
-          <div className="flex items-center gap-2">
-            <Label className="text-sm">USD</Label>
-            <Switch checked={showNgn} onCheckedChange={setShowNgn} />
-            <Label className="text-sm">NGN</Label>
-          </div>
-
           {/* Results Count */}
           <span className="text-sm text-gray-500">
             {emptyLegs.length} deals found
@@ -512,7 +554,7 @@ export function EmptyLegDealsSection() {
 
   return (
     <section id="empty-leg-deals-section" className="py-16 bg-gray-50">
-      <div className="w-full lg:w-10/12 mx-auto px-4 lg:px-12">
+      <div className="w-full mx-auto px-4 lg:px-12">
         {/* Title */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
@@ -535,7 +577,7 @@ export function EmptyLegDealsSection() {
             {
               <div id="empty-leg-deals-grid">
                 {searchLoading ? (
-                  <div className="flex justify-center items-center  min-h-48">
+                  <div className="flex justify-center items-center min-h-48">
                     <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
                   </div>
                 ) : currentDeals.length > 0 ? (

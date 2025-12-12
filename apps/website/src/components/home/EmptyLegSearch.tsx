@@ -27,7 +27,10 @@ export default function EmptyLegSearch() {
   const router = useRouter();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [date, setDate] = useState<{ date?: string | null; time?: string | null }>({
+  const [date, setDate] = useState<{
+    date?: string | null;
+    time?: string | null;
+  }>({
     date: null,
     time: null,
   });
@@ -42,7 +45,9 @@ export default function EmptyLegSearch() {
   const fetchAirports = useCallback(async (query: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/airports?q=${encodeURIComponent(query)}&limit=15`);
+      const response = await fetch(
+        `/api/airports?q=${encodeURIComponent(query)}&limit=15`,
+      );
       if (response.ok) {
         const data = await response.json();
         setAirports(data.airports || []);
@@ -54,14 +59,17 @@ export default function EmptyLegSearch() {
     }
   }, []);
 
-  const handleSearchChange = useCallback((query: string) => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      fetchAirports(query);
-    }, 300);
-  }, [fetchAirports]);
+  const handleSearchChange = useCallback(
+    (query: string) => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = setTimeout(() => {
+        fetchAirports(query);
+      }, 300);
+    },
+    [fetchAirports],
+  );
 
   useEffect(() => {
     fetchAirports("");
@@ -105,79 +113,84 @@ export default function EmptyLegSearch() {
   };
 
   return (
-    <Card className="border border-[#D4AF37]/20 p-2 md:p-6 lg:shadow-xl lg:bg-black/50 h-full ">
+    <Card className="border border-[#D4AF37]/20 p-2 md:p-2 lg:p-4 lg:shadow-xl lg:bg-black/50 h-full ">
       <div className="p-2 md:p-6 bg-white h-full" ref={containerRef}>
-        <p className="text-xl font-bold mb-4 text-black uppercase tracking-wide font-serif">
+        <p className="text-xl font-bold mb-4 md:mb-8 text-black uppercase tracking-wide font-serif">
           Empty Leg Deals
         </p>
 
         <div className="space-y-2">
           {/* From + Swap + To */}
-          <div className="flex">
-            {/* FROM */}
-            <div className="relative flex-1">
-              <Input
-                placeholder="From"
-                value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                  handleSearchChange(e.target.value);
-                }}
-                onFocus={() => {
-                  setOpenFrom(true);
-                  setOpenTo(false);
-                  handleSearchChange(from);
-                }}
-                className="bg-white text-black border-gray-300 pl-10"
-              />
-              <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-              {openFrom && (
-                <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
-                  {loading ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                    </div>
-                  ) : airports.length === 0 ? (
-                    <div className="px-4 py-3 text-sm text-gray-500">
-                      No airports found
-                    </div>
-                  ) : (
-                    airports.map((airport) => (
-                      <button
-                        key={airport.id}
-                        onMouseDown={() => {
-                          setFrom(getAirportDisplay(airport));
-                          setOpenFrom(false);
-                        }}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
-                      >
-                        <div className="text-sm text-black">
-                          <div className="font-medium text-black">
-                            {airport.iataCode || airport.icaoCode} - {airport.name}
+          <div className="flex flex-col gap-2">
+            {/* From + Swap on same line */}
+            <div className="flex gap-0">
+              {/* FROM */}
+              <div className="relative flex-1">
+                <Input
+                  placeholder="From"
+                  value={from}
+                  onChange={(e) => {
+                    setFrom(e.target.value);
+                    handleSearchChange(e.target.value);
+                  }}
+                  onFocus={() => {
+                    setOpenFrom(true);
+                    setOpenTo(false);
+                    handleSearchChange(from);
+                  }}
+                  className="bg-white text-black border-gray-300 pl-10"
+                />
+                <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                {openFrom && (
+                  <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
+                    {loading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                      </div>
+                    ) : airports.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-500">
+                        No airports found
+                      </div>
+                    ) : (
+                      airports.map((airport) => (
+                        <button
+                          key={airport.id}
+                          onMouseDown={() => {
+                            setFrom(getAirportDisplay(airport));
+                            setOpenFrom(false);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
+                        >
+                          <div className="text-sm text-black">
+                            <div className="font-medium text-black">
+                              {airport.iataCode || airport.icaoCode} -{" "}
+                              {airport.name}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {airport.municipality &&
+                                `${airport.municipality}, `}
+                              {airport.region.name}, {airport.country.name}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {airport.municipality && `${airport.municipality}, `}
-                            {airport.region.name}, {airport.country.name}
-                          </div>
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Swap Button */}
+              <Button
+                variant="ghost"
+                onClick={swapLocations}
+                className="p-2 border border-gray-200 bg-white text-black hover:bg-gray-50 shrink-0"
+              >
+                <ArrowLeftRight className="w-5 h-5" />
+              </Button>
             </div>
 
-            {/* Swap Button */}
-            <Button
-              variant="ghost"
-              onClick={swapLocations}
-              className="p-2 border border-gray-200 bg-white text-black hover:bg-gray-50"
-            >
-              <ArrowLeftRight className="w-5 h-5" />
-            </Button>
-
-            {/* TO */}
-            <div className="relative flex-1">
+            {/* TO - on its own line */}
+            <div className="relative w-full">
               <Input
                 placeholder="To"
                 value={to}
@@ -215,10 +228,12 @@ export default function EmptyLegSearch() {
                       >
                         <div className="text-sm text-black">
                           <div className="font-medium text-black">
-                            {airport.iataCode || airport.icaoCode} - {airport.name}
+                            {airport.iataCode || airport.icaoCode} -{" "}
+                            {airport.name}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {airport.municipality && `${airport.municipality}, `}
+                            {airport.municipality &&
+                              `${airport.municipality}, `}
                             {airport.region.name}, {airport.country.name}
                           </div>
                         </div>

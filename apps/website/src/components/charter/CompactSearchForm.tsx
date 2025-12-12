@@ -327,16 +327,15 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
 
         <form onSubmit={handleSubmit}>
           {/* Flight rows */}
-          <div className="space-y-1" ref={containerRef}>
+          <div className="space-y-2" ref={containerRef}>
             {(tripType === "multi-leg" ? flights : [flights[0]]).map(
               (flight, idx) => (
                 <div
                   key={flight.id}
                   className="flex flex-col lg:flex-row lg:items-start"
                 >
-                  {/* Location inputs - Fixed width */}
-                  <div className="flex flex-1 min-w-0 ">
-                    {/* FROM */}
+                  {/* FROM */}
+                  <div className="flex w-full lg:flex-1">
                     <div className="relative flex-1 min-w-0">
                       <Input
                         placeholder="From"
@@ -404,119 +403,106 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
                     >
                       <ArrowLeftRight className="w-5 h-5" />
                     </Button>
-
-                    {/* TO */}
-                    <div className="relative flex-1 min-w-0">
-                      <Input
-                        placeholder="To"
-                        value={flight.to}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                          updateFlight(flight.id, { to: e.target.value });
-                          handleSearchChange(e.target.value);
-                        }}
-                        onFocus={() => {
-                          setOpenTo(flight.id);
-                          setOpenFrom(null);
-                          handleSearchChange(flight.to);
-                        }}
-                        className="bg-white text-black border-gray-300 w-full pl-9"
-                      />
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      {openTo === flight.id && (
-                        <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
-                          {airportLoading ? (
-                            <div className="flex items-center justify-center py-4">
-                              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                            </div>
-                          ) : airports.length === 0 ? (
-                            <div className="px-4 py-3 text-sm text-gray-500">
-                              No airports found
-                            </div>
-                          ) : (
-                            airports.map((airport) => (
-                              <button
-                                key={airport.id}
-                                type="button"
-                                onMouseDown={() => {
-                                  updateFlight(flight.id, {
-                                    to: getAirportDisplay(airport),
-                                  });
-                                  setOpenTo(null);
-                                }}
-                                className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
-                              >
-                                <div className="text-sm text-black">
-                                  <div className="font-medium text-black">
-                                    {airport.iataCode || airport.icaoCode} -{" "}
-                                    {airport.name}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {airport.municipality &&
-                                      `${airport.municipality}, `}
-                                    {airport.region.name},{" "}
-                                    {airport.country.name}
-                                  </div>
-                                </div>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
-                    </div>
                   </div>
 
-                  {/* Date inputs - Fixed consistent width */}
-                  <div
-                    className={`flex min-w-0 ${
-                      tripType === "round-trip"
-                        ? "flex-col md:flex-row md:flex-1"
-                        : "flex-1"
-                    }`}
-                  >
-                    <div
-                      className={
-                        tripType === "round-trip" ? "flex-1 min-w-0" : "w-full"
-                      }
-                    >
-                      <Calendar20
-                        placeholder="Departure Date & Time"
-                        value={
-                          flight.date
-                            ? {
-                                date: flight.date,
-                                time: flight.time || undefined,
-                              }
-                            : undefined
-                        }
-                        onChange={(value) =>
-                          handleDateChange(flight.id, "date", value)
-                        }
-                      />
-                    </div>
-
-                    {tripType === "round-trip" && (
-                      <div className="flex-1 min-w-0">
-                        <Calendar20
-                          placeholder="Return Date & Time"
-                          value={
-                            flight.returnDate
-                              ? {
-                                  date: flight.returnDate,
-                                  time: flight.returnTime || undefined,
-                                }
-                              : undefined
-                          }
-                          onChange={(value) =>
-                            handleDateChange(flight.id, "returnDate", value)
-                          }
-                        />
+                  {/* TO */}
+                  <div className="relative w-full lg:flex-1 lg:min-w-0">
+                    <Input
+                      placeholder="To"
+                      value={flight.to}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        updateFlight(flight.id, { to: e.target.value });
+                        handleSearchChange(e.target.value);
+                      }}
+                      onFocus={() => {
+                        setOpenTo(flight.id);
+                        setOpenFrom(null);
+                        handleSearchChange(flight.to);
+                      }}
+                      className="bg-white text-black border-gray-300 w-full pl-9"
+                    />
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    {openTo === flight.id && (
+                      <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
+                        {airportLoading ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                          </div>
+                        ) : airports.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-500">
+                            No airports found
+                          </div>
+                        ) : (
+                          airports.map((airport) => (
+                            <button
+                              key={airport.id}
+                              type="button"
+                              onMouseDown={() => {
+                                updateFlight(flight.id, {
+                                  to: getAirportDisplay(airport),
+                                });
+                                setOpenTo(null);
+                              }}
+                              className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
+                            >
+                              <div className="text-sm text-black">
+                                <div className="font-medium text-black">
+                                  {airport.iataCode || airport.icaoCode} -{" "}
+                                  {airport.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {airport.municipality &&
+                                    `${airport.municipality}, `}
+                                  {airport.region.name}, {airport.country.name}
+                                </div>
+                              </div>
+                            </button>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
 
-                  {/* Passengers and Remove button - Fixed width */}
-                  <div className="flex gap-2 items-center lg:w-auto">
-                    <div className="flex items-center px-3 pt-1 pb-0.5 bg-white border border-gray-300  min-w-[120px] justify-between">
+                  {/* Date input */}
+                  <div className="w-full lg:flex-1 lg:min-w-0">
+                    <Calendar20
+                      placeholder="Departure Date & Time"
+                      value={
+                        flight.date
+                          ? {
+                              date: flight.date,
+                              time: flight.time || undefined,
+                            }
+                          : undefined
+                      }
+                      onChange={(value) =>
+                        handleDateChange(flight.id, "date", value)
+                      }
+                    />
+                  </div>
+
+                  {tripType === "round-trip" && (
+                    <div className="w-full lg:flex-1 lg:min-w-0">
+                      <Calendar20
+                        placeholder="Return Date & Time"
+                        value={
+                          flight.returnDate
+                            ? {
+                                date: flight.returnDate,
+                                time: flight.returnTime || undefined,
+                              }
+                            : undefined
+                        }
+                        onChange={(value) =>
+                          handleDateChange(flight.id, "returnDate", value)
+                        }
+                      />
+                    </div>
+                  )}
+
+                  {/* Passengers */}
+                  <div className="flex items-center w-full lg:flex-1">
+                    <div className="flex w-full items-center px-3 pt-1 pb-1.5 bg-white border border-gray-300 justify-between">
                       <Users className="w-4 h-4 text-gray-500 shrink-0" />
                       <div className="flex gap-2 items-center ml-2">
                         <button

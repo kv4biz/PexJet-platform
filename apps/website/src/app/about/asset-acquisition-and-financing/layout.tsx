@@ -4,6 +4,27 @@ import { seoData } from "@/data";
 export const metadata: Metadata = {
   title: seoData.pages.aboutAsset.title,
   description: seoData.pages.aboutAsset.description,
+  openGraph: {
+    title: seoData.pages.aboutAsset.title,
+    description: seoData.pages.aboutAsset.description,
+    url: `${seoData.siteUrl}/about/asset-acquisition-and-financing`,
+    siteName: seoData.siteName,
+    images: [
+      {
+        url: seoData.openGraph.image,
+        width: seoData.openGraph.imageWidth,
+        height: seoData.openGraph.imageHeight,
+        alt: "PexJet Asset Acquisition",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: seoData.pages.aboutAsset.title,
+    description: seoData.pages.aboutAsset.description,
+    images: [seoData.openGraph.image],
+  },
 };
 
 export default function AboutAssetLayout({

@@ -37,7 +37,7 @@ export function MultiStepForm({
     <div className="w-full max-w-4xl mx-auto">
       {/* Progress Steps */}
       <div className="flex justify-center mb-8">
-        <div className="flex items-center space-x-8">
+        <div className="flex items-center space-x-4 sm:space-x-8">
           {steps.map((step, index) => (
             <div key={step.number} className="flex items-center">
               <div className="flex flex-col items-center">
@@ -51,7 +51,7 @@ export function MultiStepForm({
                   {step.completed ? <Check className="w-6 h-6" /> : step.number}
                 </div>
                 <span
-                  className={`mt-2 text-sm font-medium ${
+                  className={`mt-2 text-xs sm:text-sm font-medium text-center ${
                     currentStep >= step.number
                       ? "text-[#D4AF37]"
                       : "text-gray-400"
@@ -62,7 +62,7 @@ export function MultiStepForm({
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className={`w-16 h-1 ${
+                  className={`w-8 sm:w-16 h-1 ${
                     currentStep > step.number ? "bg-[#D4AF37]" : "bg-gray-300"
                   }`}
                 />

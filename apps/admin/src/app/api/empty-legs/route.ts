@@ -13,15 +13,33 @@ function generateSlug(departure: string, arrival: string, date: Date): string {
   return `${baseSlug}-${uniqueId}`;
 }
 
-// Helper to calculate estimated arrival and duration
+// Helper to calculate estimated arrival and duration using average cruise speed
 function calculateFlightDetails(
   departureDateTime: Date,
   distanceNm: number,
   cruiseSpeedKnots: number,
 ): { estimatedArrival: Date; estimatedDurationMin: number } {
-  // Simple calculation: time = distance / speed
-  const flightTimeHours = distanceNm / cruiseSpeedKnots;
-  const estimatedDurationMin = Math.round(flightTimeHours * 60);
+  // Use 90% of cruise speed as average (accounts for climb/descent phases)
+  const averageCruiseSpeed = cruiseSpeedKnots * 0.9;
+
+  // Calculate cruise time
+  const cruiseTimeHours = distanceNm / averageCruiseSpeed;
+  const cruiseTimeMin = cruiseTimeHours * 60;
+
+  // Add fixed overhead for taxi, takeoff, climb, descent, and landing
+  // Taxi out: ~10 min, Climb: ~10-15 min, Descent: ~10-15 min, Taxi in: ~5 min
+  const taxiAndOverheadMin = 30;
+
+  // For short flights (<300nm), reduce overhead slightly
+  // For long flights (>1500nm), add a bit more for cruise altitude changes
+  let adjustedOverhead = taxiAndOverheadMin;
+  if (distanceNm < 300) {
+    adjustedOverhead = 25; // Shorter climb/descent for short hops
+  } else if (distanceNm > 1500) {
+    adjustedOverhead = 40; // Longer for transcontinental
+  }
+
+  const estimatedDurationMin = Math.round(cruiseTimeMin + adjustedOverhead);
   const estimatedArrival = new Date(
     departureDateTime.getTime() + estimatedDurationMin * 60 * 1000,
   );
@@ -203,8 +221,8 @@ export async function POST(request: NextRequest) {
       arrivalAirportId,
       departureDateTime,
       totalSeats,
-      originalPriceNgn,
-      discountPriceNgn,
+      originalPrice,
+      discountPrice,
     } = body;
 
     // Validation
@@ -214,8 +232,8 @@ export async function POST(request: NextRequest) {
       !arrivalAirportId ||
       !departureDateTime ||
       !totalSeats ||
-      !originalPriceNgn ||
-      !discountPriceNgn
+      !originalPrice ||
+      !discountPrice
     ) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -296,7 +314,10 @@ export async function POST(request: NextRequest) {
       arrivalAirport.longitude!,
     );
 
+    // Normalize datetime to only include date, hour, and minute (no seconds/ms)
     const departureDT = new Date(departureDateTime);
+    departureDT.setSeconds(0, 0); // Set seconds and milliseconds to 0
+
     const { estimatedArrival, estimatedDurationMin } = calculateFlightDetails(
       departureDT,
       distanceNm,
@@ -317,12 +338,10 @@ export async function POST(request: NextRequest) {
         departureAirportId,
         arrivalAirportId,
         departureDateTime: departureDT,
-        estimatedArrival,
-        estimatedDurationMin,
         totalSeats: parseInt(totalSeats),
         availableSeats: parseInt(totalSeats),
-        originalPriceNgn: parseFloat(originalPriceNgn),
-        discountPriceNgn: parseFloat(discountPriceNgn),
+        originalPrice: parseFloat(originalPrice),
+        discountPrice: parseFloat(discountPrice),
         status: "PUBLISHED",
         createdByAdminId: payload.sub,
       },
@@ -352,7 +371,7 @@ export async function POST(request: NextRequest) {
           slug,
           departureDateTime: departureDT.toISOString(),
           totalSeats,
-          discountPriceNgn,
+          discountPrice,
         },
       },
     });

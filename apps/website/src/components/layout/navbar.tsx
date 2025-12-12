@@ -48,61 +48,63 @@ export default function Navbar() {
             />
           </Link>
 
-          {/* ----------------------- DESKTOP NAV ----------------------- */}
-          <div className="hidden lg:flex items-center space-x-4 xl:space-x-8">
-            {navbarData.navItems.map((item) => (
-              <div key={item.label} className="relative group">
-                {item.dropdown ? (
-                  <>
-                    <button
-                      className={`flex items-center gap-1 transition-colors uppercase text-sm tracking-wide ${
+          {/* ----------------------- DESKTOP NAV + MOBILE TOGGLE ----------------------- */}
+          <div className="flex items-center space-x-4 xl:space-x-8">
+            {/* Desktop nav items */}
+            <div className="hidden lg:flex items-center space-x-4 xl:space-x-8">
+              {navbarData.navItems.map((item) => (
+                <div key={item.label} className="relative group">
+                  {item.dropdown ? (
+                    <>
+                      <button
+                        className={`flex items-center gap-1 transition-colors uppercase text-sm tracking-wide ${
+                          isScrolled
+                            ? "text-foreground hover:text-primary"
+                            : "text-white hover:text-primary"
+                        }`}
+                      >
+                        {item.label}
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+
+                      <div className="absolute top-full left-0 mt-2 w-56 bg-white shadow-lg border-t-2 border-primary py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                        {item.dropdown.map((sub) => (
+                          <Link
+                            key={sub.label}
+                            href={sub.href}
+                            className="block px-4 py-2 text-foreground hover:bg-primary/10 hover:text-primary uppercase text-sm"
+                          >
+                            {sub.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <Link
+                      href={item.href!}
+                      className={`uppercase text-sm tracking-wide transition-colors ${
                         isScrolled
                           ? "text-foreground hover:text-primary"
                           : "text-white hover:text-primary"
                       }`}
                     >
                       {item.label}
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
+                    </Link>
+                  )}
+                </div>
+              ))}
 
-                    <div className="absolute top-full left-0 mt-2 w-56 bg-white shadow-lg border-t-2 border-primary py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                      {item.dropdown.map((sub) => (
-                        <Link
-                          key={sub.label}
-                          href={sub.href}
-                          className="block px-4 py-2 text-foreground hover:bg-primary/10 hover:text-primary uppercase text-sm"
-                        >
-                          {sub.label}
-                        </Link>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <Link
-                    href={item.href!}
-                    className={`uppercase text-sm tracking-wide transition-colors ${
-                      isScrolled
-                        ? "text-foreground hover:text-primary"
-                        : "text-white hover:text-primary"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                )}
-              </div>
-            ))}
+              {/* CTA */}
+              <Link
+                href={navbarData.ctaButton.href}
+                className="px-6 py-2 bg-primary text-primary-foreground hover:bg-primary/90 uppercase tracking-wide transition-all"
+              >
+                {navbarData.ctaButton.text}
+              </Link>
+            </div>
 
-            {/* CTA */}
-            <Link
-              href={navbarData.ctaButton.href}
-              className="px-6 py-2 bg-primary text-primary-foreground hover:bg-primary/90 uppercase tracking-wide transition-all"
-            >
-              {navbarData.ctaButton.text}
-            </Link>
-          </div>
-          <div className="flex gap-2">
             {/* ----------------------- MOBILE NAV ----------------------- */}
-            <div className="flex items-center lg:hidden">
+            <div className="lg:hidden">
               {/* Mobile Menu Button */}
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>

@@ -279,7 +279,7 @@ export default function NewsletterCTA() {
   };
 
   return (
-    <section className="py-16 bg-[#0C0C0C]">
+    <section className="py-10 md:py-16 bg-[#0C0C0C]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -287,20 +287,20 @@ export default function NewsletterCTA() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Bell className="h-8 w-8 text-[#D4AF37]" />
+          <div className="text-center mb-6 md:mb-8">
+            <div className="flex items-center justify-center gap-3 mb-3 md:mb-4">
+              <Bell className="h-6 w-6 md:h-8 md:w-8 text-[#D4AF37]" />
             </div>
-            <span className="text-3xl md:text-4xl text-white mb-4 block font-light">
+            <span className="text-2xl sm:text-3xl md:text-4xl text-white mb-3 md:mb-4 block font-light">
               Get Empty Leg Alerts
             </span>
-            <span className="text-gray-400 text-lg block">
+            <span className="text-gray-400 text-base md:text-lg block px-2">
               Be the first to know about exclusive empty leg deals
             </span>
           </div>
 
           <Card className="border-0 bg-white/5 backdrop-blur">
-            <CardContent className="p-8 space-y-6">
+            <CardContent className="p-4 sm:p-6 md:p-8 space-y-4 md:space-y-6">
               {/* Subscription Type */}
               <div>
                 <Label className="text-xs text-gray-400 mb-2 block">

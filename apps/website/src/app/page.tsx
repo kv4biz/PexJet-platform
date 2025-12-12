@@ -17,9 +17,9 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#F7F7F7]">
+    <div className="min-h-screen bg-[#F7F7F7] overflow-x-hidden">
       <Navbar />
-      <main>
+      <main className="relative">
         <HeroSection />
         <SearchComponents />
         <EmptyLegDeals />

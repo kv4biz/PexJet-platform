@@ -16,10 +16,19 @@ import { Button, Card, Input, Calendar20 } from "@pexjet/ui";
 interface Airport {
   id: string;
   name: string;
-  city: string;
-  country: string;
-  iata_code: string;
-  icao_code: string;
+  municipality: string | null;
+  iataCode: string | null;
+  icaoCode: string | null;
+  country: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  region: {
+    id: string;
+    code: string;
+    name: string;
+  };
 }
 
 interface CompactSearchFormProps {
@@ -204,11 +213,10 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
         </p>
 
         <form onSubmit={handleSubmit}>
-          <div className="space-y-1" ref={containerRef}>
+          <div className="space-y-0" ref={containerRef}>
             <div className="flex flex-col lg:flex-row lg:items-start">
-              {/* Location inputs */}
-              <div className="flex flex-1 min-w-0 w-full">
-                {/* FROM */}
+              {/* FROM */}
+              <div className="flex w-full lg:flex-1">
                 <div className="relative flex-1 min-w-0">
                   <Input
                     placeholder="From"
@@ -232,7 +240,7 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
                               type="button"
                               onMouseDown={() => {
                                 setFrom(
-                                  `${airport.iata_code || airport.icao_code} - ${airport.city}`,
+                                  `${airport.iataCode || airport.icaoCode} - ${airport.municipality || airport.name}`,
                                 );
                                 setOpenFrom(false);
                               }}
@@ -240,10 +248,12 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
                             >
                               <div className="text-sm text-black">
                                 <div className="font-medium text-black">
-                                  {airport.iata_code || airport.icao_code}
+                                  {airport.iataCode || airport.icaoCode}
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                  {airport.city}, {airport.country}
+                                  {airport.municipality &&
+                                    `${airport.municipality}, `}
+                                  {airport.country.name}
                                 </div>
                               </div>
                             </button>
@@ -266,77 +276,77 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
                 >
                   <ArrowLeftRight className="w-5 h-5" />
                 </Button>
+              </div>
 
-                {/* TO */}
-                <div className="relative flex-1 min-w-0">
-                  <Input
-                    placeholder="To"
-                    value={to}
-                    onChange={(e) => setTo(e.target.value)}
-                    onFocus={() => setOpenTo(true)}
-                    className="bg-white text-black border-gray-300 w-full pl-10"
-                  />
-                  <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                  {openTo && (to.length >= 2 || toAirports.length > 0) && (
-                    <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
-                      {loadingTo ? (
-                        <div className="flex items-center justify-center p-4">
-                          <Loader2 className="w-5 h-5 animate-spin text-[#D4AF37]" />
-                        </div>
-                      ) : toAirports.length > 0 ? (
-                        toAirports.map((airport) => (
-                          <button
-                            key={airport.id}
-                            type="button"
-                            onMouseDown={() => {
-                              setTo(
-                                `${airport.iata_code || airport.icao_code} - ${airport.city}`,
-                              );
-                              setOpenTo(false);
-                            }}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center gap-3"
-                          >
-                            <div className="text-sm text-black">
-                              <div className="font-medium text-black">
-                                {airport.iata_code || airport.icao_code}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {airport.city}, {airport.country}
-                              </div>
+              {/* TO */}
+              <div className="relative w-full lg:flex-1 lg:min-w-0">
+                <Input
+                  placeholder="To"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  onFocus={() => setOpenTo(true)}
+                  className="bg-white text-black border-gray-300 w-full pl-10"
+                />
+                <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                {openTo && (to.length >= 2 || toAirports.length > 0) && (
+                  <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
+                    {loadingTo ? (
+                      <div className="flex items-center justify-center p-4">
+                        <Loader2 className="w-5 h-5 animate-spin text-[#D4AF37]" />
+                      </div>
+                    ) : toAirports.length > 0 ? (
+                      toAirports.map((airport) => (
+                        <button
+                          key={airport.id}
+                          type="button"
+                          onMouseDown={() => {
+                            setTo(
+                              `${airport.iataCode || airport.icaoCode} - ${airport.municipality || airport.name}`,
+                            );
+                            setOpenTo(false);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center gap-3"
+                        >
+                          <div className="text-sm text-black">
+                            <div className="font-medium text-black">
+                              {airport.iataCode || airport.icaoCode}
                             </div>
-                          </button>
-                        ))
-                      ) : to.length >= 2 ? (
-                        <div className="p-4 text-sm text-gray-500 text-center">
-                          No airports found
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
+                            <div className="text-xs text-gray-500">
+                              {airport.municipality &&
+                                `${airport.municipality}, `}
+                              {airport.country.name}
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : to.length >= 2 ? (
+                      <div className="p-4 text-sm text-gray-500 text-center">
+                        No airports found
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
               {/* Date input */}
-              <div className="flex min-w-0 flex-1">
-                <div className="w-full">
-                  <Calendar20
-                    placeholder="Departure Date & Time"
-                    value={
-                      date
-                        ? {
-                            date: date,
-                            time: time || undefined,
-                          }
-                        : undefined
-                    }
-                    onChange={handleDateChange}
-                  />
-                </div>
+              <div className="w-full lg:flex-1 lg:min-w-0">
+                <Calendar20
+                  placeholder="Departure Date & Time"
+                  value={
+                    date
+                      ? {
+                          date: date,
+                          time: time || undefined,
+                        }
+                      : undefined
+                  }
+                  onChange={handleDateChange}
+                />
               </div>
 
               {/* Passengers */}
-              <div className="flex gap-2 items-center lg:w-auto w-full">
-                <div className="flex items-center px-3 pt-1 pb-0.5 bg-white border border-gray-300 min-w-[120px] justify-between">
+              <div className="flex items-center w-full lg:flex-1">
+                <div className="flex w-full items-center px-3 pt-1 pb-1.5 bg-white border border-gray-300 justify-between">
                   <Users className="w-4 h-4 text-gray-500 shrink-0" />
                   <div className="flex gap-2 items-center ml-2">
                     <button

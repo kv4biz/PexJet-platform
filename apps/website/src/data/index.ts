@@ -77,7 +77,7 @@ export const footerData = {
       line2: "Lagos, Nigeria",
     },
     phone: "+234 818 211 3089, +1 (403) 465-4748",
-    email: "inquires@pexjet.com",
+    email: "inquiries@pexjet.com",
   },
 
   links: {

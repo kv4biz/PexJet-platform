@@ -32,9 +32,7 @@ enum AircraftCategory {
   LIGHT_JET
   MIDSIZE_JET
   SUPER_MIDSIZE_JET
-  HEAVY_JET
   ULTRA_LONG_RANGE
-  TURBOPROP
 }
 
 enum FlightType {
@@ -62,7 +60,11 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
-  REFUNDED
+}
+
+enum PaymentMethod {
+  PAYSTACK
+  BANK_TRANSFER
 }
 
 enum PaymentType {
@@ -140,11 +142,6 @@ enum ActivityAction {
 enum AirportType {
   large_airport
   medium_airport
-  small_airport
-  heliport
-  seaplane_base
-  balloonport
-  closed
 }
 
 // ============================================================================
@@ -213,10 +210,6 @@ model Airport {
   emptyLegDepartures EmptyLeg[]     @relation("EmptyLegDeparture")
   emptyLegArrivals   EmptyLeg[]     @relation("EmptyLegArrival")
   
-  // Subscriptions
-  departureSubscriptions Subscription[] @relation("DepartureCity")
-  arrivalSubscriptions   Subscription[] @relation("ArrivalCity")
-  
   createdAt        DateTime    @default(now())
   
   @@index([countryCode])
@@ -245,6 +238,7 @@ model Aircraft {
   rangeNm             Int                 // Range in nautical miles
   cruiseSpeedKnots    Int                 // Cruise speed in knots
   baggageCapacityCuFt Float?              // Baggage capacity in cubic feet
+  fuelCapacityGal     Float?              // Fuel capacity in gallons
   
   // Dimensions - Interior
   cabinLengthFt       Float?
@@ -374,7 +368,6 @@ model Client {
   // Relations
   charterQuotes   CharterQuote[]
   emptyLegBookings EmptyLegBooking[]
-  subscriptions   Subscription[]
   payments        Payment[]
   
   createdAt       DateTime    @default(now())
@@ -382,35 +375,6 @@ model Client {
   
   @@index([phone])
   @@index([email])
-}
-
-// ============================================================================
-// SUBSCRIPTIONS
-// ============================================================================
-
-model Subscription {
-  id              String          @id @default(cuid())
-  clientId        String
-  type            SubscriptionType
-  
-  // For CITY type - subscribe to departures from a city
-  departureCityId String?
-  
-  // For ROUTE type - subscribe to specific route
-  arrivalCityId   String?
-  
-  // Relations
-  client          Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  departureCity   Airport?        @relation("DepartureCity", fields: [departureCityId], references: [id])
-  arrivalCity     Airport?        @relation("ArrivalCity", fields: [arrivalCityId], references: [id])
-  
-  isActive        Boolean         @default(true)
-  
-  createdAt       DateTime        @default(now())
-  
-  @@index([clientId])
-  @@index([type])
-  @@index([departureCityId])
 }
 
 // ============================================================================
@@ -437,22 +401,22 @@ model CharterQuote {
   rejectionReason   RejectionReason?
   rejectionNote     String?
   
-  // Pricing (set by admin on approval) - NGN only
-  // USD calculated on-the-fly for website display
-  totalPriceNgn     Float?
+  // Pricing (set by admin on approval) - USD
+  totalPriceUsd     Float?
   
   // Approval
   approvedById      String?
   approvedAt        DateTime?
   
   // Payment
+  paymentMethod     PaymentMethod?  // PAYSTACK or BANK_TRANSFER
   paymentDeadline   DateTime?
-  paymentLink       String?
+  paymentLink       String?         // Paystack link (if paymentMethod is PAYSTACK)
   
   // Documents
-  quoteDocumentUrl  String?       // Quote confirmation PDF
-  flightDocumentUrl String?       // Flight confirmation PDF
-  receiptUrl        String?       // Payment receipt PDF
+  quoteDocumentUrl  String?         // Quote + Invoice PDF
+  flightDocumentUrl String?         // Flight confirmation PDF
+  receiptUrl        String?         // Payment receipt PDF
   
   // Relations
   client            Client        @relation(fields: [clientId], references: [id])
@@ -487,17 +451,24 @@ model CharterLeg {
   
   departureAirportId  String
   arrivalAirportId    String
-  departureDateTime   DateTime
-  
-  // Calculated/Set by admin
-  estimatedArrival    DateTime?
-  estimatedDurationMin Int?         // Duration in minutes
-  
-  // Pricing per leg (set by admin) - NGN only
-  priceNgn            Float?
+  departureDateTime   DateTime      // Can be adjusted by admin ±7 days
   
   // Assigned aircraft (set by admin)
   aircraftId          String?
+  
+  // Pricing per leg (set by admin) - USD
+  priceUsd            Float?
+  
+  // Flight Confirmation Details (filled after payment)
+  ticketNumber        String?
+  boardingInfo        String?       // Boarding instructions
+  terminalInfo        String?
+  gateInfo            String?
+  checkInTime         DateTime?
+  pilotName           String?
+  pilotContact        String?
+  additionalNotes     String?
+  confirmationSentAt  DateTime?     // When confirmation was sent to client
   
   // Relations
   charterQuote        CharterQuote  @relation(fields: [charterQuoteId], references: [id], onDelete: Cascade)
@@ -522,8 +493,6 @@ model EmptyLeg {
   departureAirportId  String
   arrivalAirportId    String
   departureDateTime   DateTime
-  estimatedArrival    DateTime
-  estimatedDurationMin Int
   
   // Aircraft
   aircraftId          String
@@ -532,10 +501,9 @@ model EmptyLeg {
   totalSeats          Int
   availableSeats      Int
   
-  // Pricing (per seat) - Admin/Operators enter NGN only
-  // USD is calculated on-the-fly for website display using settings.usdToNgnRate
-  originalPriceNgn    Float
-  discountPriceNgn    Float
+  // Pricing (per seat) - USD
+  originalPriceUsd    Float
+  discountPriceUsd    Float
   
   // Status
   status              EmptyLegStatus  @default(PUBLISHED)
@@ -577,8 +545,8 @@ model EmptyLegBooking {
   // Booking Details
   seatsRequested    Int
   
-  // Pricing (NGN only - USD calculated on-the-fly for website)
-  totalPriceNgn     Float
+  // Pricing - USD
+  totalPriceUsd     Float
   
   // Status
   status            QuoteStatus     @default(PENDING)
@@ -589,14 +557,26 @@ model EmptyLegBooking {
   approvedById      String?
   approvedAt        DateTime?
   
-  // Payment
+  // Payment (Admin empty legs: PAYSTACK or BANK_TRANSFER, Operator: PAYSTACK only)
+  paymentMethod     PaymentMethod?
   paymentDeadline   DateTime?
-  paymentLink       String?
+  paymentLink       String?         // Paystack link (if paymentMethod is PAYSTACK)
   
   // Documents
-  quoteDocumentUrl  String?
-  flightDocumentUrl String?
-  receiptUrl        String?
+  quoteDocumentUrl  String?         // Quote + Invoice PDF
+  flightDocumentUrl String?         // Flight confirmation PDF
+  receiptUrl        String?         // Payment receipt PDF
+  
+  // Flight Confirmation Details (filled after payment)
+  ticketNumber        String?
+  boardingInfo        String?       // Boarding instructions
+  terminalInfo        String?
+  gateInfo            String?
+  checkInTime         DateTime?
+  pilotName           String?
+  pilotContact        String?
+  additionalNotes     String?
+  confirmationSentAt  DateTime?     // When confirmation was sent to client
   
   // Relations
   emptyLeg          EmptyLeg        @relation(fields: [emptyLegId], references: [id])
@@ -627,16 +607,24 @@ model Payment {
   charterQuoteId      String?       @unique
   emptyLegBookingId   String?       @unique
   
-  // Amounts (NGN only - USD calculated on-the-fly for website)
-  amountNgn           Float
+  // Payment Method
+  method              PaymentMethod
   
-  // Paystack
-  paystackReference   String        @unique
+  // Amount - USD
+  amountUsd           Float
+  
+  // Paystack (only if method is PAYSTACK)
+  paystackReference   String?       @unique
   paystackAccessCode  String?
   
-  // Split Payment (for operator empty legs)
-  operatorAmount      Float?
-  adminAmount         Float?
+  // Bank Transfer (only if method is BANK_TRANSFER)
+  bankTransferConfirmed Boolean     @default(false)
+  confirmedById       String?       // Admin who confirmed the bank transfer
+  confirmedAt         DateTime?
+  
+  // Split Payment (for operator empty legs via Paystack)
+  operatorAmountUsd   Float?
+  adminAmountUsd      Float?
   
   // Status
   status              PaymentStatus @default(PENDING)
@@ -746,11 +734,8 @@ model EmptyLegSubscription {
 model Settings {
   id                    String    @id @default("default")
   
-  // Currency
-  usdToNgnRate          Float     @default(1650)
-  
   // Payment
-  paymentWindowHours    Int       @default(3)
+  paymentWindowHours    Int       @default(3)   // Hours before payment link expires
   
   // Empty Leg
   dealDeadlineMinutes   Int       @default(30)  // Minutes before flight
@@ -759,14 +744,31 @@ model Settings {
   // Default Operator Commission (can be overridden per operator)
   defaultOperatorCommission Float @default(10)
   
+  // Company Bank Details (for bank transfer payments)
+  bankName              String?
+  bankAccountNumber     String?
+  bankAccountName       String?
+  bankCode              String?
+  
+  // Company Information
+  companyName           String    @default("PexJet")
+  companyEmail          String?
+  companyAddress        String?
+  companyPhone          String?
+  proofOfPaymentWhatsApp String?  // WhatsApp number for clients to send proof of payment
+  
+  // Social Links
+  linkedinUrl           String?
+  facebookUrl           String?
+  twitterUrl            String?
+  instagramUrl          String?
+  
   // Policies (rich text)
   cancellationPolicy    String?
-  refundPolicy          String?
   termsAndConditions    String?
   privacyPolicy         String?
   
   // Contact
-  adminWhatsAppGroup    String?   // For notifications (not used - individual notifications)
   supportEmail          String?
   supportPhone          String?
   

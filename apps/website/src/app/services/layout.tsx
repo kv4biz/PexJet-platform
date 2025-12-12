@@ -4,6 +4,27 @@ import { seoData } from "@/data";
 export const metadata: Metadata = {
   title: seoData.pages.services.title,
   description: seoData.pages.services.description,
+  openGraph: {
+    title: seoData.pages.services.title,
+    description: seoData.pages.services.description,
+    url: `${seoData.siteUrl}/services`,
+    siteName: seoData.siteName,
+    images: [
+      {
+        url: seoData.openGraph.image,
+        width: seoData.openGraph.imageWidth,
+        height: seoData.openGraph.imageHeight,
+        alt: "PexJet Services",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: seoData.pages.services.title,
+    description: seoData.pages.services.description,
+    images: [seoData.openGraph.image],
+  },
 };
 
 export default function ServicesLayout({

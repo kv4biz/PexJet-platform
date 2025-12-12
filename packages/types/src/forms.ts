@@ -112,10 +112,8 @@ export interface CreateEmptyLegForm {
   departureDateTime: string;
   aircraftId: string;
   totalSeats: number;
-  originalPriceNgn: number;
-  discountPriceNgn: number;
-  originalPriceUsd: number;
-  discountPriceUsd: number;
+  originalPrice: number;
+  discountPrice: number;
 }
 
 export interface UpdateEmptyLegForm extends Partial<CreateEmptyLegForm> {

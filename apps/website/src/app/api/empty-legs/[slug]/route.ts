@@ -87,8 +87,8 @@ export async function GET(
     }
 
     const discountPercent = Math.round(
-      ((emptyLeg.originalPriceNgn - emptyLeg.discountPriceNgn) /
-        emptyLeg.originalPriceNgn) *
+      ((emptyLeg.originalPrice - emptyLeg.discountPrice) /
+        emptyLeg.originalPrice) *
         100,
     );
 
@@ -137,17 +137,14 @@ export async function GET(
               ...emptyLeg.aircraft.interiorImages,
             ],
       },
-      departureDateTime: emptyLeg.departureDateTime.toISOString(),
-      estimatedArrival: emptyLeg.estimatedArrival?.toISOString() || null,
-      estimatedDurationMin: emptyLeg.estimatedDurationMin,
+      departureDate: emptyLeg.departureDateTime.toISOString(),
       availableSeats: emptyLeg.availableSeats,
       totalSeats: emptyLeg.totalSeats,
-      priceNgn: emptyLeg.discountPriceNgn,
-      originalPriceNgn: emptyLeg.originalPriceNgn,
-      priceUsd:
-        Math.round((emptyLeg.discountPriceNgn / exchangeRate) * 100) / 100,
+      priceNgn: emptyLeg.discountPrice,
+      originalPriceNgn: emptyLeg.originalPrice,
+      priceUsd: Math.round((emptyLeg.discountPrice / exchangeRate) * 100) / 100,
       originalPriceUsd:
-        Math.round((emptyLeg.originalPriceNgn / exchangeRate) * 100) / 100,
+        Math.round((emptyLeg.originalPrice / exchangeRate) * 100) / 100,
       discountPercent,
       ownerType: emptyLeg.createdByOperatorId ? "operator" : "admin",
       createdByAdminId: emptyLeg.createdByAdminId,

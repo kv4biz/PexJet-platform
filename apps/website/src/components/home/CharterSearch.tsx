@@ -159,14 +159,14 @@ export default function CharterSearch() {
   };
 
   return (
-    <Card className="border border-[#D4AF37]/20 p-2 md:p-6 lg:shadow-xl lg:bg-black/50 h-full">
+    <Card className="border border-[#D4AF37]/20 p-2 md:p-2 lg:p-4 z-50 lg:shadow-xl lg:bg-black/50 h-full">
       <div className="p-2 md:p-6 bg-white h-full">
         <p className="text-xl font-bold mb-2 text-black uppercase tracking-wide font-serif">
           Charter Flights
         </p>
 
         {/* Trip type radio */}
-        <div className="flex gap-4 mb-2">
+        <div className="flex flex-wrap gap-3 sm:gap-4 mb-3">
           {[
             { label: "One Way", value: "oneWay" },
             { label: "Round Trip", value: "roundTrip" },
@@ -174,7 +174,7 @@ export default function CharterSearch() {
           ].map((t) => (
             <label
               key={t.value}
-              className="flex items-center gap-2 cursor-pointer text-black"
+              className="flex items-center gap-1.5 sm:gap-2 cursor-pointer text-black"
             >
               <input
                 type="radio"
@@ -184,7 +184,7 @@ export default function CharterSearch() {
                 onChange={() => setTripType(t.value as TripType)}
                 className="accent-[#D4AF37] w-4 h-4"
               />
-              <span className="text-sm">{t.label}</span>
+              <span className="text-xs sm:text-sm">{t.label}</span>
             </label>
           ))}
         </div>
@@ -194,75 +194,78 @@ export default function CharterSearch() {
           {(tripType === "multiLeg" ? flights : [flights[0]]).map((flight) => (
             <div key={flight.id} className="space-y-2">
               {/* Line 1: From + Swap + To */}
-              <div className="flex">
-                {/* FROM */}
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="From"
-                    value={flight.from}
-                    onChange={(e) => {
-                      updateFlight(flight.id, { from: e.target.value });
-                      handleSearchChange(e.target.value);
-                    }}
-                    onFocus={() => {
-                      setOpenFrom(flight.id);
-                      setOpenTo(null);
-                      handleSearchChange(flight.from);
-                    }}
-                    className="bg-white text-black border-gray-300 pl-9"
-                  />
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  {openFrom === flight.id && (
-                    <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
-                      {loading ? (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                        </div>
-                      ) : airports.length === 0 ? (
-                        <div className="px-4 py-3 text-sm text-gray-500">
-                          No airports found
-                        </div>
-                      ) : (
-                        airports.map((airport) => (
-                          <button
-                            key={airport.id}
-                            onMouseDown={() => {
-                              updateFlight(flight.id, {
-                                from: getAirportDisplay(airport),
-                              });
-                              setOpenFrom(null);
-                            }}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
-                          >
-                            <div className="text-sm text-black">
-                              <div className="font-medium text-black">
-                                {airport.iataCode || airport.icaoCode} -{" "}
-                                {airport.name}
+              <div className="flex flex-col gap-2">
+                {/* From + Swap on same line */}
+                <div className="flex gap-0">
+                  {/* FROM */}
+                  <div className="relative flex-1">
+                    <Input
+                      placeholder="From"
+                      value={flight.from}
+                      onChange={(e) => {
+                        updateFlight(flight.id, { from: e.target.value });
+                        handleSearchChange(e.target.value);
+                      }}
+                      onFocus={() => {
+                        setOpenFrom(flight.id);
+                        setOpenTo(null);
+                        handleSearchChange(flight.from);
+                      }}
+                      className="bg-white text-black border-gray-300 pl-9"
+                    />
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    {openFrom === flight.id && (
+                      <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
+                        {loading ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                          </div>
+                        ) : airports.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-500">
+                            No airports found
+                          </div>
+                        ) : (
+                          airports.map((airport) => (
+                            <button
+                              key={airport.id}
+                              onMouseDown={() => {
+                                updateFlight(flight.id, {
+                                  from: getAirportDisplay(airport),
+                                });
+                                setOpenFrom(null);
+                              }}
+                              className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
+                            >
+                              <div className="text-sm text-black">
+                                <div className="font-medium text-black">
+                                  {airport.iataCode || airport.icaoCode} -{" "}
+                                  {airport.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {airport.municipality &&
+                                    `${airport.municipality}, `}
+                                  {airport.region.name}, {airport.country.name}
+                                </div>
                               </div>
-                              <div className="text-xs text-gray-500">
-                                {airport.municipality &&
-                                  `${airport.municipality}, `}
-                                {airport.region.name}, {airport.country.name}
-                              </div>
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Swap Button */}
+                  <Button
+                    variant="ghost"
+                    onClick={() => swapLocations(flight.id)}
+                    className="p-2 border border-gray-200 bg-white text-black hover:bg-gray-50 shrink-0"
+                  >
+                    <ArrowLeftRight className="w-5 h-5" />
+                  </Button>
                 </div>
 
-                {/* Swap Button */}
-                <Button
-                  variant="ghost"
-                  onClick={() => swapLocations(flight.id)}
-                  className="p-2 border border-gray-200 bg-white text-black hover:bg-gray-50"
-                >
-                  <ArrowLeftRight className="w-5 h-5" />
-                </Button>
-
-                {/* TO */}
-                <div className="relative flex-1">
+                {/* TO - on its own line */}
+                <div className="relative w-full">
                   <Input
                     placeholder="To"
                     value={flight.to}
