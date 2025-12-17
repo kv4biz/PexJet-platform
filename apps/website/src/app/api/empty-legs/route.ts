@@ -50,14 +50,21 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    // Filter by date if provided
+    // Filter by date if provided - search ±3 days from selected date
     if (date) {
       const searchDate = new Date(date);
-      const nextDay = new Date(searchDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      const startDate = new Date(searchDate);
+      startDate.setDate(startDate.getDate() - 3);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(searchDate);
+      endDate.setDate(endDate.getDate() + 4); // +4 to include the 3rd day fully
+      endDate.setHours(0, 0, 0, 0);
+
+      // Ensure startDate is not in the past
+      const now = new Date();
       where.departureDateTime = {
-        gte: searchDate,
-        lt: nextDay,
+        gte: startDate > now ? startDate : now,
+        lt: endDate,
       };
     }
 
@@ -182,49 +189,87 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Apply radius filter for departure
-    if (fromQuery && fromRadius > 0) {
-      // Find the reference airport
-      const fromCode = fromQuery.split(" - ")[0]?.trim();
-      const refAirport = await prisma.airport.findFirst({
-        where: {
-          OR: [{ iataCode: fromCode }, { icaoCode: fromCode }],
-        },
-        select: { latitude: true, longitude: true },
-      });
+    // Apply departure airport filter
+    if (fromQuery) {
+      const fromCode = fromQuery.split(" - ")[0]?.trim().toUpperCase();
+      const fromCity = fromQuery.split(" - ")[1]?.trim().toLowerCase();
 
-      if (refAirport) {
+      if (fromRadius > 0) {
+        // Find the reference airport for radius search
+        const refAirport = await prisma.airport.findFirst({
+          where: {
+            OR: [{ iataCode: fromCode }, { icaoCode: fromCode }],
+          },
+          select: { latitude: true, longitude: true },
+        });
+
+        if (refAirport) {
+          transformedLegs = transformedLegs.filter((leg: any) => {
+            const distance = calculateDistanceKm(
+              refAirport.latitude,
+              refAirport.longitude,
+              leg.departureAirport.latitude,
+              leg.departureAirport.longitude,
+            );
+            return distance <= fromRadius;
+          });
+        }
+      } else {
+        // Exact or partial match on airport code, city, or country
         transformedLegs = transformedLegs.filter((leg: any) => {
-          const distance = calculateDistanceKm(
-            refAirport.latitude,
-            refAirport.longitude,
-            leg.departureAirport.latitude,
-            leg.departureAirport.longitude,
+          const legCode = leg.departureAirport.code?.toUpperCase() || "";
+          const legCity = leg.departureAirport.city?.toLowerCase() || "";
+          const legCountry = leg.departureAirport.country?.toLowerCase() || "";
+          const legName = leg.departureAirport.name?.toLowerCase() || "";
+
+          return (
+            legCode === fromCode ||
+            legCity.includes(fromCity || fromCode.toLowerCase()) ||
+            legCountry.includes(fromCity || fromCode.toLowerCase()) ||
+            legName.includes(fromCity || fromCode.toLowerCase())
           );
-          return distance <= fromRadius;
         });
       }
     }
 
-    // Apply radius filter for arrival
-    if (toQuery && toRadius > 0) {
-      const toCode = toQuery.split(" - ")[0]?.trim();
-      const refAirport = await prisma.airport.findFirst({
-        where: {
-          OR: [{ iataCode: toCode }, { icaoCode: toCode }],
-        },
-        select: { latitude: true, longitude: true },
-      });
+    // Apply arrival airport filter
+    if (toQuery) {
+      const toCode = toQuery.split(" - ")[0]?.trim().toUpperCase();
+      const toCity = toQuery.split(" - ")[1]?.trim().toLowerCase();
 
-      if (refAirport) {
+      if (toRadius > 0) {
+        const refAirport = await prisma.airport.findFirst({
+          where: {
+            OR: [{ iataCode: toCode }, { icaoCode: toCode }],
+          },
+          select: { latitude: true, longitude: true },
+        });
+
+        if (refAirport) {
+          transformedLegs = transformedLegs.filter((leg: any) => {
+            const distance = calculateDistanceKm(
+              refAirport.latitude,
+              refAirport.longitude,
+              leg.arrivalAirport.latitude,
+              leg.arrivalAirport.longitude,
+            );
+            return distance <= toRadius;
+          });
+        }
+      } else {
+        // Exact or partial match on airport code, city, or country
         transformedLegs = transformedLegs.filter((leg: any) => {
-          const distance = calculateDistanceKm(
-            refAirport.latitude,
-            refAirport.longitude,
-            leg.arrivalAirport.latitude,
-            leg.arrivalAirport.longitude,
+          const legCode = leg.arrivalAirport.code?.toUpperCase() || "";
+          const legCity = leg.arrivalAirport.city?.toLowerCase() || "";
+          const legCountry = leg.arrivalAirport.country?.toLowerCase() || "";
+          const legName = leg.arrivalAirport.name?.toLowerCase() || "";
+
+          return (
+            legCode === toCode ||
+            legCity.includes(toCity || toCode.toLowerCase()) ||
+            legCountry.includes(toCity || toCode.toLowerCase()) ||
+            legName.includes(toCity || toCode.toLowerCase())
           );
-          return distance <= toRadius;
         });
       }
     }
@@ -263,8 +308,8 @@ export async function GET(request: NextRequest) {
         case "date":
         default:
           comparison =
-            new Date(a.departureDateTime).getTime() -
-            new Date(b.departureDateTime).getTime();
+            new Date(a.departureDate).getTime() -
+            new Date(b.departureDate).getTime();
           break;
       }
 

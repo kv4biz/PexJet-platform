@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 
 interface Airport {
   code: string;
+  name?: string;
   city: string;
   country: string;
   latitude?: number;
@@ -117,45 +118,44 @@ export function FlightRouteMap({
           },
         ).addTo(map);
 
-        // Custom gold marker icon
+        // Custom gold marker icon (no border)
         const goldIcon = L.divIcon({
           className: "custom-marker",
           html: `
             <div style="
-              width: 24px;
-              height: 24px;
+              width: 16px;
+              height: 16px;
               background: #D4AF37;
-              border: 3px solid #fff;
               border-radius: 50%;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+              box-shadow: 0 2px 8px rgba(212,175,55,0.5);
             "></div>
           `,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
         });
 
-        // Add departure marker
+        // Add departure marker with tooltip
         const depMarker = L.marker([depLat, depLng], { icon: goldIcon }).addTo(
           map,
         );
-        depMarker.bindPopup(
-          `<div style="text-align: center; font-family: system-ui;">
-            <strong style="color: #D4AF37;">${departureAirport.code}</strong><br/>
-            <span style="font-size: 12px;">${departureAirport.city}</span><br/>
-            <span style="font-size: 11px; color: #666;">Departure</span>
+        depMarker.bindTooltip(
+          `<div style="text-align: center; font-family: system-ui; padding: 4px;">
+            <strong style="color: #D4AF37;">${departureAirport.name || departureAirport.code}</strong><br/>
+            <span style="font-size: 12px;">${departureAirport.city}, ${departureAirport.country}</span>
           </div>`,
+          { permanent: false, direction: "top", offset: [0, -10] },
         );
 
-        // Add arrival marker
+        // Add arrival marker with tooltip
         const arrMarker = L.marker([arrLat, arrLng], { icon: goldIcon }).addTo(
           map,
         );
-        arrMarker.bindPopup(
-          `<div style="text-align: center; font-family: system-ui;">
-            <strong style="color: #D4AF37;">${arrivalAirport.code}</strong><br/>
-            <span style="font-size: 12px;">${arrivalAirport.city}</span><br/>
-            <span style="font-size: 11px; color: #666;">Arrival</span>
+        arrMarker.bindTooltip(
+          `<div style="text-align: center; font-family: system-ui; padding: 4px;">
+            <strong style="color: #D4AF37;">${arrivalAirport.name || arrivalAirport.code}</strong><br/>
+            <span style="font-size: 12px;">${arrivalAirport.city}, ${arrivalAirport.country}</span>
           </div>`,
+          { permanent: false, direction: "top", offset: [0, -10] },
         );
 
         // Create curved flight path (great circle approximation)
@@ -169,27 +169,7 @@ export function FlightRouteMap({
           dashArray: "10, 10",
         }).addTo(map);
 
-        // Add plane icon at midpoint
-        const midIndex = Math.floor(curvePoints.length / 2);
-        const midPoint = curvePoints[midIndex];
-
-        // Calculate rotation angle for plane
-        const angle = calculateBearing(depLat, depLng, arrLat, arrLng);
-
-        const planeIcon = L.divIcon({
-          className: "plane-marker",
-          html: `
-            <div style="
-              transform: rotate(${angle}deg);
-              font-size: 20px;
-              filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-            ">✈️</div>
-          `,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        });
-
-        L.marker(midPoint, { icon: planeIcon }).addTo(map);
+        // Plane icon removed as per user request
 
         // Fit bounds to show both markers with padding
         const bounds = L.latLngBounds([

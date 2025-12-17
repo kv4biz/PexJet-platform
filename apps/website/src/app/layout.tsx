@@ -29,9 +29,9 @@ export const metadata: Metadata = {
   creator: seoData.siteName,
   publisher: seoData.siteName,
   icons: {
-    icon: "/X.png",
-    shortcut: "/X.png",
-    apple: "/X.png",
+    icon: seoData.favicon,
+    shortcut: seoData.favicon,
+    apple: seoData.favicon,
   },
   manifest: "/manifest.json",
   openGraph: {

@@ -75,27 +75,23 @@ export const footerData = {
         "H8GG+Q7X, Dominion Hangar Murtala Mohammed International Airport,",
       line2: "Lagos, Nigeria",
     },
-    phone: "+234 818 211 3089, +1 (403) 465-4748",
-    email: "inquiries@pexjet.com",
+    phone: "+234 818 211 3089, +234 911 110 1123",
+    email: "charter@pexjet.com",
   },
 
   links: {
-    Services: [
-      { label: "Charter Service", href: "/services#charter" },
-      { label: "Empty Leg Flights", href: "/services#empty-leg" },
-      { label: "Aircraft Acquisition", href: "/services#asset-acquisition" },
-    ],
     Company: [
       { label: "About Us", href: "/about/our-company" },
+      { label: "Aircraft Management", href: "/aircraft" },
       {
         label: "Acquisition & Financing",
         href: "/about/asset-acquisition-and-financing",
       },
     ],
     Resources: [
-      { label: "Aircraft Fleet", href: "/aircraft" },
-      { label: "Empty Legs", href: "/empty-legs" },
       { label: "Charter Flights", href: "/charter" },
+      { label: "Book Empty Legs", href: "/empty-legs" },
+      { label: "Our Services", href: "/services" },
       { label: "Contact Us", href: "/contact" },
     ],
   },
@@ -137,10 +133,66 @@ export const homePageData = {
     buttonLink: "/aircraft",
   },
 
+  partnerLogos: {
+    title: "Trusted Partners",
+    logos: [
+      {
+        name: "Partner 1",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+      },
+      {
+        name: "Partner 2",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+      },
+      {
+        name: "Partner 3",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+      },
+      {
+        name: "Partner 4",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+      },
+      {
+        name: "Partner 5",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+      },
+      {
+        name: "Partner 6",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+      },
+      {
+        name: "Partner 7",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+      },
+      {
+        name: "Partner 8",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+      },
+      {
+        name: "Partner 9",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+      },
+      {
+        name: "Partner 10",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+      },
+    ],
+  },
+
   membership: {
     logo: "/white-gold.png",
     image:
-      "https://images.unsplash.com/photo-1522255272218-7ac5249be344?w=1920&q=80",
+      "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765961087/PEXJETPHOTP_cvom2s.jpg",
     badge: "EXCLUSIVE",
     description:
       "Get priority booking, better rates, and a more personal flying experience.",
@@ -617,9 +669,9 @@ export const aboutCompanyPageData = {
     label: "What We Do",
     title: "Safe and Reliable Private Air Travel",
     paragraphs: [
-      "Perspective Executive Jets Limited was established on 11 February 2021 as a private company in Nigeria.",
-      "Our purpose is simple: to operate safe and efficient air services using private jets for the transport of passengers, mail, and cargo within Nigeria and around the world.",
-      "We focus on reliability, comfort, and smooth travel for every client, whether for business or personal needs.",
+      "Perspective Executive Jets Limited started out as Perspective Transport and Logistics Limited, bringing over 20 years of expertise in private jet aviation to the table.",
+      "We're on a mission to be the most reliable and trusted private jet operator in Nigeria and Africa. Safety, reliability, comfort, and smooth travel are at the heart of what we do for every client, whether for business or personal needs.",
+      "We're known for trust, integrity, and excellence that's how we fly.",
     ],
     image:
       "https://images.unsplash.com/photo-1583416750470-965b2707b355?q=80&w=2574",
@@ -629,8 +681,8 @@ export const aboutCompanyPageData = {
     },
   },
   stats: [
-    { value: "2021", label: "Founded" },
     { value: "500+", label: "Aircraft Network" },
+    { value: "20+", label: "Years of Experiences" },
     { value: "10K+", label: "Flights Completed" },
     { value: "50+", label: "Countries" },
   ],
@@ -643,25 +695,25 @@ export const aboutCompanyPageData = {
         icon: "Shield",
         title: "Safety",
         description:
-          "We follow strict safety standards to ensure every flight is secure and reliable.",
+          "We uphold the highest safety standards to ensure every flight is secure and dependable.",
+      },
+      {
+        icon: "Users",
+        title: "Trust",
+        description:
+          "We earn trust through transparency, reliability, and consistent service delivery.",
       },
       {
         icon: "Award",
-        title: "Quality",
+        title: "Integrity",
         description:
-          "We aim to deliver smooth, comfortable, and dependable air travel.",
+          "We act with honesty, accountability, and professionalism in everything we do.",
       },
       {
-        icon: "Heart",
-        title: "Customer Care",
+        icon: "Star",
+        title: "Excellence",
         description:
-          "Your comfort and peace of mind come first in everything we do.",
-      },
-      {
-        icon: "Globe",
-        title: "Reach",
-        description:
-          "We operate within Nigeria and support travel to other destinations when required.",
+          "We pursue excellence by delivering premium service and exceptional travel experiences.",
       },
     ],
   },
@@ -692,7 +744,7 @@ export const aboutAssetPageData = {
   aviation: {
     title: "Aviation Asset Acquisition — Our Core Specialty",
     image:
-      "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765010655/broker_pm65zy.jpg",
+      "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765954562/handshake_rrwnvc.png",
     description:
       "We help airlines, governments, and private operators acquire and finance aviation assets through competitive DFI-linked and international financing sources.",
     items: [
@@ -829,14 +881,14 @@ export const contactPageData = {
       title: "Phone",
       phones: [
         { details: ["+234 818 211 3089"], href: "tel:+2348182113089" },
-        { details: ["+1 (403) 465 4748"], href: "tel:+1(403)465-4748" },
+        { details: ["+234 911 110 1123"], href: "tel:+2349111101123" },
       ],
     },
     {
       icon: "Mail",
       title: "Email",
-      details: ["inquiries@pexjet.com"],
-      href: "mailto:inquiries@pexjet.com",
+      details: ["charter@pexjet.com"],
+      href: "mailto:charter@pexjet.com",
     },
     {
       icon: "MapPin",
@@ -951,7 +1003,7 @@ export const servicesData = {
       description:
         "We help institutions acquire and finance aviation assets with ease. Through our network of DFIs and international lenders, you get access to affordable long-term financing options. Whether it's private jets, commercial aircraft, helicopters, or ground equipment, we guide you to secure the right assets with the best financing structure.",
       image:
-        "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765010655/broker_pm65zy.jpg",
+        "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765954562/handshake_rrwnvc.png",
     },
   ],
 
@@ -978,25 +1030,34 @@ export const servicesData = {
 export const seoData = {
   siteName: "PexJet",
   siteUrl: "https://pexjet.com",
-  defaultTitle: "PexJet – Private Jet Charter & Luxury Air Travel",
+  defaultTitle:
+    "PexJet – Nigeria's Premier Private Jet Charter & Empty Leg Flights",
   defaultDescription:
-    "Fly privately with PexJet. Charter private jets, find empty leg deals, and enjoy safe, comfortable, and premium air travel.",
+    "Experience luxury private aviation with PexJet. Book private jet charters, discover exclusive empty leg deals with up to 75% savings, and travel across Africa and beyond in comfort and style.",
   keywords: [
-    "private jet charter",
-    "private aviation",
-    "luxury jet",
-    "empty leg flights",
-    "business travel",
-    "air charter Nigeria",
-    "Africa private jets",
+    "private jet charter Nigeria",
+    "private jet hire Lagos",
+    "empty leg flights Africa",
+    "luxury private aviation",
+    "business jet charter",
+    "private plane rental Nigeria",
+    "executive jet services",
+    "affordable private jet",
+    "last minute private jet deals",
+    "PexJet",
   ],
+
+  // Favicon and logos (Cloudinary)
+  favicon:
+    "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765973101/X_xvfnbc.png",
+  logo: "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764942221/black-gold_1_k94z9u.png",
 
   // Social Media / Open Graph
   openGraph: {
     type: "website",
     locale: "en_US",
     image:
-      "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764999560/pixverse-i2i-ori-64796108-2ae1-4d13-85b0-d91c984eea00_tbj9ss.jpg",
+      "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png",
     imageWidth: 1200,
     imageHeight: 630,
   },
@@ -1010,43 +1071,44 @@ export const seoData = {
 
   pages: {
     home: {
-      title: "PexJet",
+      title: "PexJet – Private Jet Charter Nigeria",
       description:
-        "Enjoy safe, comfortable, and seamless private jet travel with PexJet.",
+        "Nigeria's leading private jet charter company. Book luxury flights, find empty leg deals with up to 75% off, and experience premium aviation services.",
     },
     charter: {
-      title: "Private Jet Charter",
+      title: "Private Jet Charter Services",
       description:
-        "Charter a private jet with flexible schedules, smooth service, and global access.",
+        "Charter a private jet anywhere in the world. Flexible schedules, dedicated service, and access to 500+ aircraft. Request a quote in minutes.",
     },
     emptyLegs: {
-      title: "Empty Leg Flights ",
+      title: "Empty Leg Flights – Save Up to 75%",
       description:
-        "Find discounted empty leg flights and enjoy premium private travel at lower rates.",
+        "Discover exclusive empty leg flight deals across Africa and beyond. Fly private at a fraction of the cost with PexJet's discounted repositioning flights.",
     },
     aircraft: {
-      title: "Aircraft Fleet",
+      title: "Our Aircraft Fleet",
       description:
-        "Explore our selection of premium aircraft for every type of journey.",
+        "Browse our diverse fleet of private jets – from light jets to heavy long-range aircraft. Find the perfect aircraft for your journey.",
     },
     services: {
-      title: "Our Services",
+      title: "Private Aviation Services",
       description:
-        "Private jet charter, empty leg flights, and aircraft acquisition solutions.",
+        "Comprehensive private aviation solutions including jet charter, empty leg flights, aircraft management, and acquisition services.",
     },
     aboutCompany: {
-      title: "About PexJet",
+      title: "About PexJet – 20+ Years of Excellence",
       description:
-        "Learn about PexJet and our commitment to safe, reliable private aviation.",
+        "Discover PexJet's story – over 20 years of safe, reliable private aviation in Nigeria and Africa. Trust, integrity, and excellence in every flight.",
     },
     aboutAsset: {
-      title: "Asset Acquisition & Financing",
+      title: "Aircraft Acquisition & Financing",
       description:
-        "Expert guidance for aircraft purchase, sales, and financing.",
+        "Expert aircraft acquisition, sales, and financing solutions. Let PexJet guide your aviation investment with industry expertise.",
     },
     contact: {
       title: "Contact PexJet",
-      description: "Reach out to PexJet for bookings, enquiries, or support.",
+      description:
+        "Get in touch with PexJet for private jet bookings, quotes, or enquiries. Our team is available 24/7 to assist you.",
     },
   },
 };

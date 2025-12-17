@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   Card,
@@ -71,7 +72,13 @@ export function EmptyLegDealsSection() {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const { toast } = useToast();
 
-  // Filters (removed fromAirport and toAirport - using hero search instead)
+  // Search params from hero section
+  const [searchFrom, setSearchFrom] = useState("");
+  const [searchTo, setSearchTo] = useState("");
+  const [searchDate, setSearchDate] = useState("");
+  const [searchPassengers, setSearchPassengers] = useState(0);
+
+  // Filters
   const [fromRadius, setFromRadius] = useState("0");
   const [toRadius, setToRadius] = useState("0");
   const [minDiscount, setMinDiscount] = useState("0");
@@ -112,12 +119,21 @@ export function EmptyLegDealsSection() {
       setSearchLoading(true);
       setCurrentPage(1);
 
+      // Store search params for filter integration
+      setSearchFrom(data.departureAirport || "");
+      setSearchTo(data.destinationAirport || "");
+      setSearchDate(data.departureDate || "");
+      setSearchPassengers(data.passengers || 0);
+
       // Build search params
       const params = new URLSearchParams();
       if (data.departureAirport) params.set("from", data.departureAirport);
       if (data.destinationAirport) params.set("to", data.destinationAirport);
       if (data.departureDate) params.set("date", data.departureDate);
       if (data.passengers) params.set("passengers", data.passengers.toString());
+      if (fromRadius !== "0") params.set("fromRadius", fromRadius);
+      if (toRadius !== "0") params.set("toRadius", toRadius);
+      if (minDiscount !== "0") params.set("minDiscount", minDiscount);
       params.set("sortBy", sortBy);
 
       fetchEmptyLegs(params);
@@ -139,14 +155,21 @@ export function EmptyLegDealsSection() {
         handleSearchSubmitted as EventListener,
       );
     };
-  }, [fetchEmptyLegs, sortBy]);
+  }, [fetchEmptyLegs, sortBy, fromRadius, toRadius, minDiscount]);
 
-  // Apply filters
+  // Apply filters - include search params from hero
   const applyFilters = () => {
     setSearchLoading(true);
     setCurrentPage(1);
 
     const params = new URLSearchParams();
+    // Include search params
+    if (searchFrom) params.set("from", searchFrom);
+    if (searchTo) params.set("to", searchTo);
+    if (searchDate) params.set("date", searchDate);
+    if (searchPassengers > 0)
+      params.set("passengers", searchPassengers.toString());
+    // Include filters
     if (fromRadius !== "0") params.set("fromRadius", fromRadius);
     if (toRadius !== "0") params.set("toRadius", toRadius);
     if (minDiscount !== "0") params.set("minDiscount", minDiscount);
@@ -155,12 +178,19 @@ export function EmptyLegDealsSection() {
     fetchEmptyLegs(params);
   };
 
-  // Handle sort change
+  // Handle sort change - include search params from hero
   const handleSortChange = (value: string) => {
     setSortBy(value);
     setSearchLoading(true);
 
     const params = new URLSearchParams();
+    // Include search params
+    if (searchFrom) params.set("from", searchFrom);
+    if (searchTo) params.set("to", searchTo);
+    if (searchDate) params.set("date", searchDate);
+    if (searchPassengers > 0)
+      params.set("passengers", searchPassengers.toString());
+    // Include filters
     if (fromRadius !== "0") params.set("fromRadius", fromRadius);
     if (toRadius !== "0") params.set("toRadius", toRadius);
     if (minDiscount !== "0") params.set("minDiscount", minDiscount);
@@ -217,8 +247,10 @@ export function EmptyLegDealsSection() {
   const indexOfFirstDeal = indexOfLastDeal - dealsPerPage;
   const currentDeals = emptyLegs.slice(indexOfFirstDeal, indexOfLastDeal);
   const totalPages = Math.ceil(emptyLegs.length / dealsPerPage);
+  const [slideDirection, setSlideDirection] = useState(0);
 
   const handlePageChange = (page: number) => {
+    setSlideDirection(page > currentPage ? 1 : -1);
     setCurrentPage(page);
     const element = document.getElementById("empty-leg-deals-grid");
     element?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -280,7 +312,7 @@ export function EmptyLegDealsSection() {
     return (
       <Link href={`/empty-legs/${deal.slug}`}>
         <Card
-          className={`overflow-hidden hover:border-[#D4AF37] transition-all cursor-pointer ${isSoldOut ? "opacity-60" : ""}`}
+          className={`overflow-hidden hover:border-[#D4AF37] my-2 transition-all cursor-pointer ${isSoldOut ? "opacity-60" : ""}`}
         >
           <div className="flex flex-col md:flex-row">
             {/* Left Section - Route Info */}
@@ -574,11 +606,20 @@ export function EmptyLegDealsSection() {
                     <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
                   </div>
                 ) : currentDeals.length > 0 ? (
-                  <div className="space-y-4 gap-10">
-                    {currentDeals.map((deal) => (
-                      <TicketCard key={deal.id} deal={deal} />
-                    ))}
-                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentPage}
+                      initial={{ opacity: 0, x: slideDirection * 100 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: slideDirection * -100 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="space-y-6"
+                    >
+                      {currentDeals.map((deal) => (
+                        <TicketCard key={deal.id} deal={deal} />
+                      ))}
+                    </motion.div>
+                  </AnimatePresence>
                 ) : (
                   <div className="text-center p-12 bg-white border border-gray-200">
                     <Plane className="w-16 h-16 text-gray-300 mx-auto mb-4" />

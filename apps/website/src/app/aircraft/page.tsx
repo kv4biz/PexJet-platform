@@ -172,8 +172,8 @@ export default function AircraftPage() {
             </div>
           ) : (
             <>
-              {/* Carousel Controls and Pagination */}
-              <div className="mb-8">
+              {/* Carousel Controls and Pagination - Hidden on mobile */}
+              <div className="mb-8 hidden md:block">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
                     <Button
@@ -235,6 +235,29 @@ export default function AircraftPage() {
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+
+                    {/* Mobile Navigation Arrows - Extreme ends, translucent */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={prev}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/5 backdrop-blur-sm border-0 text-white hover:bg-[#D4AF37] transition-all md:hidden"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={next}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/5 backdrop-blur-sm border-0 text-white hover:bg-[#D4AF37] transition-all md:hidden"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
+
+                    {/* Mobile Pagination Counter */}
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/20 text-white px-3 py-1 text-sm md:hidden">
+                      {currentIndex + 1} / {aircraft.length}
+                    </div>
 
                     {/* Availability Badges */}
                     <div className="absolute top-4 left-4 flex gap-2">

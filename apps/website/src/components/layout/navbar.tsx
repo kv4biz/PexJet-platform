@@ -1,10 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { ChevronDown, Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger, Button } from "@pexjet/ui";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+  Button,
+} from "@pexjet/ui";
 import { navbarData } from "@/data";
 
 export default function Navbar() {
@@ -13,12 +20,54 @@ export default function Navbar() {
   const [mobileActiveDropdown, setMobileActiveDropdown] = useState<
     string | null
   >(null);
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const navRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Check if a nav item is active
+  const isActive = (item: { href?: string; dropdown?: { href: string }[] }) => {
+    if (item.href) {
+      if (item.href === "/") return pathname === "/";
+      return pathname.startsWith(item.href);
+    }
+    if (item.dropdown) {
+      return item.dropdown.some((sub) => pathname.startsWith(sub.href));
+    }
+    return false;
+  };
+
+  // Update indicator position
+  useEffect(() => {
+    const updateIndicator = () => {
+      if (!navRef.current) return;
+      const activeIndex = navbarData.navItems.findIndex((item) =>
+        isActive(item),
+      );
+      if (activeIndex === -1) {
+        setIndicatorStyle({ left: 0, width: 0 });
+        return;
+      }
+      const navItems = navRef.current.querySelectorAll("[data-nav-item]");
+      const activeItem = navItems[activeIndex] as HTMLElement;
+      if (activeItem) {
+        const navRect = navRef.current.getBoundingClientRect();
+        const itemRect = activeItem.getBoundingClientRect();
+        setIndicatorStyle({
+          left: itemRect.left - navRect.left,
+          width: itemRect.width,
+        });
+      }
+    };
+    updateIndicator();
+    window.addEventListener("resize", updateIndicator);
+    return () => window.removeEventListener("resize", updateIndicator);
+  }, [pathname]);
 
   return (
     <nav
@@ -51,16 +100,30 @@ export default function Navbar() {
           {/* ----------------------- DESKTOP NAV + MOBILE TOGGLE ----------------------- */}
           <div className="flex items-center space-x-4 xl:space-x-8">
             {/* Desktop nav items */}
-            <div className="hidden lg:flex items-center space-x-4 xl:space-x-8">
+            <div
+              ref={navRef}
+              className="hidden lg:flex items-center space-x-4 xl:space-x-8 relative"
+            >
+              {/* Sliding underline indicator */}
+              <div
+                className="absolute bottom-0 h-0.5 bg-[#D4AF37] transition-all duration-300 ease-out"
+                style={{
+                  left: indicatorStyle.left,
+                  width: indicatorStyle.width,
+                  opacity: indicatorStyle.width > 0 ? 1 : 0,
+                }}
+              />
               {navbarData.navItems.map((item) => (
-                <div key={item.label} className="relative group">
+                <div key={item.label} className="relative group" data-nav-item>
                   {item.dropdown ? (
                     <>
                       <button
                         className={`flex items-center gap-1 transition-colors uppercase text-sm tracking-wide ${
-                          isScrolled
-                            ? "text-foreground hover:text-primary"
-                            : "text-white hover:text-primary"
+                          isActive(item)
+                            ? "text-[#D4AF37]"
+                            : isScrolled
+                              ? "text-foreground hover:text-primary"
+                              : "text-white hover:text-primary"
                         }`}
                       >
                         {item.label}
@@ -72,7 +135,11 @@ export default function Navbar() {
                           <Link
                             key={sub.label}
                             href={sub.href}
-                            className="block px-4 py-2 text-foreground hover:bg-primary/10 hover:text-primary uppercase text-sm"
+                            className={`block px-4 py-2 hover:bg-primary/10 hover:text-primary uppercase text-sm ${
+                              pathname.startsWith(sub.href)
+                                ? "text-[#D4AF37] bg-primary/5"
+                                : "text-foreground"
+                            }`}
                           >
                             {sub.label}
                           </Link>
@@ -82,10 +149,12 @@ export default function Navbar() {
                   ) : (
                     <Link
                       href={item.href!}
-                      className={`uppercase text-sm tracking-wide transition-colors ${
-                        isScrolled
-                          ? "text-foreground hover:text-primary"
-                          : "text-white hover:text-primary"
+                      className={`uppercase text-sm tracking-wide transition-colors  ${
+                        isActive(item)
+                          ? "text-[#D4AF37]"
+                          : isScrolled
+                            ? "text-foreground hover:text-primary"
+                            : "text-white hover:text-primary"
                       }`}
                     >
                       {item.label}
@@ -120,6 +189,7 @@ export default function Navbar() {
                 </SheetTrigger>
 
                 <SheetContent side="right" className="w-[300px] bg-white p-0">
+                  <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                   <div className="flex flex-col h-full">
                     {/* Logo in mobile menu */}
                     <div className="p-6 border-b border-gray-200">
@@ -148,7 +218,11 @@ export default function Navbar() {
                                         : item.label,
                                     )
                                   }
-                                  className="w-full flex items-center justify-between px-6 py-3 text-foreground hover:bg-primary/10 uppercase text-sm"
+                                  className={`w-full flex items-center justify-between px-6 py-3 hover:bg-primary/10 uppercase text-sm ${
+                                    isActive(item)
+                                      ? "text-[#D4AF37] border-l-2 border-[#D4AF37] bg-primary/5"
+                                      : "text-foreground"
+                                  }`}
                                 >
                                   {item.label}
                                   <ChevronDown
@@ -167,7 +241,11 @@ export default function Navbar() {
                                         key={sub.label}
                                         href={sub.href}
                                         onClick={() => setMobileOpen(false)}
-                                        className="block px-10 py-2 text-sm text-muted-foreground hover:text-primary uppercase"
+                                        className={`block px-10 py-2 text-sm hover:text-primary uppercase ${
+                                          pathname.startsWith(sub.href)
+                                            ? "text-[#D4AF37]"
+                                            : "text-muted-foreground"
+                                        }`}
                                       >
                                         {sub.label}
                                       </Link>
@@ -179,7 +257,11 @@ export default function Navbar() {
                               <Link
                                 href={item.href!}
                                 onClick={() => setMobileOpen(false)}
-                                className="block px-6 py-3 text-foreground hover:bg-primary/10 uppercase text-sm"
+                                className={`block px-6 py-3 hover:bg-primary/10 uppercase text-sm ${
+                                  isActive(item)
+                                    ? "text-[#D4AF37] border-l-2 border-[#D4AF37] bg-primary/5"
+                                    : "text-foreground"
+                                }`}
                               >
                                 {item.label}
                               </Link>

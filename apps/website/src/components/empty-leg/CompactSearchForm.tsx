@@ -111,7 +111,7 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
 
       try {
         const response = await fetch(
-          `/api/airports?search=${encodeURIComponent(query)}&limit=10`,
+          `/api/airports?q=${encodeURIComponent(query)}&limit=10`,
         );
         const data = await response.json();
         if (type === "from") setFromAirports(data.airports || []);
@@ -168,11 +168,9 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
     setTime(value.time || null);
   };
 
-  // Check if form is valid (required fields filled)
+  // Form is always valid - search shows all results if no filters applied
   const isFormValid = () => {
-    return (
-      from.trim() !== "" && to.trim() !== "" && date !== null && passengers >= 1
-    );
+    return true;
   };
 
   const handleSubmit = (e: React.FormEvent) => {

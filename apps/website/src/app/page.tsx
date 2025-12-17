@@ -6,6 +6,7 @@ import HeroSection from "@/components/home/HeroSection";
 import MembershipBanner from "@/components/home/MembershipBanner";
 import Navbar from "@/components/layout/navbar";
 import NewsletterCTA from "@/components/home/NewsletterCTA";
+import PartnerLogos from "@/components/home/PartnerLogos";
 import SearchComponents from "@/components/home/SearchComponents";
 import Testimonials from "@/components/home/Testimonials";
 import { seoData } from "@/data";
@@ -24,6 +25,7 @@ export default function Home() {
         <SearchComponents />
         <EmptyLegDeals />
         <FleetPreview />
+        <PartnerLogos />
         <MembershipBanner />
         <Testimonials />
         <NewsletterCTA />

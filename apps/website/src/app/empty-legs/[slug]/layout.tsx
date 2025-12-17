@@ -59,16 +59,41 @@ export async function generateMetadata({
         100,
     );
 
-    const title = `${departureCity} to ${arrivalCity} - ${discountPercent}% Off Empty Leg Flight`;
-    const description = `Save ${discountPercent}% on this empty leg flight from ${departureCity}, ${departureCountry} to ${arrivalCity}, ${arrivalCountry} on a ${aircraftName}. Book now with PexJet.`;
+    const priceUsd = emptyLeg.discountPriceUsd;
+    const dateStr = emptyLeg.departureDateTime
+      ? new Date(emptyLeg.departureDateTime).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "";
+
+    // SEO-optimized title with searchable keywords
+    const title = `Private Jet ${departureCity} to ${arrivalCity} | ${discountPercent}% Off Empty Leg Flight`;
+
+    // Rich description with keywords people search for
+    const description = `Book a private jet from ${departureCity} to ${arrivalCity} for $${priceUsd.toLocaleString()} (${discountPercent}% off). Empty leg flight on ${aircraftName}${dateStr ? ` departing ${dateStr}` : ""}. Fly private for less with PexJet Nigeria.`;
+
+    // Additional keywords for this route
+    const keywords = [
+      `${departureCity} to ${arrivalCity} private jet`,
+      `flight from ${departureCity} to ${arrivalCity}`,
+      `${departureCity} ${arrivalCity} empty leg`,
+      `private jet ${departureCountry} to ${arrivalCountry}`,
+      `cheap private jet ${departureCity}`,
+      `${aircraftName} charter`,
+      "empty leg flights Nigeria",
+      "discounted private jet",
+    ];
 
     const ogImage = emptyLeg.aircraft.thumbnailImage || seoData.openGraph.image;
 
     return {
       title,
       description,
+      keywords,
       openGraph: {
-        title,
+        title: `${departureCity} to ${arrivalCity} - ${discountPercent}% Off | PexJet Empty Leg`,
         description,
         url: `${seoData.siteUrl}/empty-legs/${slug}`,
         siteName: seoData.siteName,
@@ -77,14 +102,14 @@ export async function generateMetadata({
             url: ogImage,
             width: 1200,
             height: 630,
-            alt: `${departureCity} to ${arrivalCity} Empty Leg Flight`,
+            alt: `Private jet flight from ${departureCity} to ${arrivalCity}`,
           },
         ],
         type: "website",
       },
       twitter: {
         card: "summary_large_image",
-        title,
+        title: `${departureCity} → ${arrivalCity} | ${discountPercent}% Off Private Jet`,
         description,
         images: [ogImage],
       },

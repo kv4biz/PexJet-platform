@@ -112,6 +112,78 @@ export default function EmptyLegDetailPage() {
     }
   }, [slug]);
 
+  // Add JSON-LD structured data for SEO
+  useEffect(() => {
+    if (!emptyLeg) return;
+
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: `Private Jet ${emptyLeg.departureAirport.city} to ${emptyLeg.arrivalAirport.city}`,
+      description: `Empty leg flight from ${emptyLeg.departureAirport.city}, ${emptyLeg.departureAirport.country} to ${emptyLeg.arrivalAirport.city}, ${emptyLeg.arrivalAirport.country} on ${emptyLeg.aircraft.name}. Save ${emptyLeg.discountPercent}% on this private jet flight.`,
+      image:
+        emptyLeg.aircraft.images?.[0] ||
+        "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png",
+      brand: {
+        "@type": "Brand",
+        name: "PexJet",
+      },
+      offers: {
+        "@type": "Offer",
+        url: `https://pexjet.com/empty-legs/${slug}`,
+        priceCurrency: "USD",
+        price: emptyLeg.priceUsd,
+        priceValidUntil: emptyLeg.departureDate,
+        availability:
+          emptyLeg.availableSeats > 0
+            ? "https://schema.org/InStock"
+            : "https://schema.org/SoldOut",
+        seller: {
+          "@type": "Organization",
+          name: "PexJet",
+        },
+      },
+      additionalProperty: [
+        {
+          "@type": "PropertyValue",
+          name: "Departure",
+          value: `${emptyLeg.departureAirport.city}, ${emptyLeg.departureAirport.country}`,
+        },
+        {
+          "@type": "PropertyValue",
+          name: "Arrival",
+          value: `${emptyLeg.arrivalAirport.city}, ${emptyLeg.arrivalAirport.country}`,
+        },
+        {
+          "@type": "PropertyValue",
+          name: "Aircraft",
+          value: emptyLeg.aircraft.name,
+        },
+        {
+          "@type": "PropertyValue",
+          name: "Available Seats",
+          value: emptyLeg.availableSeats,
+        },
+      ],
+    };
+
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.text = JSON.stringify(jsonLd);
+    script.id = "empty-leg-jsonld";
+
+    // Remove existing script if any
+    const existing = document.getElementById("empty-leg-jsonld");
+    if (existing) existing.remove();
+
+    document.head.appendChild(script);
+
+    return () => {
+      const el = document.getElementById("empty-leg-jsonld");
+      if (el) el.remove();
+    };
+  }, [emptyLeg, slug]);
+
   const fetchEmptyLegDetail = async () => {
     try {
       setLoading(true);
@@ -132,6 +204,34 @@ export default function EmptyLegDetailPage() {
 
   const formatPrice = (priceUsd: number) => {
     return `$${priceUsd.toLocaleString()}`;
+  };
+
+  // Calculate estimated flight time
+  const calculateFlightTime = () => {
+    if (!emptyLeg) return "N/A";
+    const dep = emptyLeg.departureAirport;
+    const arr = emptyLeg.arrivalAirport;
+    if (!dep.latitude || !dep.longitude || !arr.latitude || !arr.longitude)
+      return "N/A";
+
+    // Haversine formula for distance in nautical miles
+    const R = 3440.065;
+    const dLat = ((arr.latitude - dep.latitude) * Math.PI) / 180;
+    const dLon = ((arr.longitude - dep.longitude) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((dep.latitude * Math.PI) / 180) *
+        Math.cos((arr.latitude * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceNm = R * c;
+
+    // Average cruise speed ~450 knots + 30 min buffer
+    const flightTimeHours = distanceNm / 450 + 0.5;
+    const hours = Math.floor(flightTimeHours);
+    const minutes = Math.round((flightTimeHours - hours) * 60);
+    return `${hours}h ${minutes}m`;
   };
 
   const calculateTotalPrice = () => {
@@ -237,7 +337,7 @@ export default function EmptyLegDetailPage() {
       {/* Map Hero Section */}
       <section className="relative">
         {/* Back Button - Absolute positioned */}
-        <div className="absolute top-24 left-4 z-20">
+        <div className="absolute top-4 left-4 z-20 hidden">
           <Button
             variant="ghost"
             asChild
@@ -265,7 +365,7 @@ export default function EmptyLegDetailPage() {
         </div>
 
         {/* Flight Route Map */}
-        <div className="h-[400px] md:h-[500px]">
+        <div className="h-[400px] md:h-[500px] relative z-0">
           <FlightRouteMap
             departureAirport={emptyLeg.departureAirport}
             arrivalAirport={emptyLeg.arrivalAirport}
@@ -292,6 +392,22 @@ export default function EmptyLegDetailPage() {
           </div>
         </div>
       </section>
+
+      {/* Back Link */}
+      <div className="bg-gray-50 pt-4 px-4">
+        <div className="container mx-auto">
+          <Button
+            variant="link"
+            asChild
+            className="text-gray-600 hover:text-[#D4AF37] p-0"
+          >
+            <Link href="/empty-legs">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Empty Legs
+            </Link>
+          </Button>
+        </div>
+      </div>
 
       {/* Main Content */}
       <section className="py-4 md:py-8">
@@ -328,10 +444,15 @@ export default function EmptyLegDetailPage() {
                       </div>
                     </div>
                     <div className="flex-1 px-2 md:px-8">
-                      <div className="flex items-center">
-                        <div className="h-px flex-1 bg-gray-300" />
-                        <Plane className="h-6 w-6 md:h-8 md:w-8 mx-2 md:mx-4 text-[#D4AF37] rotate-45" />
-                        <div className="h-px flex-1 bg-gray-300" />
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center w-full">
+                          <div className="h-px flex-1 bg-gray-300" />
+                          <Plane className="h-6 w-6 md:h-8 md:w-8 mx-2 md:mx-4 text-[#D4AF37] rotate-45" />
+                          <div className="h-px flex-1 bg-gray-300" />
+                        </div>
+                        <span className="text-xs text-gray-500 mt-1">
+                          Est. {calculateFlightTime()}
+                        </span>
                       </div>
                     </div>
                     <div className="text-center flex-shrink-0 max-w-[100px] md:max-w-[200px]">
@@ -339,7 +460,7 @@ export default function EmptyLegDetailPage() {
                         {emptyLeg.arrivalAirport.code}
                       </div>
                       <div
-                        className="text-xs text-gray-400 "
+                        className="text-xs text-gray-400"
                         title={emptyLeg.arrivalAirport.name}
                       >
                         {emptyLeg.arrivalAirport.name}
