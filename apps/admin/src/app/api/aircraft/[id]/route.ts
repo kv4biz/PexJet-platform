@@ -66,6 +66,7 @@ export async function PUT(
       rangeNm,
       cruiseSpeedKnots,
       baggageCapacityCuFt,
+      fuelCapacityGal,
       cabinLengthFt,
       cabinWidthFt,
       cabinHeightFt,
@@ -110,6 +111,9 @@ export async function PUT(
           baggageCapacityCuFt: baggageCapacityCuFt
             ? parseFloat(baggageCapacityCuFt)
             : null,
+        }),
+        ...(fuelCapacityGal !== undefined && {
+          fuelCapacityGal: fuelCapacityGal ? parseFloat(fuelCapacityGal) : null,
         }),
         ...(cabinLengthFt !== undefined && {
           cabinLengthFt: cabinLengthFt ? parseFloat(cabinLengthFt) : null,

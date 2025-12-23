@@ -236,7 +236,7 @@ export default function EmptyLegDetailPage() {
 
   const calculateTotalPrice = () => {
     if (!emptyLeg) return 0;
-    return emptyLeg.priceUsd * seatsRequested;
+    return emptyLeg.priceUsd; // Price is for full jet, not per seat
   };
 
   const handleContactChange = (field: keyof ContactInfo, value: string) => {
@@ -793,22 +793,19 @@ export default function EmptyLegDetailPage() {
                           <h4 className="font-semibold mb-3">Price Summary</h4>
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span>Price per seat:</span>
-                              <span>{formatPrice(emptyLeg.priceUsd)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
                               <span>Seats requested:</span>
-                              <span>× {seatsRequested}</span>
+                              <span>{seatsRequested}</span>
                             </div>
                             <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                              <span>Estimated Total:</span>
+                              <span>Price:</span>
                               <span className="text-[#D4AF37]">
-                                {formatPrice(totalPrice)}
+                                {formatPrice(emptyLeg.priceUsd)}
                               </span>
                             </div>
                           </div>
                           <p className="text-xs text-gray-500 mt-2">
-                            * Final price will be confirmed upon approval
+                            * Price is for the entire aircraft. Final price will
+                            be confirmed upon approval.
                           </p>
                         </div>
 
@@ -920,7 +917,7 @@ export default function EmptyLegDetailPage() {
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold">Price per Seat</span>
+                        <span className="font-semibold">Price</span>
                         <span className="text-2xl font-bold text-[#D4AF37]">
                           {formatPrice(emptyLeg.priceUsd)}
                         </span>
@@ -930,16 +927,15 @@ export default function EmptyLegDetailPage() {
                       </Badge>
                     </div>
 
-                    {/* Total if seats selected */}
+                    {/* Seats requested info */}
                     {seatsRequested > 0 && (
                       <div className="pt-3 border-t">
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-500">
-                            {seatsRequested} seat{seatsRequested > 1 ? "s" : ""}{" "}
-                            total:
+                            Seats requested:
                           </span>
-                          <span className="text-xl font-bold text-[#D4AF37]">
-                            {formatPrice(totalPrice)}
+                          <span className="text-lg font-semibold">
+                            {seatsRequested}
                           </span>
                         </div>
                       </div>

@@ -46,7 +46,6 @@ import {
   Loader2,
 } from "lucide-react";
 import {
-  formatNGN,
   formatUSD,
   formatDuration,
   formatTime,
@@ -57,8 +56,8 @@ interface EmptyLegDetail {
   id: string;
   slug: string;
   status: string;
-  originalPriceNgn: number;
-  discountPriceNgn: number;
+  originalPriceUsd: number;
+  discountPriceUsd: number;
   totalSeats: number;
   availableSeats: number;
   departureDateTime: string;
@@ -107,7 +106,7 @@ interface EmptyLegDetail {
     referenceNumber: string;
     status: string;
     seatsRequested: number;
-    totalPriceNgn: number;
+    totalPriceUsd: number;
     createdAt: string;
     client: {
       id: string;
@@ -246,8 +245,8 @@ export default function EmptyLegDetailPage() {
   }
 
   const discount = Math.round(
-    ((emptyLeg.originalPriceNgn - emptyLeg.discountPriceNgn) /
-      emptyLeg.originalPriceNgn) *
+    ((emptyLeg.originalPriceUsd - emptyLeg.discountPriceUsd) /
+      emptyLeg.originalPriceUsd) *
       100,
   );
 
@@ -523,7 +522,7 @@ export default function EmptyLegDetailPage() {
                         </TableCell>
                         <TableCell>{booking.seatsRequested}</TableCell>
                         <TableCell>
-                          {formatNGN(booking.totalPriceNgn)}
+                          {formatUSD(booking.totalPriceUsd)}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -561,10 +560,10 @@ export default function EmptyLegDetailPage() {
             <CardContent className="space-y-4">
               <article className="text-center p-4 bg-[#D4AF37]/10">
                 <p className="text-sm text-muted-foreground line-through">
-                  {formatNGN(emptyLeg.originalPriceNgn)}
+                  {formatUSD(emptyLeg.originalPriceUsd)}
                 </p>
                 <p className="text-3xl font-bold text-[#D4AF37]">
-                  {formatNGN(emptyLeg.discountPriceNgn)}
+                  {formatUSD(emptyLeg.discountPriceUsd)}
                 </p>
                 <p className="text-sm text-muted-foreground">per seat</p>
                 <Badge variant="success" className="mt-2">

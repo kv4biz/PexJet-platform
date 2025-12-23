@@ -209,11 +209,10 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Check if empty leg exists and has no bookings
+    // Check if empty leg exists
     const emptyLeg = await prisma.emptyLeg.findUnique({
       where: { id },
       include: {
-        _count: { select: { bookings: true } },
         departureAirport: { select: { name: true, municipality: true } },
         arrivalAirport: { select: { name: true, municipality: true } },
       },
@@ -223,13 +222,6 @@ export async function DELETE(
       return NextResponse.json(
         { error: "Empty leg not found" },
         { status: 404 },
-      );
-    }
-
-    if (emptyLeg._count.bookings > 0) {
-      return NextResponse.json(
-        { error: "Cannot delete empty leg with existing bookings" },
-        { status: 400 },
       );
     }
 

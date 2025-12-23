@@ -49,7 +49,7 @@ interface CharterQuote {
   referenceNumber: string;
   status: string;
   flightType: string;
-  totalPriceNgn: number | null;
+  totalPriceUsd: number | null;
   createdAt: string;
   clientName: string;
   clientEmail: string;
@@ -65,7 +65,7 @@ interface EmptyLegQuote {
   id: string;
   referenceNumber: string;
   status: string;
-  totalPriceNgn: number | null;
+  totalPriceUsd: number | null;
   seatsBooked: number;
   createdAt: string;
   clientName: string;
@@ -329,8 +329,8 @@ export default function QuotesPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {quote.totalPriceNgn
-                              ? `₦${quote.totalPriceNgn.toLocaleString()}`
+                            {quote.totalPriceUsd
+                              ? `$${quote.totalPriceUsd.toLocaleString()}`
                               : "-"}
                           </TableCell>
                           <TableCell>
@@ -530,8 +530,8 @@ export default function QuotesPage() {
                           </TableCell>
                           <TableCell>{quote.seatsBooked}</TableCell>
                           <TableCell>
-                            {quote.totalPriceNgn
-                              ? `₦${quote.totalPriceNgn.toLocaleString()}`
+                            {quote.totalPriceUsd
+                              ? `$${quote.totalPriceUsd.toLocaleString()}`
                               : "-"}
                           </TableCell>
                           <TableCell>

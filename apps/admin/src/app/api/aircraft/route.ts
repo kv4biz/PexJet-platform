@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
           thumbnailImage: true,
           description: true,
           baggageCapacityCuFt: true,
+          fuelCapacityGal: true,
           cabinLengthFt: true,
           cabinWidthFt: true,
           cabinHeightFt: true,
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest) {
       rangeNm,
       cruiseSpeedKnots,
       baggageCapacityCuFt,
+      fuelCapacityGal,
       cabinLengthFt,
       cabinWidthFt,
       cabinHeightFt,
@@ -159,6 +161,7 @@ export async function POST(request: NextRequest) {
         baggageCapacityCuFt: baggageCapacityCuFt
           ? parseFloat(baggageCapacityCuFt)
           : null,
+        fuelCapacityGal: fuelCapacityGal ? parseFloat(fuelCapacityGal) : null,
         cabinLengthFt: cabinLengthFt ? parseFloat(cabinLengthFt) : null,
         cabinWidthFt: cabinWidthFt ? parseFloat(cabinWidthFt) : null,
         cabinHeightFt: cabinHeightFt ? parseFloat(cabinHeightFt) : null,

@@ -221,8 +221,8 @@ export async function POST(request: NextRequest) {
       arrivalAirportId,
       departureDateTime,
       totalSeats,
-      originalPrice,
-      discountPrice,
+      originalPriceUsd,
+      discountPriceUsd,
     } = body;
 
     // Validation
@@ -232,8 +232,8 @@ export async function POST(request: NextRequest) {
       !arrivalAirportId ||
       !departureDateTime ||
       !totalSeats ||
-      !originalPrice ||
-      !discountPrice
+      !originalPriceUsd ||
+      !discountPriceUsd
     ) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -340,8 +340,8 @@ export async function POST(request: NextRequest) {
         departureDateTime: departureDT,
         totalSeats: parseInt(totalSeats),
         availableSeats: parseInt(totalSeats),
-        originalPrice: parseFloat(originalPrice),
-        discountPrice: parseFloat(discountPrice),
+        originalPriceUsd: parseFloat(originalPriceUsd),
+        discountPriceUsd: parseFloat(discountPriceUsd),
         status: "PUBLISHED",
         createdByAdminId: payload.sub,
       },
@@ -371,7 +371,7 @@ export async function POST(request: NextRequest) {
           slug,
           departureDateTime: departureDT.toISOString(),
           totalSeats,
-          discountPrice,
+          discountPriceUsd,
         },
       },
     });

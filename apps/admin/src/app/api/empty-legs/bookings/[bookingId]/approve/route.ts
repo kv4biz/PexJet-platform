@@ -79,14 +79,14 @@ export async function POST(
       // Calculate split amounts if operator created this empty leg
       const isOperatorDeal = !!booking.emptyLeg.createdByOperatorId;
       let operatorAmount = 0;
-      let adminAmount = booking.totalPriceNgn;
+      let adminAmount = booking.totalPriceUsd;
 
       if (
         isOperatorDeal &&
         booking.emptyLeg.createdByOperator?.paystackSubaccountCode
       ) {
-        adminAmount = (booking.totalPriceNgn * adminCutPercentage) / 100;
-        operatorAmount = booking.totalPriceNgn - adminAmount;
+        adminAmount = (booking.totalPriceUsd * adminCutPercentage) / 100;
+        operatorAmount = booking.totalPriceUsd - adminAmount;
       }
 
       // Create Paystack payment initialization
@@ -94,7 +94,7 @@ export async function POST(
 
       const paystackPayload: any = {
         email: booking.clientEmail,
-        amount: Math.round(booking.totalPriceNgn * 100), // Paystack uses kobo
+        amount: Math.round(booking.totalPriceUsd * 100), // Paystack uses cents (USD)
         reference: paystackReference,
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/callback`,
         metadata: {
@@ -177,10 +177,11 @@ export async function POST(
       await prisma.payment.create({
         data: {
           referenceNumber: `PEX-RC-${Date.now().toString(36).toUpperCase()}`,
-          clientId: booking.clientId,
+          client: { connect: { id: booking.clientId } },
           type: "EMPTY_LEG",
-          emptyLegBookingId: booking.id,
-          amountNgn: booking.totalPriceNgn,
+          emptyLegBooking: { connect: { id: booking.id } },
+          method: "PAYSTACK",
+          amountUsd: booking.totalPriceUsd,
           paystackReference,
           status: "PENDING",
         },
@@ -198,7 +199,7 @@ export async function POST(
         ipAddress: request.headers.get("x-forwarded-for") || "unknown",
         metadata: {
           seatsRequested: booking.seatsRequested,
-          totalPriceNgn: booking.totalPriceNgn,
+          totalPriceUsd: booking.totalPriceUsd,
           paymentDeadline: paymentDeadline.toISOString(),
         },
       },

@@ -56,8 +56,8 @@ interface EmptyLegData {
   id: string;
   slug: string;
   status: string;
-  originalPriceNgn: number;
-  discountPriceNgn: number;
+  originalPriceUsd: number;
+  discountPriceUsd: number;
   totalSeats: number;
   availableSeats: number;
   departureDateTime: string;
@@ -96,8 +96,8 @@ export default function EditEmptyLegPage() {
     arrivalAirportId: "",
     totalSeats: "",
     availableSeats: "",
-    originalPriceNgn: "",
-    discountPriceNgn: "",
+    originalPriceUsd: "",
+    discountPriceUsd: "",
     status: "",
   });
 
@@ -140,8 +140,8 @@ export default function EditEmptyLegPage() {
           arrivalAirportId: data.arrivalAirport.id,
           totalSeats: data.totalSeats.toString(),
           availableSeats: data.availableSeats.toString(),
-          originalPriceNgn: data.originalPriceNgn.toString(),
-          discountPriceNgn: data.discountPriceNgn.toString(),
+          originalPriceUsd: data.originalPriceUsd.toString(),
+          discountPriceUsd: data.discountPriceUsd.toString(),
           status: data.status,
         });
 
@@ -293,8 +293,8 @@ export default function EditEmptyLegPage() {
   };
 
   const calculateDiscount = () => {
-    const original = parseFloat(formData.originalPriceNgn) || 0;
-    const discount = parseFloat(formData.discountPriceNgn) || 0;
+    const original = parseFloat(formData.originalPriceUsd) || 0;
+    const discount = parseFloat(formData.discountPriceUsd) || 0;
     if (original > 0 && discount > 0) {
       return Math.round(((original - discount) / original) * 100);
     }
@@ -346,8 +346,8 @@ export default function EditEmptyLegPage() {
       return;
     }
     if (
-      parseFloat(formData.discountPriceNgn) >=
-      parseFloat(formData.originalPriceNgn)
+      parseFloat(formData.discountPriceUsd) >=
+      parseFloat(formData.originalPriceUsd)
     ) {
       toast({
         title: "Error",
@@ -676,21 +676,21 @@ export default function EditEmptyLegPage() {
               <CardContent>
                 <section className="grid gap-6 md:grid-cols-2">
                   <article className="space-y-2">
-                    <Label htmlFor="originalPriceNgn">
-                      Original Price (NGN) *
+                    <Label htmlFor="originalPriceUsd">
+                      Original Price (USD) *
                     </Label>
                     <section className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        ₦
+                        $
                       </span>
                       <Input
-                        id="originalPriceNgn"
+                        id="originalPriceUsd"
                         type="number"
-                        value={formData.originalPriceNgn}
+                        value={formData.originalPriceUsd}
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            originalPriceNgn: e.target.value,
+                            originalPriceUsd: e.target.value,
                           }))
                         }
                         min="0"
@@ -701,21 +701,21 @@ export default function EditEmptyLegPage() {
                   </article>
 
                   <article className="space-y-2">
-                    <Label htmlFor="discountPriceNgn">
-                      Discount Price (NGN) *
+                    <Label htmlFor="discountPriceUsd">
+                      Discount Price (USD) *
                     </Label>
                     <section className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        ₦
+                        $
                       </span>
                       <Input
-                        id="discountPriceNgn"
+                        id="discountPriceUsd"
                         type="number"
-                        value={formData.discountPriceNgn}
+                        value={formData.discountPriceUsd}
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            discountPriceNgn: e.target.value,
+                            discountPriceUsd: e.target.value,
                           }))
                         }
                         min="0"
@@ -773,17 +773,17 @@ export default function EditEmptyLegPage() {
                   <p className="text-sm text-muted-foreground">
                     Price per Seat
                   </p>
-                  {formData.discountPriceNgn ? (
+                  {formData.discountPriceUsd ? (
                     <section>
                       <p className="text-sm line-through text-muted-foreground">
-                        ₦
+                        $
                         {parseFloat(
-                          formData.originalPriceNgn || "0",
+                          formData.originalPriceUsd || "0",
                         ).toLocaleString()}
                       </p>
                       <p className="text-xl font-bold text-[#D4AF37]">
-                        ₦
-                        {parseFloat(formData.discountPriceNgn).toLocaleString()}
+                        $
+                        {parseFloat(formData.discountPriceUsd).toLocaleString()}
                       </p>
                     </section>
                   ) : (

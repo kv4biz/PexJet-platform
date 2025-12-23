@@ -6,12 +6,19 @@ import { verifyAccessToken, extractTokenFromHeader } from "@pexjet/lib";
 async function getMonthlyApprovals() {
   const months: { month: string; count: number }[] = [];
   const now = new Date();
-  
+
   for (let i = 11; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-    const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
-    
+    const endOfMonth = new Date(
+      date.getFullYear(),
+      date.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+    );
+
     const count = await prisma.charterQuote.count({
       where: {
         status: "APPROVED",
@@ -21,11 +28,11 @@ async function getMonthlyApprovals() {
         },
       },
     });
-    
+
     const monthName = date.toLocaleString("en-US", { month: "short" });
     months.push({ month: monthName, count });
   }
-  
+
   return months;
 }
 
@@ -55,20 +62,20 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       // Total quotes
       prisma.charterQuote.count(),
-      
+
       // Pending quotes
       prisma.charterQuote.count({
         where: { status: "PENDING" },
       }),
-      
+
       // Total clients
       prisma.client.count(),
-      
+
       // Total aircraft (with any availability)
       prisma.aircraft.count({
         where: { availability: { not: "NONE" } },
       }),
-      
+
       // Active empty legs (PUBLISHED or OPEN with future departure)
       prisma.emptyLeg.count({
         where: {
@@ -76,13 +83,13 @@ export async function GET(request: NextRequest) {
           departureDateTime: { gte: new Date() },
         },
       }),
-      
+
       // Total revenue from successful payments
       prisma.payment.aggregate({
         where: { status: "SUCCESS" },
-        _sum: { amountNgn: true },
+        _sum: { amountUsd: true },
       }),
-      
+
       // Recent quotes (last 5)
       prisma.charterQuote.findMany({
         take: 5,
@@ -95,7 +102,7 @@ export async function GET(request: NextRequest) {
           clientName: true,
         },
       }),
-      
+
       // Recent payments (last 5)
       prisma.payment.findMany({
         take: 5,
@@ -104,7 +111,7 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           referenceNumber: true,
-          amountNgn: true,
+          amountUsd: true,
           status: true,
           createdAt: true,
         },
@@ -134,12 +141,14 @@ export async function GET(request: NextRequest) {
       totalClients,
       totalAircraft,
       activeEmptyLegs,
-      totalRevenue: totalRevenue._sum.amountNgn || 0,
+      totalRevenue: totalRevenue._sum.amountUsd || 0,
       recentQuotes,
-      recentPayments: recentPayments.map((p: typeof recentPayments[number]) => ({
-        ...p,
-        amount: p.amountNgn,
-      })),
+      recentPayments: recentPayments.map(
+        (p: (typeof recentPayments)[number]) => ({
+          ...p,
+          amount: p.amountUsd,
+        }),
+      ),
       monthlyApprovals,
       staffMembers,
     });
@@ -147,7 +156,7 @@ export async function GET(request: NextRequest) {
     console.error("Dashboard stats error:", error);
     return NextResponse.json(
       { error: "Failed to fetch dashboard stats" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -54,35 +54,25 @@ export async function POST(request: NextRequest) {
     const normalizedPhone = phone.trim().replace(/\s+/g, "");
     const dbType = typeMap[type] as any;
 
-    // Check if subscription already exists
+    // Phone is unique - if reused, delete old subscription and create new one
+    // This ensures each WhatsApp number has exactly one subscription with latest preferences
     const existingSubscription = await prisma.emptyLegSubscription.findFirst({
-      where: {
-        phone: normalizedPhone,
-        type: dbType,
-      },
+      where: { phone: normalizedPhone },
     });
 
-    if (existingSubscription) {
-      // Update existing subscription
-      await prisma.emptyLegSubscription.update({
-        where: { id: existingSubscription.id },
-        data: {
-          cities: type === "cities" ? cities : [],
-          routeFrom: type === "routes" ? routeFrom : null,
-          routeTo: type === "routes" ? routeTo : null,
-          isActive: true,
-          updatedAt: new Date(),
-        },
-      });
+    let subscription;
+    let isUpdate = false;
 
-      return NextResponse.json({
-        message: "Subscription updated successfully",
-        subscriptionId: existingSubscription.id,
+    if (existingSubscription) {
+      // Delete old subscription and create new one with updated preferences
+      await prisma.emptyLegSubscription.delete({
+        where: { id: existingSubscription.id },
       });
+      isUpdate = true;
     }
 
-    // Create new subscription
-    const subscription = await prisma.emptyLegSubscription.create({
+    // Create subscription with new preferences
+    subscription = await prisma.emptyLegSubscription.create({
       data: {
         phone: normalizedPhone,
         type: dbType,
@@ -92,6 +82,13 @@ export async function POST(request: NextRequest) {
         isActive: true,
       },
     });
+
+    if (isUpdate) {
+      return NextResponse.json({
+        message: "Subscription updated successfully",
+        subscriptionId: subscription.id,
+      });
+    }
 
     // Notify admins via WhatsApp about new subscription
     try {

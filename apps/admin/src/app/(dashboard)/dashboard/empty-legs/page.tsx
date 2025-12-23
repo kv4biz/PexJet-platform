@@ -47,15 +47,17 @@ import {
   RefreshCw,
   Plane,
   Filter,
+  Bell,
+  Loader2,
 } from "lucide-react";
-import { formatNGN, formatDuration, formatTime } from "@/lib/format-currency";
+import { formatUSD, formatDuration, formatTime } from "@/lib/format-currency";
 
 interface EmptyLeg {
   id: string;
   slug: string;
   status: string;
-  originalPriceNgn: number;
-  discountPriceNgn: number;
+  originalPriceUsd: number;
+  discountPriceUsd: number;
   totalSeats: number;
   availableSeats: number;
   departureDateTime: string;
@@ -92,11 +94,13 @@ interface EmptyLeg {
 }
 
 export default function EmptyLegsPage() {
+  const { toast } = useToast();
   const [emptyLegs, setEmptyLegs] = useState<EmptyLeg[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [notifying, setNotifying] = useState(false);
 
   useEffect(() => {
     fetchEmptyLegs();
@@ -142,6 +146,61 @@ export default function EmptyLegsPage() {
     }
   };
 
+  const notifySubscribers = async () => {
+    try {
+      setNotifying(true);
+      const response = await fetch("/api/empty-legs/notify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        body: JSON.stringify({ sendToAll: true }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const { sent, totalSubscribers, failed, skipped, failedNumbers } =
+          data.delivery;
+        let description = `Sent to ${sent}/${totalSubscribers} subscribers`;
+        if (skipped > 0) {
+          description += ` | ${skipped} skipped (no match)`;
+        }
+        if (failed > 0) {
+          description += ` | ${failed} failed`;
+        }
+        description += ` | ${data.dealsIncluded} deals`;
+
+        toast({
+          title: sent > 0 ? "Notifications Sent" : "No Notifications Sent",
+          description,
+          variant: sent > 0 ? "default" : "destructive",
+        });
+
+        // Log details for debugging
+        console.log("Notification result:", data);
+        if (failedNumbers && failedNumbers.length > 0) {
+          console.log("Failed numbers:", failedNumbers);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to send notifications",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send notifications",
+        variant: "destructive",
+      });
+    } finally {
+      setNotifying(false);
+    }
+  };
+
   return (
     <section className="space-y-6">
       {/* Header */}
@@ -156,6 +215,18 @@ export default function EmptyLegsPage() {
               className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
             />
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            onClick={notifySubscribers}
+            disabled={notifying}
+          >
+            {notifying ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Bell className="h-4 w-4 mr-2" />
+            )}
+            Notify Subscribers
           </Button>
           <Button variant="gold" asChild>
             <Link href="/dashboard/empty-legs/new">
@@ -219,8 +290,8 @@ export default function EmptyLegsPage() {
                 <TableBody>
                   {emptyLegs.map((leg) => {
                     const discount = Math.round(
-                      ((leg.originalPriceNgn - leg.discountPriceNgn) /
-                        leg.originalPriceNgn) *
+                      ((leg.originalPriceUsd - leg.discountPriceUsd) /
+                        leg.originalPriceUsd) *
                         100,
                     );
                     return (
@@ -263,10 +334,10 @@ export default function EmptyLegsPage() {
                         </TableCell>
                         <TableCell>
                           <p className="text-sm line-through text-muted-foreground">
-                            {formatNGN(leg.originalPriceNgn)}
+                            {formatUSD(leg.originalPriceUsd)}
                           </p>
                           <p className="font-medium text-[#D4AF37]">
-                            {formatNGN(leg.discountPriceNgn)}
+                            {formatUSD(leg.discountPriceUsd)}
                           </p>
                           <Badge variant="success" className="text-xs mt-1">
                             {discount}% OFF

@@ -137,11 +137,15 @@ enum ActivityAction {
   // Subscriptions
   SUBSCRIPTION_CREATE
   SUBSCRIPTION_DELETE
+  
+  // Notifications
+  EMPTY_LEG_NOTIFICATION
 }
 
 enum AirportType {
   large_airport
   medium_airport
+  small_airport
 }
 
 // ============================================================================
@@ -439,7 +443,7 @@ model CharterQuoteAircraft {
   aircraftId      String
   
   charterQuote    CharterQuote  @relation(fields: [charterQuoteId], references: [id], onDelete: Cascade)
-  aircraft        Aircraft      @relation(fields: [aircraftId], references: [id])
+  aircraft        Aircraft      @relation(fields: [aircraftId], references: [id], onDelete: Cascade)
   
   @@unique([charterQuoteId, aircraftId])
 }
@@ -474,7 +478,7 @@ model CharterLeg {
   charterQuote        CharterQuote  @relation(fields: [charterQuoteId], references: [id], onDelete: Cascade)
   departureAirport    Airport       @relation("DepartureAirport", fields: [departureAirportId], references: [id])
   arrivalAirport      Airport       @relation("ArrivalAirport", fields: [arrivalAirportId], references: [id])
-  aircraft            Aircraft?     @relation(fields: [aircraftId], references: [id])
+  aircraft            Aircraft?     @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
   
   @@index([charterQuoteId])
   @@index([departureAirportId])
@@ -515,7 +519,7 @@ model EmptyLeg {
   // Relations
   departureAirport    Airport         @relation("EmptyLegDeparture", fields: [departureAirportId], references: [id])
   arrivalAirport      Airport         @relation("EmptyLegArrival", fields: [arrivalAirportId], references: [id])
-  aircraft            Aircraft        @relation(fields: [aircraftId], references: [id])
+  aircraft            Aircraft        @relation(fields: [aircraftId], references: [id], onDelete: Cascade)
   createdByAdmin      Admin?          @relation("CreatedByAdmin", fields: [createdByAdminId], references: [id])
   createdByOperator   Operator?       @relation("CreatedByOperator", fields: [createdByOperatorId], references: [id])
   bookings            EmptyLegBooking[]
@@ -579,7 +583,7 @@ model EmptyLegBooking {
   confirmationSentAt  DateTime?     // When confirmation was sent to client
   
   // Relations
-  emptyLeg          EmptyLeg        @relation(fields: [emptyLegId], references: [id])
+  emptyLeg          EmptyLeg        @relation(fields: [emptyLegId], references: [id], onDelete: Cascade)
   client            Client          @relation(fields: [clientId], references: [id])
   approvedBy        Admin?          @relation("BookingApprovedBy", fields: [approvedById], references: [id])
   payment           Payment?
@@ -707,7 +711,7 @@ model Announcement {
 
 model EmptyLegSubscription {
   id            String            @id @default(cuid())
-  phone         String            // WhatsApp phone number (unique identifier)
+  phone         String            // WhatsApp phone number - unique identifier (enforced at application level)
   type          SubscriptionType  @default(ALL)
   
   // For CITY type - list of cities to watch

@@ -77,8 +77,8 @@ export default function NewEmptyLegPage() {
     departureAirportId: "",
     arrivalAirportId: "",
     totalSeats: "",
-    originalPriceNgn: "",
-    discountPriceNgn: "",
+    originalPriceUsd: "",
+    discountPriceUsd: "",
   });
 
   // Departure date/time state for Calendar20
@@ -213,8 +213,8 @@ export default function NewEmptyLegPage() {
   };
 
   const calculateDiscount = () => {
-    const original = parseFloat(formData.originalPriceNgn) || 0;
-    const discount = parseFloat(formData.discountPriceNgn) || 0;
+    const original = parseFloat(formData.originalPriceUsd) || 0;
+    const discount = parseFloat(formData.discountPriceUsd) || 0;
     if (original > 0 && discount > 0) {
       return Math.round(((original - discount) / original) * 100);
     }
@@ -274,8 +274,8 @@ export default function NewEmptyLegPage() {
       return;
     }
     if (
-      !formData.originalPriceNgn ||
-      parseFloat(formData.originalPriceNgn) <= 0
+      !formData.originalPriceUsd ||
+      parseFloat(formData.originalPriceUsd) <= 0
     ) {
       toast({
         title: "Error",
@@ -285,8 +285,8 @@ export default function NewEmptyLegPage() {
       return;
     }
     if (
-      !formData.discountPriceNgn ||
-      parseFloat(formData.discountPriceNgn) <= 0
+      !formData.discountPriceUsd ||
+      parseFloat(formData.discountPriceUsd) <= 0
     ) {
       toast({
         title: "Error",
@@ -296,8 +296,8 @@ export default function NewEmptyLegPage() {
       return;
     }
     if (
-      parseFloat(formData.discountPriceNgn) >=
-      parseFloat(formData.originalPriceNgn)
+      parseFloat(formData.discountPriceUsd) >=
+      parseFloat(formData.originalPriceUsd)
     ) {
       toast({
         title: "Error",
@@ -641,22 +641,22 @@ export default function NewEmptyLegPage() {
               <CardContent>
                 <section className="grid gap-6 md:grid-cols-2">
                   <article className="space-y-2">
-                    <Label htmlFor="originalPriceNgn">
-                      Original Price (NGN) *
+                    <Label htmlFor="originalPriceUsd">
+                      Original Price (USD) *
                     </Label>
                     <section className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        ₦
+                        $
                       </span>
                       <Input
-                        id="originalPriceNgn"
+                        id="originalPriceUsd"
                         type="number"
-                        placeholder="e.g., 500000"
-                        value={formData.originalPriceNgn}
+                        placeholder="e.g., 5000"
+                        value={formData.originalPriceUsd}
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            originalPriceNgn: e.target.value,
+                            originalPriceUsd: e.target.value,
                           }))
                         }
                         min="0"
@@ -667,22 +667,22 @@ export default function NewEmptyLegPage() {
                   </article>
 
                   <article className="space-y-2">
-                    <Label htmlFor="discountPriceNgn">
-                      Discount Price (NGN) *
+                    <Label htmlFor="discountPriceUsd">
+                      Discount Price (USD) *
                     </Label>
                     <section className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        ₦
+                        $
                       </span>
                       <Input
-                        id="discountPriceNgn"
+                        id="discountPriceUsd"
                         type="number"
-                        placeholder="e.g., 350000"
-                        value={formData.discountPriceNgn}
+                        placeholder="e.g., 3500"
+                        value={formData.discountPriceUsd}
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            discountPriceNgn: e.target.value,
+                            discountPriceUsd: e.target.value,
                           }))
                         }
                         min="0"
@@ -699,10 +699,10 @@ export default function NewEmptyLegPage() {
                       {calculateDiscount()}% discount applied
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Savings: ₦
+                      Savings: $
                       {(
-                        parseFloat(formData.originalPriceNgn || "0") -
-                        parseFloat(formData.discountPriceNgn || "0")
+                        parseFloat(formData.originalPriceUsd || "0") -
+                        parseFloat(formData.discountPriceUsd || "0")
                       ).toLocaleString()}{" "}
                       per seat
                     </p>
@@ -780,17 +780,17 @@ export default function NewEmptyLegPage() {
                   <p className="text-sm text-muted-foreground">
                     Price per Seat
                   </p>
-                  {formData.discountPriceNgn ? (
+                  {formData.discountPriceUsd ? (
                     <section>
                       <p className="text-sm line-through text-muted-foreground">
-                        ₦
+                        $
                         {parseFloat(
-                          formData.originalPriceNgn || "0",
+                          formData.originalPriceUsd || "0",
                         ).toLocaleString()}
                       </p>
                       <p className="text-xl font-bold text-[#D4AF37]">
-                        ₦
-                        {parseFloat(formData.discountPriceNgn).toLocaleString()}
+                        $
+                        {parseFloat(formData.discountPriceUsd).toLocaleString()}
                       </p>
                     </section>
                   ) : (

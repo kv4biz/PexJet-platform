@@ -84,12 +84,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find or create client
+    // Find or create client by phone (WhatsApp number is unique identifier)
+    // IMPORTANT: First name used with a WhatsApp number persists forever
     let client = await prisma.client.findUnique({
       where: { phone: contactInfo.phone },
     });
 
     if (!client) {
+      // New client - save their name and email
       client = await prisma.client.create({
         data: {
           phone: contactInfo.phone,
@@ -98,13 +100,13 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      await prisma.client.update({
-        where: { id: client.id },
-        data: {
-          email: contactInfo.email,
-          fullName: `${contactInfo.firstName} ${contactInfo.lastName}`,
-        },
-      });
+      // Existing client - only update email if provided, NEVER update name
+      if (contactInfo.email && contactInfo.email !== client.email) {
+        await prisma.client.update({
+          where: { id: client.id },
+          data: { email: contactInfo.email },
+        });
+      }
     }
 
     // Calculate total price (USD)

@@ -280,7 +280,6 @@ export default function EmptyLegDeals() {
                         <div className="text-2xl font-bold text-[#D4AF37]">
                           {formatPrice(deal.priceUsd)}
                         </div>
-                        <div className="text-xs text-gray-500">per seat</div>
                       </div>
                       <Link
                         href={`/empty-legs/${deal.slug}`}
@@ -376,7 +375,6 @@ export default function EmptyLegDeals() {
                         <div className="text-2xl font-bold text-[#D4AF37]">
                           {formatPrice(deal.priceUsd)}
                         </div>
-                        <div className="text-xs text-gray-500">per seat</div>
                       </div>
                       <Link
                         href={`/empty-legs/${deal.slug}`}

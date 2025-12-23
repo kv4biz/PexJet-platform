@@ -392,10 +392,9 @@ export function EmptyLegDealsSection() {
               </div>
 
               {/* Discounted Price */}
-              <div className="text-2xl md:text-3xl font-bold text-[#D4AF37]">
+              <div className="text-2xl md:text-3xl font-bold text-[#D4AF37] mb-4">
                 {formatPrice(deal.priceUsd)}
               </div>
-              <div className="text-xs text-gray-500 mb-3">per seat</div>
 
               {/* CTA Button */}
               <Button

@@ -162,7 +162,7 @@ export default function AirportsPage() {
                   setTypeFilter(e.target.value);
                   setPage(1);
                 }}
-                className="h-10 pl-10 pr-4 border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[160px]"
+                className="h-10 pl-10 pr-4 border border-input bg-background text-sm focus:outline-none min-w-[160px]"
               >
                 {airportTypes.map((type) => (
                   <option key={type.value} value={type.value}>

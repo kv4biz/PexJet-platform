@@ -71,6 +71,7 @@ interface Aircraft {
   thumbnailImage: string | null;
   description: string | null;
   baggageCapacityCuFt: number | null;
+  fuelCapacityGal: number | null;
   cabinLengthFt: number | null;
   cabinWidthFt: number | null;
   cabinHeightFt: number | null;
@@ -82,10 +83,9 @@ interface Aircraft {
 
 const categories = [
   { value: "", label: "All Categories" },
-  { value: "HEAVY_JET", label: "Heavy Jet" },
-  { value: "SUPER_MIDSIZE_JET", label: "Super Midsize Jet" },
-  { value: "MIDSIZE_JET", label: "Midsize Jet" },
   { value: "LIGHT_JET", label: "Light Jet" },
+  { value: "MIDSIZE_JET", label: "Midsize Jet" },
+  { value: "SUPER_MIDSIZE_JET", label: "Super Midsize Jet" },
   { value: "ULTRA_LONG_RANGE", label: "Ultra Long Range" },
 ];
 
@@ -109,6 +109,7 @@ const getEmptyForm = () => ({
   yearOfManufacture: new Date().getFullYear(),
   description: "",
   baggageCapacityCuFt: null as number | null,
+  fuelCapacityGal: null as number | null,
   cabinLengthFt: null as number | null,
   cabinWidthFt: null as number | null,
   cabinHeightFt: null as number | null,
@@ -137,10 +138,15 @@ export default function AircraftPage() {
   const [deleting, setDeleting] = useState(false);
   const [uploadingExterior, setUploadingExterior] = useState(false);
   const [uploadingInterior, setUploadingInterior] = useState(false);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
   const [pendingExteriorFiles, setPendingExteriorFiles] = useState<File[]>([]);
   const [pendingInteriorFiles, setPendingInteriorFiles] = useState<File[]>([]);
+  const [pendingThumbnailFile, setPendingThumbnailFile] = useState<File | null>(
+    null,
+  );
   const exteriorInputRef = useRef<HTMLInputElement>(null);
   const interiorInputRef = useRef<HTMLInputElement>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteImageDialogOpen, setDeleteImageDialogOpen] = useState(false);
   const [pendingDeleteImage, setPendingDeleteImage] = useState<{
@@ -257,6 +263,11 @@ export default function AircraftPage() {
           );
         }
 
+        // Upload pending thumbnail if any
+        if (pendingThumbnailFile) {
+          await uploadThumbnail(savedAircraft.id, pendingThumbnailFile);
+        }
+
         toast({
           title: isEditing ? "Aircraft Updated" : "Aircraft Added",
           description: isEditing
@@ -268,6 +279,7 @@ export default function AircraftPage() {
         setFormData(getEmptyForm());
         setPendingExteriorFiles([]);
         setPendingInteriorFiles([]);
+        setPendingThumbnailFile(null);
         setSelectedAircraft(null);
         fetchAircraft();
       } else {
@@ -305,6 +317,78 @@ export default function AircraftPage() {
       },
       body: formData,
     });
+  };
+
+  const uploadThumbnail = async (aircraftId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("thumbnail", file);
+
+    await fetch(`/api/aircraft/${aircraftId}/images`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      },
+      body: formData,
+    });
+  };
+
+  const handleThumbnailUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+
+    // If editing existing aircraft, upload immediately
+    if (isEditing && selectedAircraft) {
+      setUploadingThumbnail(true);
+
+      try {
+        const formData = new FormData();
+        formData.append("thumbnail", file);
+
+        const response = await fetch(
+          `/api/aircraft/${selectedAircraft.id}/images`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            },
+            body: formData,
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setSelectedAircraft(data.aircraft);
+          fetchAircraft();
+          toast({
+            title: "Thumbnail Uploaded",
+            description: "Thumbnail image updated successfully.",
+          });
+        } else {
+          const error = await response.json();
+          toast({
+            title: "Upload Failed",
+            description: error.error,
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Upload Failed",
+          description: "An error occurred.",
+          variant: "destructive",
+        });
+      } finally {
+        setUploadingThumbnail(false);
+      }
+    } else {
+      // For new aircraft, store file to upload after save
+      setPendingThumbnailFile(file);
+      toast({
+        title: "Thumbnail Queued",
+        description: "Thumbnail will be uploaded when saved.",
+      });
+    }
   };
 
   const handleImageUpload = async (
@@ -441,6 +525,7 @@ export default function AircraftPage() {
         selectedAircraft.yearOfManufacture || new Date().getFullYear(),
       description: selectedAircraft.description || "",
       baggageCapacityCuFt: selectedAircraft.baggageCapacityCuFt,
+      fuelCapacityGal: selectedAircraft.fuelCapacityGal,
       cabinLengthFt: selectedAircraft.cabinLengthFt,
       cabinWidthFt: selectedAircraft.cabinWidthFt,
       cabinHeightFt: selectedAircraft.cabinHeightFt,
@@ -462,14 +547,12 @@ export default function AircraftPage() {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "HEAVY_JET":
-        return "destructive";
-      case "SUPER_MIDSIZE_JET":
-        return "warning";
-      case "MIDSIZE_JET":
-        return "success";
       case "LIGHT_JET":
         return "secondary";
+      case "MIDSIZE_JET":
+        return "success";
+      case "SUPER_MIDSIZE_JET":
+        return "warning";
       case "ULTRA_LONG_RANGE":
         return "gold";
       default:
@@ -623,7 +706,7 @@ export default function AircraftPage() {
             Performance
           </p>
 
-          <section className="grid grid-cols-2 gap-2">
+          <section className="grid grid-cols-3 gap-2">
             <fieldset className="space-y-2">
               <Label>Range (nm) *</Label>
               <Input
@@ -650,6 +733,22 @@ export default function AircraftPage() {
                   })
                 }
                 required
+              />
+            </fieldset>
+            <fieldset className="space-y-2">
+              <Label>Fuel (gal)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                value={formData.fuelCapacityGal || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    fuelCapacityGal: e.target.value
+                      ? parseFloat(e.target.value)
+                      : null,
+                  })
+                }
               />
             </fieldset>
           </section>
@@ -822,6 +921,72 @@ export default function AircraftPage() {
           <p className="text-xs text-muted-foreground uppercase tracking-wider">
             Images
           </p>
+
+          {/* Thumbnail Image */}
+          <fieldset className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Thumbnail Image</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => thumbnailInputRef.current?.click()}
+                disabled={uploadingThumbnail}
+              >
+                {uploadingThumbnail ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Upload className="h-3 w-3 mr-1" />
+                )}
+                {isEditing && selectedAircraft?.thumbnailImage
+                  ? "Change"
+                  : "Upload"}
+              </Button>
+              <input
+                ref={thumbnailInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleThumbnailUpload(e.target.files)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Show existing thumbnail when editing */}
+              {isEditing && selectedAircraft?.thumbnailImage && (
+                <div className="relative group">
+                  <Image
+                    src={selectedAircraft.thumbnailImage}
+                    alt="Thumbnail"
+                    width={120}
+                    height={80}
+                    className="object-cover w-28 h-20 border"
+                  />
+                </div>
+              )}
+              {/* Show pending thumbnail */}
+              {pendingThumbnailFile && (
+                <div className="relative group">
+                  <div className="w-28 h-20 bg-muted flex items-center justify-center text-xs text-muted-foreground border">
+                    {pendingThumbnailFile.name.substring(0, 12)}...
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
+                    onClick={() => setPendingThumbnailFile(null)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              {!isEditing && !pendingThumbnailFile && (
+                <p className="text-xs text-muted-foreground">
+                  No thumbnail selected
+                </p>
+              )}
+            </div>
+          </fieldset>
 
           {/* Exterior Images */}
           <fieldset className="space-y-2">
@@ -1057,7 +1222,7 @@ export default function AircraftPage() {
                   setCategoryFilter(e.target.value);
                   setPage(1);
                 }}
-                className="h-10 pl-10 pr-4 border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[180px]"
+                className="h-10 pl-10 pr-4 border border-input bg-background text-sm focus:outline-none min-w-[180px]"
               >
                 {categories.map((cat) => (
                   <option key={cat.value} value={cat.value}>

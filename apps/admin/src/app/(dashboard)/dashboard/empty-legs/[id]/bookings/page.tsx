@@ -46,7 +46,7 @@ import {
   Phone,
   Mail,
 } from "lucide-react";
-import { formatNGN, formatDateTime } from "@/lib/format-currency";
+import { formatUSD, formatDateTime } from "@/lib/format-currency";
 
 interface Booking {
   id: string;
@@ -55,7 +55,7 @@ interface Booking {
   clientEmail: string;
   clientPhone: string;
   seatsRequested: number;
-  totalPriceNgn: number;
+  totalPriceUsd: number;
   status: string;
   rejectionReason: string | null;
   rejectionNote: string | null;
@@ -72,7 +72,7 @@ interface Booking {
   payment: {
     id: string;
     status: string;
-    amountNgn: number;
+    amountUsd: number;
     paidAt: string | null;
   } | null;
 }
@@ -318,7 +318,7 @@ export default function EmptyLegBookingsPage() {
                     </TableCell>
                     <TableCell>
                       <p className="font-medium text-[#D4AF37]">
-                        {formatNGN(booking.totalPriceNgn)}
+                        {formatUSD(booking.totalPriceUsd)}
                       </p>
                     </TableCell>
                     <TableCell>

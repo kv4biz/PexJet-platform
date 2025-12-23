@@ -47,7 +47,7 @@ export async function GET(
           select: {
             id: true,
             status: true,
-            amountNgn: true,
+            amountUsd: true,
             paidAt: true,
           },
         },
