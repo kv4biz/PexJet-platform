@@ -1,8 +1,23 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { MapPin, ArrowLeftRight, Users, Search, Loader2 } from "lucide-react";
-import { Input, Button, Card, Calendar20 } from "@pexjet/ui";
+import {
+  MapPin,
+  ArrowLeftRight,
+  Search,
+  Loader2,
+  Calendar as CalendarIcon,
+} from "lucide-react";
+import {
+  Input,
+  Button,
+  Card,
+  Calendar,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  cn,
+} from "@pexjet/ui";
 import { useRouter } from "next/navigation";
 
 interface Airport {
@@ -27,14 +42,8 @@ export default function EmptyLegSearch() {
   const router = useRouter();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [date, setDate] = useState<{
-    date?: string | null;
-    time?: string | null;
-  }>({
-    date: null,
-    time: null,
-  });
-  const [passengers, setPassengers] = useState(1);
+  const [startDate, setStartDate] = useState<string | null>(null);
+  const [endDate, setEndDate] = useState<string | null>(null);
   const [openFrom, setOpenFrom] = useState(false);
   const [openTo, setOpenTo] = useState(false);
   const [airports, setAirports] = useState<Airport[]>([]);
@@ -98,8 +107,8 @@ export default function EmptyLegSearch() {
       type: "emptyLeg",
       from,
       to,
-      date,
-      passengers,
+      startDate,
+      endDate,
     };
 
     sessionStorage.setItem("emptyLegSearchData", JSON.stringify(payload));
@@ -156,7 +165,9 @@ export default function EmptyLegSearch() {
                         <button
                           key={airport.id}
                           onMouseDown={() => {
-                            setFrom(getAirportDisplay(airport));
+                            setFrom(
+                              `${airport.iataCode || airport.icaoCode} - ${airport.name}`,
+                            );
                             setOpenFrom(false);
                           }}
                           className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
@@ -221,7 +232,9 @@ export default function EmptyLegSearch() {
                       <button
                         key={airport.id}
                         onMouseDown={() => {
-                          setTo(getAirportDisplay(airport));
+                          setTo(
+                            `${airport.iataCode || airport.icaoCode} - ${airport.name}`,
+                          );
                           setOpenTo(false);
                         }}
                         className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
@@ -245,39 +258,99 @@ export default function EmptyLegSearch() {
             </div>
           </div>
 
-          {/* Date using Calendar20 */}
-          <Calendar20
-            placeholder="Departure Date & Time"
-            value={date}
-            onChange={setDate}
-          />
+          {/* Start Date */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !startDate && "text-muted-foreground",
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {startDate ? startDate : "Start Date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={startDate ? new Date(startDate) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, "0");
+                    const day = String(date.getDate()).padStart(2, "0");
+                    const dateStr = `${year}-${month}-${day}`;
+                    setStartDate(dateStr);
+                    // Auto-set end date to 90 days from start date if not already set
+                    if (!endDate) {
+                      const endDate = new Date(date);
+                      endDate.setDate(endDate.getDate() + 90);
+                      const endYear = endDate.getFullYear();
+                      const endMonth = String(endDate.getMonth() + 1).padStart(
+                        2,
+                        "0",
+                      );
+                      const endDay = String(endDate.getDate()).padStart(2, "0");
+                      setEndDate(`${endYear}-${endMonth}-${endDay}`);
+                    }
+                  }
+                }}
+                disabled={(date) =>
+                  date < new Date(new Date().setHours(0, 0, 0, 0))
+                }
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
 
-          {/* Passengers */}
-          <div className="flex w-full justify-between items-center px-3 py-1 bg-white border border-gray-300">
-            <Users className="w-4 h-4 text-gray-500" />
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPassengers(Math.max(1, passengers - 1))}
-                className="w-7 h-7 inline-flex items-center justify-center border border-gray-300 text-black"
+          {/* End Date */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !endDate && "text-muted-foreground",
+                )}
               >
-                −
-              </button>
-              <span className="w-6 text-center text-black">{passengers}</span>
-              <button
-                onClick={() => setPassengers(passengers + 1)}
-                className="w-7 h-7 inline-flex items-center justify-center border border-gray-300 text-black"
-              >
-                +
-              </button>
-            </div>
-          </div>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {endDate ? endDate : "End Date (Optional)"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={endDate ? new Date(endDate) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    // Format date as YYYY-MM-DD using local timezone to avoid timezone offset issues
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, "0");
+                    const day = String(date.getDate()).padStart(2, "0");
+                    setEndDate(`${year}-${month}-${day}`);
+                  }
+                }}
+                disabled={(date) => {
+                  const today = new Date(new Date().setHours(0, 0, 0, 0));
+                  const start = startDate ? new Date(startDate) : today;
+                  return (
+                    date < start ||
+                    date > new Date(start.getTime() + 90 * 24 * 60 * 60 * 1000)
+                  );
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Action button */}
         <Button
           variant="outline"
           onClick={handleSubmit}
-          className="w-full mt-4 bg-[#D4AF37] text-[#0C0C0C] hover:bg-[#D4AF37]/90"
+          className="w-full mt-2 bg-[#D4AF37] text-[#0C0C0C] hover:bg-[#D4AF37]/90"
         >
           <Search className="w-4 h-4 mr-2" />
           Search Empty Legs

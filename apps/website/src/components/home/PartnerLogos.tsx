@@ -58,7 +58,7 @@ export default function PartnerLogos() {
       `,
         }}
       />
-      <section className="py-16 bg-white  overflow-hidden">
+      <section className="py-16 bg-white hidden overflow-hidden">
         <div className="w-full container mx-auto px-4 sm:px-6 lg:px-8 mb-8">
           <p className="text-center text-sm uppercase tracking-widest text-gray-500">
             {partnerLogos.title}

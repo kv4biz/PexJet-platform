@@ -8,3 +8,6 @@ export * from "./paystack";
 export * from "./utils";
 export * from "./constants";
 export * from "./validators";
+export * from "./instacharter";
+export * from "./instacharter-sync";
+export * from "./instacharter-types";

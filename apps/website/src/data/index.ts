@@ -24,8 +24,8 @@ export const navbarData = {
       href: "/empty-legs",
     },
     {
-      label: "Aircrafts",
-      href: "/aircraft",
+      label: "Aircraft Management",
+      href: "/aircraft-management",
     },
     {
       label: "About",
@@ -82,7 +82,7 @@ export const footerData = {
   links: {
     Company: [
       { label: "About Us", href: "/about/our-company" },
-      { label: "Aircraft Management", href: "/aircraft" },
+      { label: "Aircraft Management", href: "/aircraft-management" },
       {
         label: "Acquisition & Financing",
         href: "/about/asset-acquisition-and-financing",
@@ -124,13 +124,13 @@ export const homePageData = {
       "Take advantage of our discounted one-way flights and save up to 50% on private jet travel.",
   },
   fleetPreview: {
-    title: "Our Aircraft",
+    title: "Aircraft Management",
     image:
       "https://images.unsplash.com/photo-1636189395447-0b8c1390b869?w=1920&q=80",
     description:
-      "Explore our clean, modern aircraft for any trip—short or long. Comfort and reliability in every flight.",
-    buttonText: "View All Aircraft",
-    buttonLink: "/aircraft",
+      "Professional aircraft management services. We handle operations, maintenance, crew, and compliance—so you can focus on flying.",
+    buttonText: "Learn More",
+    buttonLink: "/aircraft-management",
   },
 
   partnerLogos: {
@@ -1025,7 +1025,76 @@ export const servicesData = {
 };
 
 // ============================================================================
-// SEO / META DATA
+// AIRCRAFT MANAGEMENT PAGE DATA
+// ============================================================================
+export const aircraftManagementPageData = {
+  hero: {
+    headline: "You Own the Jet.",
+    subheadline: "PEXJET Manages Everything Else.",
+    description:
+      "As a jet owner, your time and peace of mind are invaluable. With PEXJET Aircraft Management, you enjoy all the advantages of ownership—without the operational complexity. We handle every detail with precision and discretion, from daily operations to long-term asset protection. From flight operations and crew management to maintenance, regulatory compliance, and financial reporting, PEXJET ensures your aircraft is operated safely, efficiently, and cost-effectively. Whether your jet flies frequently or occasionally, our management solutions are tailored to your lifestyle—maximizing value while eliminating hassle.",
+    cta: "Speak With Advisor",
+    image:
+      "https://res.cloudinary.com/dikzx4eyh/image/upload/v1767366534/jetnobg_n4o1hk.png",
+  },
+
+  about: {
+    headline: "What Is Aircraft Management?",
+    description:
+      "PEXJET Aircraft Management is a complete operational solution designed for private jet owners who want effortless ownership. We take full responsibility for the day-to-day management of your aircraft, ensuring it remains airworthy, compliant, and ready to fly at all times. You retain full ownership and unrestricted access to your jet, while PEXJET operates it to the highest international standards—behind the scenes and without disruption.",
+  },
+
+  services: {
+    headline: "Our Aircraft Management Services",
+    items: [
+      {
+        title: "Flight Operations & Scheduling",
+        description:
+          "We plan, coordinate, and dispatch every flight with accuracy and flexibility, aligning perfectly with your schedule—whether domestic or international.",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1767370661/flightoperation_p9hqki.webp",
+      },
+      {
+        title: "Crew Management",
+        description:
+          "PEXJET recruits, trains, and manages highly experienced flight crew, delivering exceptional safety, professionalism, and onboard service on every journey.",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1767370772/CrewManagemen_jajrnk.png",
+      },
+      {
+        title: "Maintenance & Airworthiness",
+        description:
+          "Your aircraft is maintained to the highest standards through proactive inspections, regulatory compliance, and real-time maintenance oversight.",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1767370772/Maintenance_Airworthiness_lppc8p.png",
+      },
+      {
+        title: "Budgeting & Financial Oversight",
+        description:
+          "We provide clear monthly reporting, expense tracking, and cost controls—giving you full transparency and protecting your investment.",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1767371312/FinancialOversight_wr4dwf.webp",
+      },
+      {
+        title: "Regulatory Compliance & Insurance",
+        description:
+          "PEXJET ensures your aircraft meets all local and international aviation regulations, with appropriate insurance coverage and documentation in place at all times.",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1767371317/RegulatoryCompliance_Insuranc_npgg7d.jpg",
+      },
+      {
+        title: "Trip Support & Concierge Services",
+        description:
+          "From flight planning and permits to catering, ground handling, and transportation, we manage every detail so your experience remains seamless.",
+        image:
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1767371423/Trip_Support_Concierge_Services_ed6uxr.jpg",
+      },
+    ],
+  },
+};
+
+// ============================================================================
+// SEO DATA
 // ============================================================================
 export const seoData = {
   siteName: "PexJet",

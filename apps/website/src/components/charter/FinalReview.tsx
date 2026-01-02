@@ -81,7 +81,8 @@ export function FinalReview({
   onBack,
   isSubmitting = false,
 }: FinalReviewProps) {
-  const { searchData, selectedAircraft, contactInfo } = formData;
+  // formData contains search data at root level, plus selectedAircraft and contactInfo
+  const { selectedAircraft, contactInfo, ...searchData } = formData;
   const [flightInfo, setFlightInfo] = useState<{
     distanceNm: number;
     flightTimeHours: number;
@@ -260,26 +261,27 @@ export function FinalReview({
 
   // Get flights array
   const getFlights = () => {
-    if (searchData.flights) {
+    if (searchData?.flights) {
       return searchData.flights;
     }
+    // Fallback for legacy/simple format
     return [
       {
         id: "1",
-        from: searchData.departureAirport,
-        to: searchData.destinationAirport,
-        date: searchData.departureDate,
-        returnDate: searchData.returnDate,
-        time: searchData.departureTime,
-        returnTime: searchData.returnTime,
-        passengers: searchData.passengers,
+        from: searchData?.departureAirport || searchData?.from || "N/A",
+        to: searchData?.destinationAirport || searchData?.to || "N/A",
+        date: searchData?.departureDate || searchData?.date || null,
+        returnDate: searchData?.returnDate || null,
+        time: searchData?.departureTime || searchData?.time || null,
+        returnTime: searchData?.returnTime || null,
+        passengers: searchData?.passengers || 1,
       },
     ];
   };
 
   const flights = getFlights();
-  const isMultiLeg = searchData.tripType === "multiLeg" && flights.length > 1;
-  const isRoundTrip = searchData.tripType === "roundTrip";
+  const isMultiLeg = searchData?.tripType === "multiLeg" && flights.length > 1;
+  const isRoundTrip = searchData?.tripType === "roundTrip";
 
   return (
     <div className="space-y-6">
@@ -312,7 +314,9 @@ export function FinalReview({
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Passengers:</span>
-                <span className="font-medium">{searchData.passengers}</span>
+                <span className="font-medium">
+                  {searchData?.passengers || 1}
+                </span>
               </div>
 
               {/* Display all flight legs */}
@@ -347,42 +351,76 @@ export function FinalReview({
               </div>
             </div>
           ) : isRoundTrip ? (
-            // Round trip display
-            <div className="space-y-2">
+            // Round trip display - show as two separate trips
+            <div className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-gray-600">Trip Type:</span>
                 <span className="font-medium capitalize">Round Trip</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">From:</span>
-                <span className="font-medium">{flights[0]?.from}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">To:</span>
-                <span className="font-medium">{flights[0]?.to}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-gray-600">Passengers:</span>
-                <span className="font-medium">{searchData.passengers}</span>
+                <span className="font-medium">
+                  {searchData?.passengers || 1}
+                </span>
               </div>
-              {flights[0]?.date && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Departure:</span>
-                  <span className="font-medium">
-                    {formatDateForDisplay(flights[0].date)}
-                    {flights[0].time && ` at ${flights[0].time}`}
-                  </span>
+
+              {/* Display as two separate trips */}
+              <div className="space-y-3 mt-4">
+                <h4 className="font-medium text-gray-800">Flight Itinerary:</h4>
+
+                {/* Trip 1: Outbound */}
+                <div className="bg-gray-50 p-3 border">
+                  <div className="font-medium text-sm mb-2 text-[#D4AF37]">
+                    Trip 1: Outbound
+                  </div>
+                  <div className="text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">From:</span>
+                      <span className="font-medium">{flights[0]?.from}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">To:</span>
+                      <span className="font-medium">{flights[0]?.to}</span>
+                    </div>
+                    {flights[0]?.date && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Date & Time:</span>
+                        <span className="font-medium">
+                          {formatDateForDisplay(flights[0].date)}
+                          {flights[0].time && ` at ${flights[0].time}`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-              {flights[0]?.returnDate && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Return:</span>
-                  <span className="font-medium">
-                    {formatDateForDisplay(flights[0].returnDate)}
-                    {flights[0].returnTime && ` at ${flights[0].returnTime}`}
-                  </span>
+
+                {/* Trip 2: Return */}
+                <div className="bg-gray-50 p-3 border">
+                  <div className="font-medium text-sm mb-2 text-[#D4AF37]">
+                    Trip 2: Return
+                  </div>
+                  <div className="text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">From:</span>
+                      <span className="font-medium">{flights[0]?.to}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">To:</span>
+                      <span className="font-medium">{flights[0]?.from}</span>
+                    </div>
+                    {flights[0]?.returnDate && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Date & Time:</span>
+                        <span className="font-medium">
+                          {formatDateForDisplay(flights[0].returnDate)}
+                          {flights[0].returnTime &&
+                            ` at ${flights[0].returnTime}`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           ) : (
             // One-way display
@@ -401,7 +439,9 @@ export function FinalReview({
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Passengers:</span>
-                <span className="font-medium">{searchData.passengers}</span>
+                <span className="font-medium">
+                  {searchData?.passengers || 1}
+                </span>
               </div>
               {flights[0]?.date && (
                 <div className="flex justify-between">
@@ -418,39 +458,26 @@ export function FinalReview({
 
         {/* Aircraft & Contact */}
         <div className="space-y-6">
-          {/* Selected Aircraft */}
+          {/* Selected Aircraft Categories */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-              Selected Aircraft ({selectedAircraft?.length || 0})
+              Selected Aircraft Categories
             </h3>
             {selectedAircraft && selectedAircraft.length > 0 ? (
               <div className="space-y-2">
                 {selectedAircraft.map((aircraft: any) => (
                   <div
                     key={aircraft.id}
-                    className="flex items-center gap-3 p-3 bg-gray-50"
+                    className="flex items-center justify-between p-2 border border-[#D4AF37] bg-[#D4AF37]/5"
                   >
-                    {aircraft.exteriorImages?.[0] && (
-                      <img
-                        src={aircraft.exteriorImages[0]}
-                        alt={aircraft.name}
-                        className="w-12 h-12 object-cover"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <div className="font-semibold">{aircraft.name}</div>
-                      <div className="text-sm text-gray-600">
-                        {aircraft.passengerCapacity} seats • {aircraft.type}
-                        {aircraft.hourlyRateUsd > 0 && (
-                          <> • ${aircraft.hourlyRateUsd.toLocaleString()}/hr</>
-                        )}
-                      </div>
-                    </div>
+                    <span className="font-medium">{aircraft.type}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">No aircraft selected</p>
+              <p className="text-gray-500 text-sm">
+                No aircraft category selected
+              </p>
             )}
           </div>
 
@@ -461,28 +488,18 @@ export function FinalReview({
                 Flight Estimates
               </h3>
               <div className="bg-gray-50 p-4 space-y-3">
-                {flightInfo && flightInfo.arrivalTime !== "TBD" && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-700 flex items-center gap-2">
-                      <Plane className="w-4 h-4" />
-                      Est. Arrival:
-                    </span>
-                    <span className="font-bold text-lg text-gray-900">
-                      {flightInfo.arrivalTime}
-                    </span>
-                  </div>
-                )}
                 {priceEstimate && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-700 flex items-center gap-2">
-                      <DollarSign className="w-4 h-4" />
-                      Est. Price (USD):
-                    </span>
-                    <span className="font-bold text-lg text-gray-900">
-                      {priceEstimate.minPriceUsd === priceEstimate.maxPriceUsd
-                        ? formatCurrency(priceEstimate.minPriceUsd)
-                        : `${formatCurrency(priceEstimate.minPriceUsd)} - ${formatCurrency(priceEstimate.maxPriceUsd)}`}
-                    </span>
+                  <div>
+                    <div className="text-xs text-gray-500">Starting from</div>
+                    <div className="text-xl font-bold text-[#D4AF37]">
+                      USD{" "}
+                      {priceEstimate.minPriceUsd.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Estimated price excluding taxes and fees
+                    </div>
                   </div>
                 )}
               </div>

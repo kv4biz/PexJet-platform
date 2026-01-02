@@ -7,9 +7,504 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================================================
-// ENUMS
-// ============================================================================
+model Country {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  name          String
+  continent     String
+  wikipediaLink String?
+  keywords      String?
+  createdAt     DateTime  @default(now())
+  airports      Airport[]
+  regions       Region[]
+}
+
+model Region {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  localCode     String
+  name          String
+  continent     String
+  countryCode   String
+  wikipediaLink String?
+  keywords      String?
+  createdAt     DateTime  @default(now())
+  airports      Airport[]
+  country       Country   @relation(fields: [countryCode], references: [code])
+
+  @@index([countryCode])
+}
+
+model Airport {
+  id                 String       @id @default(cuid())
+  ident              String       @unique
+  type               AirportType
+  name               String
+  latitude           Float
+  longitude          Float
+  elevationFt        Int?
+  continent          String
+  countryCode        String
+  regionCode         String
+  municipality       String?
+  scheduledService   Boolean      @default(false)
+  icaoCode           String?
+  iataCode           String?
+  gpsCode            String?
+  localCode          String?
+  homeLink           String?
+  wikipediaLink      String?
+  keywords           String?
+  createdAt          DateTime     @default(now())
+  country            Country      @relation(fields: [countryCode], references: [code])
+  region             Region       @relation(fields: [regionCode], references: [code])
+  arrivals           CharterLeg[] @relation("ArrivalAirport")
+  departures         CharterLeg[] @relation("DepartureAirport")
+  emptyLegArrivals   EmptyLeg[]   @relation("EmptyLegArrival")
+  emptyLegDepartures EmptyLeg[]   @relation("EmptyLegDeparture")
+
+  @@index([countryCode])
+  @@index([regionCode])
+  @@index([icaoCode])
+  @@index([iataCode])
+  @@index([name])
+  @@index([municipality])
+}
+
+model Aircraft {
+  id                   String                 @id @default(cuid())
+  name                 String
+  manufacturer         String
+  category             AircraftCategory
+  availability         AircraftAvailability   @default(NONE)
+  basePricePerHour     Float?                 // Base price per hour for charter calculations
+  cabinLengthFt        Float?
+  cabinWidthFt         Float?
+  cabinHeightFt        Float?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  baggageCuFt          Float?
+  exteriorHeightFt     Float?
+  exteriorLengthFt     Float?
+  exteriorWingspanFt   Float?
+  image                String?
+  maxPax               Int?
+  minPax               Int?
+  cruiseSpeedKnots     Float?
+  fuelCapacityGal      Float?
+  rangeNm              Float?
+  charterLegs          CharterLeg[]
+  charterQuoteAircraft CharterQuoteAircraft[]
+  emptyLegs            EmptyLeg[]
+  operatorFleets       OperatorFleet[]
+
+  @@index([category])
+  @@index([availability])
+  @@index([manufacturer])
+}
+
+model Admin {
+  id                       String                @id @default(cuid())
+  email                    String                @unique
+  username                 String                @unique
+  passwordHash             String
+  fullName                 String
+  phone                    String
+  role                     AdminRole             @default(STAFF)
+  status                   AdminStatus           @default(OFFLINE)
+  avatar                   String?
+  address                  String?
+  resetOtp                 String?
+  resetOtpExpiry           DateTime?
+  refreshToken             String?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  activityLogs             ActivityLog[]
+  announcements            Announcement[]
+  charterQuotesApproved    CharterQuote[]        @relation("ApprovedBy")
+  charterPaymentsConfirmed CharterQuote[]        @relation("PaymentConfirmedBy")
+  emptyLegsCreated         EmptyLeg[]            @relation("CreatedByAdmin")
+  emptyLegBookingsApproved EmptyLegBooking[]     @relation("BookingApprovedBy")
+  instaCharterSyncs        InstaCharterSyncLog[]
+
+  @@index([email])
+  @@index([username])
+}
+
+model Operator {
+  id                     String          @id @default(cuid())
+  email                  String          @unique
+  username               String          @unique
+  passwordHash           String
+  fullName               String
+  phone                  String
+  avatar                 String?
+  bankName               String
+  bankAccountNumber      String
+  bankAccountName        String
+  paystackSubaccountCode String?
+  commissionPercent      Float           @default(10)
+  resetOtp               String?
+  resetOtpExpiry         DateTime?
+  refreshToken           String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  emptyLegs              EmptyLeg[]      @relation("CreatedByOperator")
+  fleet                  OperatorFleet[]
+
+  @@index([email])
+  @@index([username])
+}
+
+model OperatorFleet {
+  id         String   @id @default(cuid())
+  operatorId String
+  aircraftId String
+  createdAt  DateTime @default(now())
+  aircraft   Aircraft @relation(fields: [aircraftId], references: [id], onDelete: Cascade)
+  operator   Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@unique([operatorId, aircraftId])
+  @@index([operatorId])
+}
+
+model Client {
+  id               String            @id @default(cuid())
+  phone            String            @unique
+  fullName         String?
+  email            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  charterQuotes    CharterQuote[]
+  emptyLegBookings EmptyLegBooking[]
+  payments         Payment[]
+
+  @@index([phone])
+  @@index([email])
+}
+
+model CharterQuote {
+  id                   String                 @id @default(cuid())
+  referenceNumber      String                 @unique
+  clientId             String
+  clientName           String
+  clientEmail          String
+  clientPhone          String
+  flightType           FlightType
+  passengerCount       Int
+  specialRequests      String?
+  status               QuoteStatus            @default(PENDING)
+  rejectionReason      RejectionReason?
+  rejectionNote        String?
+  approvedById         String?
+  approvedAt           DateTime?
+  paymentDeadline      DateTime?
+  paymentLink          String?
+  quoteDocumentUrl     String?
+  flightDocumentUrl    String?
+  receiptUrl           String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  paymentMethod        PaymentMethod?
+  totalPriceUsd        Float?
+  confirmationSentAt   DateTime?
+  invoiceDocumentUrl   String?
+  paymentConfirmedAt   DateTime?
+  paymentConfirmedById String?
+  receiptUploadedAt    DateTime?
+  receiptUploadedUrl   String?
+  legs                 CharterLeg[]
+  approvedBy           Admin?                 @relation("ApprovedBy", fields: [approvedById], references: [id])
+  client               Client                 @relation(fields: [clientId], references: [id])
+  paymentConfirmedBy   Admin?                 @relation("PaymentConfirmedBy", fields: [paymentConfirmedById], references: [id])
+  selectedAircraft     CharterQuoteAircraft[]
+  payment              Payment?
+
+  @@index([clientId])
+  @@index([status])
+  @@index([referenceNumber])
+}
+
+model CharterQuoteAircraft {
+  id             String       @id @default(cuid())
+  charterQuoteId String
+  aircraftId     String
+  aircraft       Aircraft     @relation(fields: [aircraftId], references: [id], onDelete: Cascade)
+  charterQuote   CharterQuote @relation(fields: [charterQuoteId], references: [id], onDelete: Cascade)
+
+  @@unique([charterQuoteId, aircraftId])
+}
+
+model CharterLeg {
+  id                 String       @id @default(cuid())
+  charterQuoteId     String
+  legNumber          Int
+  departureAirportId String
+  arrivalAirportId   String
+  departureDateTime  DateTime
+  aircraftId         String?
+  additionalNotes    String?
+  boardingInfo       String?
+  checkInTime        DateTime?
+  confirmationSentAt DateTime?
+  gateInfo           String?
+  pilotContact       String?
+  pilotName          String?
+  priceUsd           Float?
+  terminalInfo       String?
+  ticketNumber       String?
+  aircraft           Aircraft?    @relation(fields: [aircraftId], references: [id])
+  arrivalAirport     Airport      @relation("ArrivalAirport", fields: [arrivalAirportId], references: [id])
+  charterQuote       CharterQuote @relation(fields: [charterQuoteId], references: [id], onDelete: Cascade)
+  departureAirport   Airport      @relation("DepartureAirport", fields: [departureAirportId], references: [id])
+
+  @@index([charterQuoteId])
+  @@index([departureAirportId])
+  @@index([arrivalAirportId])
+}
+
+model EmptyLeg {
+  id                  String            @id @default(cuid())
+  slug                String            @unique
+  departureAirportId  String?
+  arrivalAirportId    String?
+  departureDateTime   DateTime
+  aircraftId          String?
+  totalSeats          Int
+  availableSeats      Int
+  status              EmptyLegStatus    @default(PUBLISHED)
+  createdByAdminId    String?
+  createdByOperatorId String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  aircraftCategory    String?
+  aircraftImage       String?
+  aircraftName        String?
+  aircraftType        String?
+  arrivalCity         String?
+  arrivalCountry      String?
+  arrivalIcao         String?
+  departureCity       String?
+  departureCountry    String?
+  departureIcao       String?
+  externalId          String?           @unique
+  lastSyncedAt        DateTime?
+  operatorEmail       String?
+  operatorName        String?
+  operatorPhone       String?
+  operatorCompanyId    Int?
+  operatorWebsite     String?
+  operatorRating      Decimal?         @db.Decimal(3, 2)
+  priceType           EmptyLegPriceType @default(FIXED)
+  priceUsd            Float?
+  source              EmptyLegSource    @default(ADMIN)
+  aircraft            Aircraft?         @relation(fields: [aircraftId], references: [id], onDelete: Cascade)
+  arrivalAirport      Airport?          @relation("EmptyLegArrival", fields: [arrivalAirportId], references: [id])
+  createdByAdmin      Admin?            @relation("CreatedByAdmin", fields: [createdByAdminId], references: [id])
+  createdByOperator   Operator?         @relation("CreatedByOperator", fields: [createdByOperatorId], references: [id])
+  departureAirport    Airport?          @relation("EmptyLegDeparture", fields: [departureAirportId], references: [id])
+  bookings            EmptyLegBooking[]
+
+  @@index([source])
+  @@index([status])
+  @@index([departureAirportId])
+  @@index([arrivalAirportId])
+  @@index([departureDateTime])
+  @@index([slug])
+  @@index([externalId])
+}
+
+model EmptyLegBooking {
+  id                  String           @id @default(cuid())
+  referenceNumber     String           @unique
+  emptyLegId          String
+  clientId            String
+  clientName          String
+  clientEmail         String
+  clientPhone         String
+  seatsRequested      Int
+  status              QuoteStatus      @default(PENDING)
+  rejectionReason     RejectionReason?
+  rejectionNote       String?
+  approvedById        String?
+  approvedAt          DateTime?
+  paymentDeadline     DateTime?
+  paymentLink         String?
+  quoteDocumentUrl    String?
+  flightDocumentUrl   String?
+  receiptUrl          String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  additionalNotes     String?
+  boardingInfo        String?
+  checkInTime         DateTime?
+  confirmationSentAt  DateTime?
+  gateInfo            String?
+  paymentMethod       PaymentMethod?
+  pilotContact        String?
+  pilotName           String?
+  terminalInfo        String?
+  ticketNumber        String?
+  totalPriceUsd       Float
+  bankAccountName     String?
+  bankAccountNumber   String?
+  bankName            String?
+  bankSortCode        String?
+  externalRequestId   String?
+  forwardedAt         DateTime?
+  forwardedToExternal Boolean          @default(false)
+  isReadOnly          Boolean          @default(false)
+  source              EmptyLegSource   @default(ADMIN)
+  approvedBy          Admin?           @relation("BookingApprovedBy", fields: [approvedById], references: [id])
+  client              Client           @relation(fields: [clientId], references: [id])
+  emptyLeg            EmptyLeg         @relation(fields: [emptyLegId], references: [id], onDelete: Cascade)
+  payment             Payment?
+
+  @@index([emptyLegId])
+  @@index([clientId])
+  @@index([status])
+  @@index([source])
+}
+
+model InstaCharterSyncLog {
+  id            String    @id @default(cuid())
+  syncType      String    @default("SCHEDULED")
+  status        String
+  dealsFound    Int       @default(0)
+  dealsCreated  Int       @default(0)
+  dealsUpdated  Int       @default(0)
+  dealsRemoved  Int       @default(0)
+  errorMessage  String?
+  errorDetails  String?
+  triggeredById String?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  durationMs    Int?
+  createdAt     DateTime  @default(now())
+  triggeredBy   Admin?    @relation(fields: [triggeredById], references: [id])
+
+  @@index([status])
+  @@index([startedAt])
+}
+
+model Payment {
+  id                    String           @id @default(cuid())
+  referenceNumber       String           @unique
+  clientId              String
+  type                  PaymentType
+  charterQuoteId        String?          @unique
+  emptyLegBookingId     String?          @unique
+  paystackReference     String?          @unique
+  paystackAccessCode    String?
+  status                PaymentStatus    @default(PENDING)
+  paidAt                DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  adminAmountUsd        Float?
+  amountUsd             Float
+  bankTransferConfirmed Boolean          @default(false)
+  confirmedAt           DateTime?
+  confirmedById         String?
+  method                PaymentMethod
+  operatorAmountUsd     Float?
+  charterQuote          CharterQuote?    @relation(fields: [charterQuoteId], references: [id])
+  client                Client           @relation(fields: [clientId], references: [id])
+  emptyLegBooking       EmptyLegBooking? @relation(fields: [emptyLegBookingId], references: [id])
+
+  @@index([clientId])
+  @@index([status])
+  @@index([paystackReference])
+}
+
+model ActivityLog {
+  id          String         @id @default(cuid())
+  action      ActivityAction
+  description String
+  adminId     String?
+  operatorId  String?
+  clientPhone String?
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  seenBy      String[]       @default([])
+  createdAt   DateTime       @default(now())
+  admin       Admin?         @relation(fields: [adminId], references: [id])
+
+  @@index([action])
+  @@index([adminId])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+model Announcement {
+  id          String    @id @default(cuid())
+  title       String
+  message     String
+  imageUrl    String?
+  createdById String
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  createdBy   Admin     @relation(fields: [createdById], references: [id])
+
+  @@index([createdAt])
+}
+
+model EmptyLegSubscription {
+  id        String           @id @default(cuid())
+  phone     String
+  type      SubscriptionType @default(ALL)
+  cities    String[]         @default([])
+  routeFrom String?
+  routeTo   String?
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([phone])
+  @@index([type])
+  @@index([isActive])
+}
+
+model Settings {
+  id                        String   @id @default("default")
+  paymentWindowHours        Int      @default(3)
+  dealDeadlineMinutes       Int      @default(30)
+  minimumBookingNoticeHours Int      @default(24)
+  defaultOperatorCommission Float    @default(10)
+  cancellationPolicy        String?
+  termsAndConditions        String?
+  privacyPolicy             String?
+  supportEmail              String?
+  supportPhone              String?
+  quoteCounter              Int      @default(0)
+  emptyLegCounter           Int      @default(0)
+  receiptCounter            Int      @default(0)
+  flightConfirmCounter      Int      @default(0)
+  updatedAt                 DateTime @updatedAt
+  bankAccountName           String?
+  bankAccountNumber         String?
+  bankCode                  String?
+  bankName                  String?
+  companyAddress            String?
+  companyEmail              String?
+  companyName               String   @default("PexJet")
+  companyPhone              String?
+  facebookUrl               String?
+  instagramUrl              String?
+  linkedinUrl               String?
+  proofOfPaymentWhatsApp    String?
+  twitterUrl                String?
+}
+
+model DocumentTemplate {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 enum AdminRole {
   SUPER_ADMIN
@@ -29,10 +524,11 @@ enum AircraftAvailability {
 }
 
 enum AircraftCategory {
-  LIGHT_JET
-  MIDSIZE_JET
-  SUPER_MIDSIZE_JET
+  LIGHT
+  MIDSIZE
+  SUPER_MIDSIZE
   ULTRA_LONG_RANGE
+  HEAVY
 }
 
 enum FlightType {
@@ -54,6 +550,18 @@ enum EmptyLegStatus {
   PUBLISHED
   OPEN
   CLOSED
+  UNAVAILABLE
+}
+
+enum EmptyLegSource {
+  ADMIN
+  OPERATOR
+  INSTACHARTER
+}
+
+enum EmptyLegPriceType {
+  FIXED
+  CONTACT
 }
 
 enum PaymentStatus {
@@ -90,710 +598,47 @@ enum RejectionReason {
 }
 
 enum ActivityAction {
-  // Admin Management
   ADMIN_CREATE
   ADMIN_UPDATE
   ADMIN_DELETE
-  
-  // Operator Management
   OPERATOR_CREATE
   OPERATOR_UPDATE
   OPERATOR_DELETE
-  
-  // Aircraft Management
   AIRCRAFT_CREATE
   AIRCRAFT_UPDATE
   AIRCRAFT_DELETE
-  
-  // Charter Quotes
   CHARTER_QUOTE_CREATE
   CHARTER_QUOTE_APPROVE
   CHARTER_QUOTE_REJECT
   CHARTER_QUOTE_EXPIRE
-  
-  // Empty Legs
   EMPTY_LEG_CREATE
   EMPTY_LEG_UPDATE
   EMPTY_LEG_CLOSE
   EMPTY_LEG_QUOTE_CREATE
   EMPTY_LEG_QUOTE_APPROVE
   EMPTY_LEG_QUOTE_REJECT
-  
-  // Payments
   PAYMENT_INITIATED
   PAYMENT_SUCCESS
   PAYMENT_FAILED
-  
-  // Settings
   SETTINGS_UPDATE
-  
-  // Airports
   AIRPORT_IMPORT
-  
-  // Announcements
   ANNOUNCEMENT_CREATE
   ANNOUNCEMENT_DELETE
-  
-  // Subscriptions
   SUBSCRIPTION_CREATE
   SUBSCRIPTION_DELETE
-  
-  // Notifications
   EMPTY_LEG_NOTIFICATION
+  CHARTER_QUOTE_UPDATE
+  CHARTER_RECEIPT_UPLOADED
+  CHARTER_PAYMENT_CONFIRMED
+  CHARTER_CONFIRMATION_SENT
+  EMPTY_LEG_QUOTE_FORWARDED
+  INSTACHARTER_SYNC_START
+  INSTACHARTER_SYNC_COMPLETE
+  INSTACHARTER_SYNC_ERROR
 }
 
 enum AirportType {
   large_airport
   medium_airport
   small_airport
-}
-
-// ============================================================================
-// GEOGRAPHY - From OurAirports
-// ============================================================================
-
-model Country {
-  id            String    @id @default(cuid())
-  code          String    @unique // ISO 2-letter code (e.g., "NG", "US")
-  name          String
-  continent     String
-  wikipediaLink String?
-  keywords      String?
-  
-  regions       Region[]
-  airports      Airport[]
-  
-  createdAt     DateTime  @default(now())
-}
-
-model Region {
-  id            String    @id @default(cuid())
-  code          String    @unique // e.g., "NG-LA" for Lagos
-  localCode     String
-  name          String
-  continent     String
-  countryCode   String
-  wikipediaLink String?
-  keywords      String?
-  
-  country       Country   @relation(fields: [countryCode], references: [code])
-  airports      Airport[]
-  
-  createdAt     DateTime  @default(now())
-  
-  @@index([countryCode])
-}
-
-model Airport {
-  id               String      @id @default(cuid())
-  ident            String      @unique // Unique identifier from OurAirports
-  type             AirportType
-  name             String
-  latitude         Float
-  longitude        Float
-  elevationFt      Int?
-  continent        String
-  countryCode      String
-  regionCode       String
-  municipality     String?
-  scheduledService Boolean     @default(false)
-  icaoCode         String?
-  iataCode         String?
-  gpsCode          String?
-  localCode        String?
-  homeLink         String?
-  wikipediaLink    String?
-  keywords         String?
-  
-  country          Country     @relation(fields: [countryCode], references: [code])
-  region           Region      @relation(fields: [regionCode], references: [code])
-  
-  // Relations for flights
-  departures       CharterLeg[]     @relation("DepartureAirport")
-  arrivals         CharterLeg[]     @relation("ArrivalAirport")
-  emptyLegDepartures EmptyLeg[]     @relation("EmptyLegDeparture")
-  emptyLegArrivals   EmptyLeg[]     @relation("EmptyLegArrival")
-  
-  createdAt        DateTime    @default(now())
-  
-  @@index([countryCode])
-  @@index([regionCode])
-  @@index([icaoCode])
-  @@index([iataCode])
-  @@index([name])
-  @@index([municipality])
-}
-
-// ============================================================================
-// AIRCRAFT
-// ============================================================================
-
-model Aircraft {
-  id                  String              @id @default(cuid())
-  name                String              // e.g., "Gulfstream G650"
-  manufacturer        String              // e.g., "Gulfstream"
-  model               String              // e.g., "G650"
-  category            AircraftCategory
-  availability        AircraftAvailability @default(NONE)
-  
-  // Specifications
-  passengerCapacityMin Int
-  passengerCapacityMax Int
-  rangeNm             Int                 // Range in nautical miles
-  cruiseSpeedKnots    Int                 // Cruise speed in knots
-  baggageCapacityCuFt Float?              // Baggage capacity in cubic feet
-  fuelCapacityGal     Float?              // Fuel capacity in gallons
-  
-  // Dimensions - Interior
-  cabinLengthFt       Float?
-  cabinWidthFt        Float?
-  cabinHeightFt       Float?
-  
-  // Dimensions - Exterior
-  lengthFt            Float?
-  wingspanFt          Float?
-  heightFt            Float?
-  
-  // Additional Info
-  yearOfManufacture   Int?
-  hourlyRateUsd       Float?              // Internal pricing reference
-  description         String?
-  
-  // Images (Cloudinary URLs)
-  exteriorImages      String[]            @default([])
-  interiorImages      String[]            @default([])
-  thumbnailImage      String?
-  
-  // Relations
-  charterLegs         CharterLeg[]
-  charterQuoteAircraft CharterQuoteAircraft[]
-  emptyLegs           EmptyLeg[]
-  operatorFleets      OperatorFleet[]
-  
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  
-  @@index([category])
-  @@index([availability])
-  @@index([manufacturer])
-}
-
-// ============================================================================
-// USERS - Admin, Operator, Client
-// ============================================================================
-
-model Admin {
-  id              String      @id @default(cuid())
-  email           String      @unique
-  username        String      @unique
-  passwordHash    String
-  fullName        String
-  phone           String      // WhatsApp number
-  role            AdminRole   @default(STAFF)
-  status          AdminStatus @default(OFFLINE)
-  avatar          String?     // Cloudinary URL
-  address         String?
-  
-  // Password Reset
-  resetOtp        String?
-  resetOtpExpiry  DateTime?
-  
-  // Refresh Token
-  refreshToken    String?
-  
-  // Relations
-  charterQuotesApproved  CharterQuote[]    @relation("ApprovedBy")
-  emptyLegsCreated       EmptyLeg[]        @relation("CreatedByAdmin")
-  emptyLegBookingsApproved EmptyLegBooking[] @relation("BookingApprovedBy")
-  activityLogs           ActivityLog[]
-  announcements          Announcement[]
-  
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  
-  @@index([email])
-  @@index([username])
-}
-
-model Operator {
-  id              String      @id @default(cuid())
-  email           String      @unique
-  username        String      @unique
-  passwordHash    String
-  fullName        String
-  phone           String      // WhatsApp number
-  avatar          String?     // Cloudinary URL
-  
-  // Bank Details (for Paystack subaccount)
-  bankName        String
-  bankAccountNumber String
-  bankAccountName String
-  paystackSubaccountCode String?  // Paystack subaccount code
-  commissionPercent Float       @default(10) // Admin takes this percentage
-  
-  // Password Reset
-  resetOtp        String?
-  resetOtpExpiry  DateTime?
-  
-  // Refresh Token
-  refreshToken    String?
-  
-  // Relations
-  fleet           OperatorFleet[]
-  emptyLegs       EmptyLeg[]      @relation("CreatedByOperator")
-  
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  
-  @@index([email])
-  @@index([username])
-}
-
-model OperatorFleet {
-  id          String    @id @default(cuid())
-  operatorId  String
-  aircraftId  String
-  
-  operator    Operator  @relation(fields: [operatorId], references: [id], onDelete: Cascade)
-  aircraft    Aircraft  @relation(fields: [aircraftId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime  @default(now())
-  
-  @@unique([operatorId, aircraftId])
-  @@index([operatorId])
-}
-
-model Client {
-  id              String      @id @default(cuid())
-  phone           String      @unique // WhatsApp number - unique identifier
-  fullName        String?
-  email           String?
-  
-  // Relations
-  charterQuotes   CharterQuote[]
-  emptyLegBookings EmptyLegBooking[]
-  payments        Payment[]
-  
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  
-  @@index([phone])
-  @@index([email])
-}
-
-// ============================================================================
-// CHARTER QUOTES
-// ============================================================================
-
-model CharterQuote {
-  id                String        @id @default(cuid())
-  referenceNumber   String        @unique // PEX-QT-YYYY-XXXX
-  
-  // Client Info
-  clientId          String
-  clientName        String
-  clientEmail       String
-  clientPhone       String        // WhatsApp
-  
-  // Flight Details
-  flightType        FlightType
-  passengerCount    Int
-  specialRequests   String?
-  
-  // Status
-  status            QuoteStatus   @default(PENDING)
-  rejectionReason   RejectionReason?
-  rejectionNote     String?
-  
-  // Pricing (set by admin on approval) - USD
-  totalPriceUsd     Float?
-  
-  // Approval
-  approvedById      String?
-  approvedAt        DateTime?
-  
-  // Payment
-  paymentMethod     PaymentMethod?  // PAYSTACK or BANK_TRANSFER
-  paymentDeadline   DateTime?
-  paymentLink       String?         // Paystack link (if paymentMethod is PAYSTACK)
-  
-  // Documents
-  quoteDocumentUrl  String?         // Quote + Invoice PDF
-  flightDocumentUrl String?         // Flight confirmation PDF
-  receiptUrl        String?         // Payment receipt PDF
-  
-  // Relations
-  client            Client        @relation(fields: [clientId], references: [id])
-  approvedBy        Admin?        @relation("ApprovedBy", fields: [approvedById], references: [id])
-  legs              CharterLeg[]
-  selectedAircraft  CharterQuoteAircraft[]
-  payment           Payment?
-  
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  
-  @@index([clientId])
-  @@index([status])
-  @@index([referenceNumber])
-}
-
-model CharterQuoteAircraft {
-  id              String        @id @default(cuid())
-  charterQuoteId  String
-  aircraftId      String
-  
-  charterQuote    CharterQuote  @relation(fields: [charterQuoteId], references: [id], onDelete: Cascade)
-  aircraft        Aircraft      @relation(fields: [aircraftId], references: [id], onDelete: Cascade)
-  
-  @@unique([charterQuoteId, aircraftId])
-}
-
-model CharterLeg {
-  id                  String        @id @default(cuid())
-  charterQuoteId      String
-  legNumber           Int           // 1, 2, 3, etc.
-  
-  departureAirportId  String
-  arrivalAirportId    String
-  departureDateTime   DateTime      // Can be adjusted by admin ±7 days
-  
-  // Assigned aircraft (set by admin)
-  aircraftId          String?
-  
-  // Pricing per leg (set by admin) - USD
-  priceUsd            Float?
-  
-  // Flight Confirmation Details (filled after payment)
-  ticketNumber        String?
-  boardingInfo        String?       // Boarding instructions
-  terminalInfo        String?
-  gateInfo            String?
-  checkInTime         DateTime?
-  pilotName           String?
-  pilotContact        String?
-  additionalNotes     String?
-  confirmationSentAt  DateTime?     // When confirmation was sent to client
-  
-  // Relations
-  charterQuote        CharterQuote  @relation(fields: [charterQuoteId], references: [id], onDelete: Cascade)
-  departureAirport    Airport       @relation("DepartureAirport", fields: [departureAirportId], references: [id])
-  arrivalAirport      Airport       @relation("ArrivalAirport", fields: [arrivalAirportId], references: [id])
-  aircraft            Aircraft?     @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
-  
-  @@index([charterQuoteId])
-  @@index([departureAirportId])
-  @@index([arrivalAirportId])
-}
-
-// ============================================================================
-// EMPTY LEG DEALS
-// ============================================================================
-
-model EmptyLeg {
-  id                  String          @id @default(cuid())
-  slug                String          @unique // SEO-friendly URL slug
-  
-  // Flight Details
-  departureAirportId  String
-  arrivalAirportId    String
-  departureDateTime   DateTime
-  
-  // Aircraft
-  aircraftId          String
-  
-  // Capacity
-  totalSeats          Int
-  availableSeats      Int
-  
-  // Pricing (per seat) - USD
-  originalPriceUsd    Float
-  discountPriceUsd    Float
-  
-  // Status
-  status              EmptyLegStatus  @default(PUBLISHED)
-  
-  // Creator (either admin or operator)
-  createdByAdminId    String?
-  createdByOperatorId String?
-  
-  // Relations
-  departureAirport    Airport         @relation("EmptyLegDeparture", fields: [departureAirportId], references: [id])
-  arrivalAirport      Airport         @relation("EmptyLegArrival", fields: [arrivalAirportId], references: [id])
-  aircraft            Aircraft        @relation(fields: [aircraftId], references: [id], onDelete: Cascade)
-  createdByAdmin      Admin?          @relation("CreatedByAdmin", fields: [createdByAdminId], references: [id])
-  createdByOperator   Operator?       @relation("CreatedByOperator", fields: [createdByOperatorId], references: [id])
-  bookings            EmptyLegBooking[]
-  
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
-  
-  @@index([status])
-  @@index([departureAirportId])
-  @@index([arrivalAirportId])
-  @@index([departureDateTime])
-  @@index([slug])
-}
-
-model EmptyLegBooking {
-  id                String          @id @default(cuid())
-  referenceNumber   String          @unique // PEX-EL-YYYY-XXXX
-  
-  emptyLegId        String
-  clientId          String
-  
-  // Client Info (snapshot at time of booking)
-  clientName        String
-  clientEmail       String
-  clientPhone       String
-  
-  // Booking Details
-  seatsRequested    Int
-  
-  // Pricing - USD
-  totalPriceUsd     Float
-  
-  // Status
-  status            QuoteStatus     @default(PENDING)
-  rejectionReason   RejectionReason?
-  rejectionNote     String?
-  
-  // Approval
-  approvedById      String?
-  approvedAt        DateTime?
-  
-  // Payment (Admin empty legs: PAYSTACK or BANK_TRANSFER, Operator: PAYSTACK only)
-  paymentMethod     PaymentMethod?
-  paymentDeadline   DateTime?
-  paymentLink       String?         // Paystack link (if paymentMethod is PAYSTACK)
-  
-  // Documents
-  quoteDocumentUrl  String?         // Quote + Invoice PDF
-  flightDocumentUrl String?         // Flight confirmation PDF
-  receiptUrl        String?         // Payment receipt PDF
-  
-  // Flight Confirmation Details (filled after payment)
-  ticketNumber        String?
-  boardingInfo        String?       // Boarding instructions
-  terminalInfo        String?
-  gateInfo            String?
-  checkInTime         DateTime?
-  pilotName           String?
-  pilotContact        String?
-  additionalNotes     String?
-  confirmationSentAt  DateTime?     // When confirmation was sent to client
-  
-  // Relations
-  emptyLeg          EmptyLeg        @relation(fields: [emptyLegId], references: [id], onDelete: Cascade)
-  client            Client          @relation(fields: [clientId], references: [id])
-  approvedBy        Admin?          @relation("BookingApprovedBy", fields: [approvedById], references: [id])
-  payment           Payment?
-  
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  
-  @@index([emptyLegId])
-  @@index([clientId])
-  @@index([status])
-}
-
-// ============================================================================
-// PAYMENTS
-// ============================================================================
-
-model Payment {
-  id                  String        @id @default(cuid())
-  referenceNumber     String        @unique // PEX-RC-YYYY-XXXX
-  
-  clientId            String
-  
-  // Payment Type
-  type                PaymentType
-  charterQuoteId      String?       @unique
-  emptyLegBookingId   String?       @unique
-  
-  // Payment Method
-  method              PaymentMethod
-  
-  // Amount - USD
-  amountUsd           Float
-  
-  // Paystack (only if method is PAYSTACK)
-  paystackReference   String?       @unique
-  paystackAccessCode  String?
-  
-  // Bank Transfer (only if method is BANK_TRANSFER)
-  bankTransferConfirmed Boolean     @default(false)
-  confirmedById       String?       // Admin who confirmed the bank transfer
-  confirmedAt         DateTime?
-  
-  // Split Payment (for operator empty legs via Paystack)
-  operatorAmountUsd   Float?
-  adminAmountUsd      Float?
-  
-  // Status
-  status              PaymentStatus @default(PENDING)
-  paidAt              DateTime?
-  
-  // Relations
-  client              Client        @relation(fields: [clientId], references: [id])
-  charterQuote        CharterQuote? @relation(fields: [charterQuoteId], references: [id])
-  emptyLegBooking     EmptyLegBooking? @relation(fields: [emptyLegBookingId], references: [id])
-  
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  
-  @@index([clientId])
-  @@index([status])
-  @@index([paystackReference])
-}
-
-// ============================================================================
-// ACTIVITY LOGS
-// ============================================================================
-
-model ActivityLog {
-  id            String        @id @default(cuid())
-  
-  action        ActivityAction
-  description   String
-  
-  // Actor (who performed the action)
-  adminId       String?
-  operatorId    String?
-  clientPhone   String?       // For client actions
-  
-  // Target (what was affected)
-  targetType    String?       // e.g., "CharterQuote", "EmptyLeg", "Admin"
-  targetId      String?
-  
-  // Additional Data
-  metadata      Json?
-  ipAddress     String?
-  userAgent     String?
-  
-  // Seen tracking - array of admin IDs who have seen this log
-  seenBy        String[]      @default([])
-  
-  // Relations
-  admin         Admin?        @relation(fields: [adminId], references: [id])
-  
-  createdAt     DateTime      @default(now())
-  
-  @@index([action])
-  @@index([adminId])
-  @@index([createdAt])
-  @@index([targetType, targetId])
-}
-
-// ============================================================================
-// ANNOUNCEMENTS
-// ============================================================================
-
-model Announcement {
-  id            String    @id @default(cuid())
-  title         String
-  message       String
-  imageUrl      String?   // Cloudinary URL
-  
-  createdById   String
-  createdBy     Admin     @relation(fields: [createdById], references: [id])
-  
-  sentAt        DateTime?
-  
-  createdAt     DateTime  @default(now())
-  
-  @@index([createdAt])
-}
-
-// ============================================================================
-// EMPTY LEG SUBSCRIPTIONS
-// ============================================================================
-
-model EmptyLegSubscription {
-  id            String            @id @default(cuid())
-  phone         String            // WhatsApp phone number - unique identifier (enforced at application level)
-  type          SubscriptionType  @default(ALL)
-  
-  // For CITY type - list of cities to watch
-  cities        String[]          @default([])
-  
-  // For ROUTE type - specific route to watch
-  routeFrom     String?
-  routeTo       String?
-  
-  isActive      Boolean           @default(true)
-  
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  
-  @@index([phone])
-  @@index([type])
-  @@index([isActive])
-}
-
-// ============================================================================
-// SYSTEM SETTINGS
-// ============================================================================
-
-model Settings {
-  id                    String    @id @default("default")
-  
-  // Payment
-  paymentWindowHours    Int       @default(3)   // Hours before payment link expires
-  
-  // Empty Leg
-  dealDeadlineMinutes   Int       @default(30)  // Minutes before flight
-  minimumBookingNoticeHours Int   @default(24)
-  
-  // Default Operator Commission (can be overridden per operator)
-  defaultOperatorCommission Float @default(10)
-  
-  // Company Bank Details (for bank transfer payments)
-  bankName              String?
-  bankAccountNumber     String?
-  bankAccountName       String?
-  bankCode              String?
-  
-  // Company Information
-  companyName           String    @default("PexJet")
-  companyEmail          String?
-  companyAddress        String?
-  companyPhone          String?
-  proofOfPaymentWhatsApp String?  // WhatsApp number for clients to send proof of payment
-  
-  // Social Links
-  linkedinUrl           String?
-  facebookUrl           String?
-  twitterUrl            String?
-  instagramUrl          String?
-  
-  // Policies (rich text)
-  cancellationPolicy    String?
-  termsAndConditions    String?
-  privacyPolicy         String?
-  
-  // Contact
-  supportEmail          String?
-  supportPhone          String?
-  
-  // Document Numbering (auto-increment counters)
-  quoteCounter          Int       @default(0)
-  emptyLegCounter       Int       @default(0)
-  receiptCounter        Int       @default(0)
-  flightConfirmCounter  Int       @default(0)
-  
-  updatedAt             DateTime  @updatedAt
-}
-
-// ============================================================================
-// DOCUMENT TEMPLATES (for future customization)
-// ============================================================================
-
-model DocumentTemplate {
-  id            String    @id @default(cuid())
-  name          String    @unique // e.g., "quote_confirmation", "flight_confirmation", "receipt"
-  content       String    // HTML template with placeholders
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
 }

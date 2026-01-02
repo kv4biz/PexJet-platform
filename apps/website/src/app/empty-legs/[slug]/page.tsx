@@ -24,6 +24,7 @@ import {
   Badge,
   Label,
   useToast,
+  Textarea,
 } from "@pexjet/ui";
 import { emptyLegsPageData } from "@/data";
 import Footer from "@/components/layout/footer";
@@ -62,12 +63,19 @@ interface EmptyLegDetail {
   };
   availableSeats: number;
   totalSeats: number;
-  priceUsd: number;
-  originalPriceUsd: number;
-  discountPercent: number;
+  priceUsd: number | null;
+  priceText: string;
+  priceType: string;
   ownerType: "admin" | "operator";
   createdByAdminId: string | null;
   createdByOperatorId: string | null;
+  // InstaCharter operator information
+  operatorName?: string;
+  operatorEmail?: string;
+  operatorPhone?: string;
+  operatorWebsite?: string;
+  operatorRating?: number;
+  source?: string; // To distinguish InstaCharter deals
 }
 
 interface ContactInfo {
@@ -120,7 +128,7 @@ export default function EmptyLegDetailPage() {
       "@context": "https://schema.org",
       "@type": "Product",
       name: `Private Jet ${emptyLeg.departureAirport.city} to ${emptyLeg.arrivalAirport.city}`,
-      description: `Empty leg flight from ${emptyLeg.departureAirport.city}, ${emptyLeg.departureAirport.country} to ${emptyLeg.arrivalAirport.city}, ${emptyLeg.arrivalAirport.country} on ${emptyLeg.aircraft.name}. Save ${emptyLeg.discountPercent}% on this private jet flight.`,
+      description: `Empty leg flight from ${emptyLeg.departureAirport.city}, ${emptyLeg.departureAirport.country} to ${emptyLeg.arrivalAirport.city}, ${emptyLeg.arrivalAirport.country} on ${emptyLeg.aircraft.name}. ${emptyLeg.priceText || "Contact for pricing"}.`,
       image:
         emptyLeg.aircraft.images?.[0] ||
         "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png",
@@ -132,7 +140,7 @@ export default function EmptyLegDetailPage() {
         "@type": "Offer",
         url: `https://pexjet.com/empty-legs/${slug}`,
         priceCurrency: "USD",
-        price: emptyLeg.priceUsd,
+        price: emptyLeg.priceUsd || 0,
         priceValidUntil: emptyLeg.departureDate,
         availability:
           emptyLeg.availableSeats > 0
@@ -202,7 +210,9 @@ export default function EmptyLegDetailPage() {
     }
   };
 
-  const formatPrice = (priceUsd: number) => {
+  const formatPrice = (priceUsd: number | null, priceText?: string) => {
+    if (priceText) return priceText;
+    if (priceUsd === null || priceUsd === undefined) return "Contact for price";
     return `$${priceUsd.toLocaleString()}`;
   };
 
@@ -211,8 +221,20 @@ export default function EmptyLegDetailPage() {
     if (!emptyLeg) return "N/A";
     const dep = emptyLeg.departureAirport;
     const arr = emptyLeg.arrivalAirport;
-    if (!dep.latitude || !dep.longitude || !arr.latitude || !arr.longitude)
+
+    // Handle InstaCharter deals where coordinates might be 0
+    if (
+      !dep.latitude ||
+      !dep.longitude ||
+      !arr.latitude ||
+      !arr.longitude ||
+      dep.latitude === 0 ||
+      dep.longitude === 0 ||
+      arr.latitude === 0 ||
+      arr.longitude === 0
+    ) {
       return "N/A";
+    }
 
     // Haversine formula for distance in nautical miles
     const R = 3440.065;
@@ -236,7 +258,7 @@ export default function EmptyLegDetailPage() {
 
   const calculateTotalPrice = () => {
     if (!emptyLeg) return 0;
-    return emptyLeg.priceUsd; // Price is for full jet, not per seat
+    return emptyLeg.priceUsd || 0; // Price is for full jet, not per seat
   };
 
   const handleContactChange = (field: keyof ContactInfo, value: string) => {
@@ -378,7 +400,9 @@ export default function EmptyLegDetailPage() {
           <div className="container mx-auto px-4">
             <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
               <Badge className="bg-[#D4AF37] text-black text-sm px-4 py-1">
-                {emptyLeg.discountPercent}% OFF
+                {emptyLeg.priceType === "CONTACT"
+                  ? "Contact for Price"
+                  : "Special Offer"}
               </Badge>
               <h1 className="text-2xl md:text-3xl font-bold text-white text-center">
                 {emptyLeg.departureAirport.city} →{" "}
@@ -422,7 +446,9 @@ export default function EmptyLegDetailPage() {
                   <div className="flex items-center justify-between mb-4">
                     <Badge className="bg-[#D4AF37] text-black text-lg px-4 py-1">
                       <Tag className="w-4 h-4 mr-2" />
-                      {emptyLeg.discountPercent}% OFF
+                      {emptyLeg.priceType === "CONTACT"
+                        ? "Contact for Price"
+                        : "Special Offer"}
                     </Badge>
                   </div>
 
@@ -669,7 +695,7 @@ export default function EmptyLegDetailPage() {
                             <Label className="text-sm font-medium mb-1 block">
                               Additional Notes
                             </Label>
-                            <Input
+                            <Textarea
                               value={contactInfo.notes}
                               onChange={(e) =>
                                 handleContactChange("notes", e.target.value)
@@ -799,7 +825,10 @@ export default function EmptyLegDetailPage() {
                             <div className="flex justify-between font-bold text-lg pt-2 border-t">
                               <span>Price:</span>
                               <span className="text-[#D4AF37]">
-                                {formatPrice(emptyLeg.priceUsd)}
+                                {formatPrice(
+                                  emptyLeg.priceUsd,
+                                  emptyLeg.priceText,
+                                )}
                               </span>
                             </div>
                           </div>
@@ -910,20 +939,16 @@ export default function EmptyLegDetailPage() {
 
                     {/* Price */}
                     <div className="py-3">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-gray-500">Original Price</span>
-                        <span className="line-through text-gray-400">
-                          {formatPrice(emptyLeg.originalPriceUsd)}
-                        </span>
-                      </div>
                       <div className="flex justify-between items-center">
                         <span className="font-semibold">Price</span>
                         <span className="text-2xl font-bold text-[#D4AF37]">
-                          {formatPrice(emptyLeg.priceUsd)}
+                          {formatPrice(emptyLeg.priceUsd, emptyLeg.priceText)}
                         </span>
                       </div>
                       <Badge className="mt-2 bg-[#D4AF37] text-black">
-                        Save {emptyLeg.discountPercent}%
+                        {emptyLeg.priceType === "CONTACT"
+                          ? "Contact for Price"
+                          : "Special Offer"}
                       </Badge>
                     </div>
 

@@ -27,16 +27,10 @@ export function FlightRouteMap({
   const mapInstanceRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    // Debug log coordinates
-    console.log("FlightRouteMap coordinates:", {
-      departure: {
-        lat: departureAirport.latitude,
-        lng: departureAirport.longitude,
-      },
-      arrival: { lat: arrivalAirport.latitude, lng: arrivalAirport.longitude },
-    });
+    isMountedRef.current = true;
 
     // Check if we have valid coordinates (must be numbers)
     const hasValidCoords =
@@ -50,8 +44,7 @@ export function FlightRouteMap({
       !isNaN(arrivalAirport.longitude);
 
     if (!hasValidCoords) {
-      console.log("Invalid coordinates - showing fallback");
-      setError("Location coordinates not available");
+      setError("Route map not available for this deal");
       setIsLoading(false);
       return;
     }
@@ -59,8 +52,14 @@ export function FlightRouteMap({
     // Dynamically import Leaflet to avoid SSR issues
     const initMap = async () => {
       try {
+        // Check if still mounted
+        if (!isMountedRef.current) return;
+
         // Import Leaflet
         const L = (await import("leaflet")).default;
+
+        // Check if still mounted after async import
+        if (!isMountedRef.current) return;
 
         // Inject Leaflet CSS if not already present
         if (!document.getElementById("leaflet-css")) {
@@ -76,16 +75,24 @@ export function FlightRouteMap({
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
+        // Check if still mounted after CSS load
+        if (!isMountedRef.current) return;
+
         if (!mapRef.current) {
           setError("Map container not found");
           setIsLoading(false);
           return;
         }
 
-        // If map already exists, skip
+        // If map already exists, clean it up first
         if (mapInstanceRef.current) {
-          setIsLoading(false);
-          return;
+          try {
+            mapInstanceRef.current.off();
+            mapInstanceRef.current.remove();
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+          mapInstanceRef.current = null;
         }
 
         const depLat = departureAirport.latitude!;
@@ -189,13 +196,19 @@ export function FlightRouteMap({
     // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
       initMap();
-    }, 100);
+    }, 150);
 
     // Cleanup
     return () => {
+      isMountedRef.current = false;
       clearTimeout(timer);
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        try {
+          mapInstanceRef.current.off();
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          // Ignore cleanup errors - map may already be destroyed
+        }
         mapInstanceRef.current = null;
       }
     };
@@ -258,12 +271,50 @@ export function FlightRouteMap({
   if (error) {
     return (
       <div
-        className={`bg-gray-900 flex items-center justify-center ${className}`}
+        className={`bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center ${className}`}
         style={{ minHeight: "300px" }}
       >
-        <div className="text-center text-gray-400">
-          <div className="text-4xl mb-2">🗺️</div>
-          <p className="text-sm">{error}</p>
+        <div className="text-center text-gray-300 p-8">
+          <div className="text-6xl mb-4">✈️</div>
+          <p className="text-lg font-semibold mb-2">Flight Route</p>
+          <p className="text-sm text-gray-400 mb-4">{error}</p>
+
+          {/* Show route information as fallback */}
+          <div className="bg-black/30 rounded-lg p-4 text-left">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <div className="text-[#D4AF37] font-bold text-lg">
+                  {departureAirport.code}
+                </div>
+                <div className="text-sm text-gray-400">
+                  {departureAirport.city}, {departureAirport.country}
+                </div>
+              </div>
+              <div className="text-gray-500">
+                <svg
+                  className="w-8 h-8"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M14 5l7 7m0 0l-7 7m7-7H3"
+                  />
+                </svg>
+              </div>
+              <div className="text-right">
+                <div className="text-[#D4AF37] font-bold text-lg">
+                  {arrivalAirport.code}
+                </div>
+                <div className="text-sm text-gray-400">
+                  {arrivalAirport.city}, {arrivalAirport.country}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

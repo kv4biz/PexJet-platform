@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -25,16 +27,7 @@ import {
   SelectValue,
   Separator,
   useToast,
-  Textarea,
   ScrollArea,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
   ConfirmDialog,
 } from "@pexjet/ui";
 import {
@@ -44,49 +37,43 @@ import {
   Plane,
   RefreshCw,
   X,
-  ArrowUpAZ,
-  ArrowDownAZ,
-  Filter,
   Loader2,
   Save,
-  Upload,
-  ImageIcon,
   Pencil,
+  Edit3,
 } from "lucide-react";
 
 interface Aircraft {
   id: string;
   name: string;
-  model: string;
   manufacturer: string;
   category: string;
   availability: string;
-  passengerCapacityMin: number;
-  passengerCapacityMax: number;
-  cruiseSpeedKnots: number;
-  rangeNm: number;
-  yearOfManufacture: number | null;
-  exteriorImages: string[];
-  interiorImages: string[];
-  thumbnailImage: string | null;
-  description: string | null;
-  baggageCapacityCuFt: number | null;
+  image: string | null;
+  minPax: number | null;
+  maxPax: number | null;
+  baggageCuFt: number | null;
+  rangeNm: number | null;
+  cruiseSpeedKnots: number | null;
   fuelCapacityGal: number | null;
   cabinLengthFt: number | null;
   cabinWidthFt: number | null;
   cabinHeightFt: number | null;
-  lengthFt: number | null;
-  wingspanFt: number | null;
-  heightFt: number | null;
-  hourlyRateUsd: number | null;
+  exteriorLengthFt: number | null;
+  exteriorWingspanFt: number | null;
+  exteriorHeightFt: number | null;
+  basePricePerHour: number | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const categories = [
   { value: "", label: "All Categories" },
-  { value: "LIGHT_JET", label: "Light Jet" },
-  { value: "MIDSIZE_JET", label: "Midsize Jet" },
-  { value: "SUPER_MIDSIZE_JET", label: "Super Midsize Jet" },
+  { value: "LIGHT", label: "Light" },
+  { value: "MIDSIZE", label: "Midsize" },
+  { value: "SUPER_MIDSIZE", label: "Super Midsize" },
   { value: "ULTRA_LONG_RANGE", label: "Ultra Long Range" },
+  { value: "HEAVY", label: "Heavy" },
 ];
 
 const availabilityOptions = [
@@ -96,67 +83,36 @@ const availabilityOptions = [
   { value: "BOTH", label: "Both" },
 ];
 
-const getEmptyForm = () => ({
-  name: "",
-  model: "",
-  manufacturer: "",
-  category: "MIDSIZE_JET",
-  availability: "BOTH",
-  passengerCapacityMin: 4,
-  passengerCapacityMax: 8,
-  cruiseSpeedKnots: 450,
-  rangeNm: 2000,
-  yearOfManufacture: new Date().getFullYear(),
-  description: "",
-  baggageCapacityCuFt: null as number | null,
-  fuelCapacityGal: null as number | null,
-  cabinLengthFt: null as number | null,
-  cabinWidthFt: null as number | null,
-  cabinHeightFt: null as number | null,
-  lengthFt: null as number | null,
-  wingspanFt: null as number | null,
-  heightFt: null as number | null,
-  hourlyRateUsd: null as number | null,
-});
+const getCategoryLabel = (value: string) => {
+  const cat = categories.find((c) => c.value === value);
+  return cat?.label || value;
+};
+
+const getCategoryColor = (value: string) => {
+  // Always return light grey for all categories
+  return "secondary";
+};
 
 export default function AircraftPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedAircraft, setSelectedAircraft] = useState<Aircraft | null>(
     null,
   );
-  const [showForm, setShowForm] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(getEmptyForm());
-  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [uploadingExterior, setUploadingExterior] = useState(false);
-  const [uploadingInterior, setUploadingInterior] = useState(false);
-  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
-  const [pendingExteriorFiles, setPendingExteriorFiles] = useState<File[]>([]);
-  const [pendingInteriorFiles, setPendingInteriorFiles] = useState<File[]>([]);
-  const [pendingThumbnailFile, setPendingThumbnailFile] = useState<File | null>(
-    null,
-  );
-  const exteriorInputRef = useRef<HTMLInputElement>(null);
-  const interiorInputRef = useRef<HTMLInputElement>(null);
-  const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteImageDialogOpen, setDeleteImageDialogOpen] = useState(false);
-  const [pendingDeleteImage, setPendingDeleteImage] = useState<{
-    url: string;
-    type: "exterior" | "interior";
-  } | null>(null);
 
   useEffect(() => {
     fetchAircraft();
-  }, [page, searchQuery, sortOrder, categoryFilter]);
+  }, [page, searchQuery, categoryFilter]);
+
+  const categorySelectValue = categoryFilter || "ALL";
 
   const fetchAircraft = async () => {
     try {
@@ -164,21 +120,38 @@ export default function AircraftPage() {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: "10",
-        sort: sortOrder,
         ...(searchQuery && { search: searchQuery }),
         ...(categoryFilter && { category: categoryFilter }),
       });
 
+      const token = localStorage.getItem("accessToken");
+
       const response = await fetch(`/api/aircraft?${params}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
       if (response.ok) {
         const data = await response.json();
-        setAircraft(data.aircraft);
-        setTotalPages(data.totalPages);
+
+        // Handle different response structures
+        if (Array.isArray(data)) {
+          // Direct array response
+          setAircraft(data);
+          setTotalPages(1);
+        } else if (data.aircraft) {
+          // Expected response with aircraft array
+          setAircraft(data.aircraft);
+          setTotalPages(data.totalPages || 1);
+        } else {
+          console.error("Unexpected response structure:", data);
+          setAircraft([]);
+          setTotalPages(1);
+        }
+      } else {
+        const errorData = await response.json();
+        console.error("API Error:", errorData);
       }
     } catch (error) {
       console.error("Failed to fetch aircraft:", error);
@@ -203,7 +176,6 @@ export default function AircraftPage() {
           description: "The aircraft has been removed.",
         });
         setSelectedAircraft(null);
-        setIsEditing(false);
         fetchAircraft();
       } else {
         const error = await response.json();
@@ -221,1132 +193,145 @@ export default function AircraftPage() {
       });
     } finally {
       setDeleting(false);
+      setDeleteDialogOpen(false);
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-
-    try {
-      const url =
-        isEditing && selectedAircraft
-          ? `/api/aircraft/${selectedAircraft.id}`
-          : "/api/aircraft";
-      const method = isEditing ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        const savedAircraft = await response.json();
-
-        // Upload pending images if any
-        if (pendingExteriorFiles.length > 0) {
-          await uploadImages(
-            savedAircraft.id,
-            pendingExteriorFiles,
-            "exterior",
-          );
-        }
-        if (pendingInteriorFiles.length > 0) {
-          await uploadImages(
-            savedAircraft.id,
-            pendingInteriorFiles,
-            "interior",
-          );
-        }
-
-        // Upload pending thumbnail if any
-        if (pendingThumbnailFile) {
-          await uploadThumbnail(savedAircraft.id, pendingThumbnailFile);
-        }
-
-        toast({
-          title: isEditing ? "Aircraft Updated" : "Aircraft Added",
-          description: isEditing
-            ? "Changes saved successfully."
-            : "New aircraft added to fleet.",
-        });
-        setShowForm(false);
-        setIsEditing(false);
-        setFormData(getEmptyForm());
-        setPendingExteriorFiles([]);
-        setPendingInteriorFiles([]);
-        setPendingThumbnailFile(null);
-        setSelectedAircraft(null);
-        fetchAircraft();
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Save Failed",
-          description: error.error,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Save Failed",
-        description: "An error occurred.",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
+  const startEditing = (field: string, value: any) => {
+    // Navigate to edit page instead of inline editing
+    if (selectedAircraft) {
+      router.push(`/dashboard/aircraft/${selectedAircraft.id}/edit`);
     }
-  };
-
-  const uploadImages = async (
-    aircraftId: string,
-    files: File[],
-    type: "exterior" | "interior",
-  ) => {
-    const formData = new FormData();
-    files.forEach((file) => formData.append("images", file));
-    formData.append("type", type);
-
-    await fetch(`/api/aircraft/${aircraftId}/images`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
-      body: formData,
-    });
-  };
-
-  const uploadThumbnail = async (aircraftId: string, file: File) => {
-    const formData = new FormData();
-    formData.append("thumbnail", file);
-
-    await fetch(`/api/aircraft/${aircraftId}/images`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
-      body: formData,
-    });
-  };
-
-  const handleThumbnailUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-
-    // If editing existing aircraft, upload immediately
-    if (isEditing && selectedAircraft) {
-      setUploadingThumbnail(true);
-
-      try {
-        const formData = new FormData();
-        formData.append("thumbnail", file);
-
-        const response = await fetch(
-          `/api/aircraft/${selectedAircraft.id}/images`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-            },
-            body: formData,
-          },
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          setSelectedAircraft(data.aircraft);
-          fetchAircraft();
-          toast({
-            title: "Thumbnail Uploaded",
-            description: "Thumbnail image updated successfully.",
-          });
-        } else {
-          const error = await response.json();
-          toast({
-            title: "Upload Failed",
-            description: error.error,
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        toast({
-          title: "Upload Failed",
-          description: "An error occurred.",
-          variant: "destructive",
-        });
-      } finally {
-        setUploadingThumbnail(false);
-      }
-    } else {
-      // For new aircraft, store file to upload after save
-      setPendingThumbnailFile(file);
-      toast({
-        title: "Thumbnail Queued",
-        description: "Thumbnail will be uploaded when saved.",
-      });
-    }
-  };
-
-  const handleImageUpload = async (
-    files: FileList | null,
-    type: "exterior" | "interior",
-  ) => {
-    if (!files || files.length === 0) return;
-
-    const fileArray = Array.from(files);
-
-    // If editing existing aircraft, upload immediately
-    if (isEditing && selectedAircraft) {
-      const setUploading =
-        type === "exterior" ? setUploadingExterior : setUploadingInterior;
-      setUploading(true);
-
-      try {
-        const formData = new FormData();
-        fileArray.forEach((file) => formData.append("images", file));
-        formData.append("type", type);
-
-        const response = await fetch(
-          `/api/aircraft/${selectedAircraft.id}/images`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-            },
-            body: formData,
-          },
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          setSelectedAircraft(data.aircraft);
-          fetchAircraft();
-          toast({
-            title: "Images Uploaded",
-            description: `${files.length} image(s) uploaded.`,
-          });
-        } else {
-          const error = await response.json();
-          toast({
-            title: "Upload Failed",
-            description: error.error,
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        toast({
-          title: "Upload Failed",
-          description: "An error occurred.",
-          variant: "destructive",
-        });
-      } finally {
-        setUploading(false);
-      }
-    } else {
-      // For new aircraft, store files to upload after save
-      if (type === "exterior") {
-        setPendingExteriorFiles((prev) => [...prev, ...fileArray]);
-      } else {
-        setPendingInteriorFiles((prev) => [...prev, ...fileArray]);
-      }
-      toast({
-        title: "Images Queued",
-        description: `${files.length} image(s) will be uploaded when saved.`,
-      });
-    }
-  };
-
-  const handleImageDelete = async (
-    imageUrl: string,
-    type: "exterior" | "interior",
-  ) => {
-    if (!selectedAircraft || !isEditing) return;
-
-    try {
-      const response = await fetch(
-        `/api/aircraft/${selectedAircraft.id}/images`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-          body: JSON.stringify({ imageUrl, type }),
-        },
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setSelectedAircraft(data.aircraft);
-        fetchAircraft();
-        toast({ title: "Image Deleted" });
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Delete Failed",
-          description: error.error,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Delete Failed",
-        description: "An error occurred.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const removePendingFile = (index: number, type: "exterior" | "interior") => {
-    if (type === "exterior") {
-      setPendingExteriorFiles((prev) => prev.filter((_, i) => i !== index));
-    } else {
-      setPendingInteriorFiles((prev) => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  const startEdit = () => {
-    if (!selectedAircraft) return;
-    setFormData({
-      name: selectedAircraft.name,
-      model: selectedAircraft.model,
-      manufacturer: selectedAircraft.manufacturer,
-      category: selectedAircraft.category,
-      availability: selectedAircraft.availability,
-      passengerCapacityMin: selectedAircraft.passengerCapacityMin,
-      passengerCapacityMax: selectedAircraft.passengerCapacityMax,
-      cruiseSpeedKnots: selectedAircraft.cruiseSpeedKnots,
-      rangeNm: selectedAircraft.rangeNm,
-      yearOfManufacture:
-        selectedAircraft.yearOfManufacture || new Date().getFullYear(),
-      description: selectedAircraft.description || "",
-      baggageCapacityCuFt: selectedAircraft.baggageCapacityCuFt,
-      fuelCapacityGal: selectedAircraft.fuelCapacityGal,
-      cabinLengthFt: selectedAircraft.cabinLengthFt,
-      cabinWidthFt: selectedAircraft.cabinWidthFt,
-      cabinHeightFt: selectedAircraft.cabinHeightFt,
-      lengthFt: selectedAircraft.lengthFt,
-      wingspanFt: selectedAircraft.wingspanFt,
-      heightFt: selectedAircraft.heightFt,
-      hourlyRateUsd: selectedAircraft.hourlyRateUsd,
-    });
-    setIsEditing(true);
-    setShowForm(false);
   };
 
   const cancelEdit = () => {
-    setIsEditing(false);
-    setFormData(getEmptyForm());
-    setPendingExteriorFiles([]);
-    setPendingInteriorFiles([]);
+    // No longer needed since we navigate to edit page
   };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "LIGHT_JET":
-        return "secondary";
-      case "MIDSIZE_JET":
-        return "success";
-      case "SUPER_MIDSIZE_JET":
-        return "warning";
-      case "ULTRA_LONG_RANGE":
-        return "gold";
-      default:
-        return "secondary";
-    }
-  };
-
-  // Render the form (used for both add and edit)
-  const renderForm = () => (
-    <form onSubmit={handleSave}>
-      <ScrollArea className="h-[500px] px-4">
-        <div className="space-y-4 py-4">
-          {/* Basic Info */}
-          <fieldset className="space-y-2">
-            <Label htmlFor="name">Aircraft Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              placeholder="e.g., Citation XLS"
-              required
-            />
-          </fieldset>
-
-          <section className="grid grid-cols-2 gap-2">
-            <fieldset className="space-y-2">
-              <Label htmlFor="manufacturer">Manufacturer *</Label>
-              <Input
-                id="manufacturer"
-                value={formData.manufacturer}
-                onChange={(e) =>
-                  setFormData({ ...formData, manufacturer: e.target.value })
-                }
-                placeholder="e.g., Cessna"
-                required
-              />
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label htmlFor="model">Model *</Label>
-              <Input
-                id="model"
-                value={formData.model}
-                onChange={(e) =>
-                  setFormData({ ...formData, model: e.target.value })
-                }
-                placeholder="e.g., 560XL"
-                required
-              />
-            </fieldset>
-          </section>
-
-          <section className="grid grid-cols-2 gap-2">
-            <fieldset className="space-y-2">
-              <Label>Category *</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, category: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.slice(1).map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label>Availability</Label>
-              <Select
-                value={formData.availability}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, availability: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {availabilityOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </fieldset>
-          </section>
-
-          <Separator />
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Capacity
-          </p>
-
-          <section className="grid grid-cols-3 gap-2">
-            <fieldset className="space-y-2">
-              <Label>Min Pax *</Label>
-              <Input
-                type="number"
-                value={formData.passengerCapacityMin}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    passengerCapacityMin: parseInt(e.target.value) || 0,
-                  })
-                }
-                required
-              />
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label>Max Pax *</Label>
-              <Input
-                type="number"
-                value={formData.passengerCapacityMax}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    passengerCapacityMax: parseInt(e.target.value) || 0,
-                  })
-                }
-                required
-              />
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label>Baggage (cu ft)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={formData.baggageCapacityCuFt || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    baggageCapacityCuFt: e.target.value
-                      ? parseFloat(e.target.value)
-                      : null,
-                  })
-                }
-              />
-            </fieldset>
-          </section>
-
-          <Separator />
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Performance
-          </p>
-
-          <section className="grid grid-cols-3 gap-2">
-            <fieldset className="space-y-2">
-              <Label>Range (nm) *</Label>
-              <Input
-                type="number"
-                value={formData.rangeNm}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    rangeNm: parseInt(e.target.value) || 0,
-                  })
-                }
-                required
-              />
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label>Speed (kts) *</Label>
-              <Input
-                type="number"
-                value={formData.cruiseSpeedKnots}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    cruiseSpeedKnots: parseInt(e.target.value) || 0,
-                  })
-                }
-                required
-              />
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label>Fuel (gal)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={formData.fuelCapacityGal || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    fuelCapacityGal: e.target.value
-                      ? parseFloat(e.target.value)
-                      : null,
-                  })
-                }
-              />
-            </fieldset>
-          </section>
-
-          <Separator />
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Cabin Dimensions (ft)
-          </p>
-
-          <section className="grid grid-cols-3 gap-2">
-            <fieldset className="space-y-2">
-              <Label>Length</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={formData.cabinLengthFt || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    cabinLengthFt: e.target.value
-                      ? parseFloat(e.target.value)
-                      : null,
-                  })
-                }
-              />
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label>Width</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={formData.cabinWidthFt || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    cabinWidthFt: e.target.value
-                      ? parseFloat(e.target.value)
-                      : null,
-                  })
-                }
-              />
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label>Height</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={formData.cabinHeightFt || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    cabinHeightFt: e.target.value
-                      ? parseFloat(e.target.value)
-                      : null,
-                  })
-                }
-              />
-            </fieldset>
-          </section>
-
-          <Separator />
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Exterior Dimensions (ft)
-          </p>
-
-          <section className="grid grid-cols-3 gap-2">
-            <fieldset className="space-y-2">
-              <Label>Length</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={formData.lengthFt || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    lengthFt: e.target.value
-                      ? parseFloat(e.target.value)
-                      : null,
-                  })
-                }
-              />
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label>Wingspan</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={formData.wingspanFt || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    wingspanFt: e.target.value
-                      ? parseFloat(e.target.value)
-                      : null,
-                  })
-                }
-              />
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label>Height</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={formData.heightFt || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    heightFt: e.target.value
-                      ? parseFloat(e.target.value)
-                      : null,
-                  })
-                }
-              />
-            </fieldset>
-          </section>
-
-          <Separator />
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Additional Info
-          </p>
-
-          <section className="grid grid-cols-2 gap-2">
-            <fieldset className="space-y-2">
-              <Label>Year</Label>
-              <Input
-                type="number"
-                value={formData.yearOfManufacture || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    yearOfManufacture: e.target.value
-                      ? parseInt(e.target.value)
-                      : new Date().getFullYear(),
-                  })
-                }
-              />
-            </fieldset>
-            <fieldset className="space-y-2">
-              <Label>Hourly Rate (USD)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.hourlyRateUsd || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    hourlyRateUsd: e.target.value
-                      ? parseFloat(e.target.value)
-                      : null,
-                  })
-                }
-              />
-            </fieldset>
-          </section>
-
-          <fieldset className="space-y-2">
-            <Label>Description</Label>
-            <Textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder="Aircraft description..."
-              rows={3}
-            />
-          </fieldset>
-
-          {/* Image Upload Section */}
-          <Separator />
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            Images
-          </p>
-
-          {/* Thumbnail Image */}
-          <fieldset className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Thumbnail Image</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => thumbnailInputRef.current?.click()}
-                disabled={uploadingThumbnail}
-              >
-                {uploadingThumbnail ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Upload className="h-3 w-3 mr-1" />
-                )}
-                {isEditing && selectedAircraft?.thumbnailImage
-                  ? "Change"
-                  : "Upload"}
-              </Button>
-              <input
-                ref={thumbnailInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleThumbnailUpload(e.target.files)}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Show existing thumbnail when editing */}
-              {isEditing && selectedAircraft?.thumbnailImage && (
-                <div className="relative group">
-                  <Image
-                    src={selectedAircraft.thumbnailImage}
-                    alt="Thumbnail"
-                    width={120}
-                    height={80}
-                    className="object-cover w-28 h-20 border"
-                  />
-                </div>
-              )}
-              {/* Show pending thumbnail */}
-              {pendingThumbnailFile && (
-                <div className="relative group">
-                  <div className="w-28 h-20 bg-muted flex items-center justify-center text-xs text-muted-foreground border">
-                    {pendingThumbnailFile.name.substring(0, 12)}...
-                  </div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
-                    onClick={() => setPendingThumbnailFile(null)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-              {!isEditing && !pendingThumbnailFile && (
-                <p className="text-xs text-muted-foreground">
-                  No thumbnail selected
-                </p>
-              )}
-            </div>
-          </fieldset>
-
-          {/* Exterior Images */}
-          <fieldset className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Exterior Images</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => exteriorInputRef.current?.click()}
-                disabled={uploadingExterior}
-              >
-                {uploadingExterior ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Upload className="h-3 w-3 mr-1" />
-                )}
-                Add
-              </Button>
-              <input
-                ref={exteriorInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => handleImageUpload(e.target.files, "exterior")}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {/* Show existing images when editing */}
-              {isEditing &&
-                selectedAircraft?.exteriorImages.map((img, idx) => (
-                  <div key={`existing-ext-${idx}`} className="relative group">
-                    <Image
-                      src={img}
-                      alt={`Exterior ${idx + 1}`}
-                      width={100}
-                      height={70}
-                      className="object-cover w-full h-16"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
-                      onClick={() => {
-                        setPendingDeleteImage({ url: img, type: "exterior" });
-                        setDeleteImageDialogOpen(true);
-                      }}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              {/* Show pending files */}
-              {pendingExteriorFiles.map((file, idx) => (
-                <div key={`pending-ext-${idx}`} className="relative group">
-                  <div className="w-full h-16 bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                    {file.name.substring(0, 10)}...
-                  </div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
-                    onClick={() => removePendingFile(idx, "exterior")}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </fieldset>
-
-          {/* Interior Images */}
-          <fieldset className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Interior Images</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => interiorInputRef.current?.click()}
-                disabled={uploadingInterior}
-              >
-                {uploadingInterior ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Upload className="h-3 w-3 mr-1" />
-                )}
-                Add
-              </Button>
-              <input
-                ref={interiorInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => handleImageUpload(e.target.files, "interior")}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {isEditing &&
-                selectedAircraft?.interiorImages.map((img, idx) => (
-                  <div key={`existing-int-${idx}`} className="relative group">
-                    <Image
-                      src={img}
-                      alt={`Interior ${idx + 1}`}
-                      width={100}
-                      height={70}
-                      className="object-cover w-full h-16"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
-                      onClick={() => {
-                        setPendingDeleteImage({ url: img, type: "interior" });
-                        setDeleteImageDialogOpen(true);
-                      }}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              {pendingInteriorFiles.map((file, idx) => (
-                <div key={`pending-int-${idx}`} className="relative group">
-                  <div className="w-full h-16 bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                    {file.name.substring(0, 10)}...
-                  </div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
-                    onClick={() => removePendingFile(idx, "interior")}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </fieldset>
-        </div>
-      </ScrollArea>
-
-      <div className="p-4 border-t flex gap-2">
-        {isEditing && (
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1"
-            onClick={cancelEdit}
-          >
-            Cancel
-          </Button>
-        )}
-        <Button
-          type="submit"
-          variant="gold"
-          className="flex-1"
-          disabled={saving}
-        >
-          {saving ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              {isEditing ? "Update" : "Save"}
-            </>
-          )}
-        </Button>
-      </div>
-    </form>
-  );
 
   return (
-    <section className="space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <article>
-          <h1 className="text-3xl font-bold">Aircraft</h1>
-          <p className="text-muted-foreground">Manage aircraft fleet</p>
-        </article>
-        <section className="flex gap-2">
-          <Button variant="outline" onClick={fetchAircraft} disabled={loading}>
-            <RefreshCw
-              className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </Button>
-          <Button
-            variant="gold"
-            onClick={() => {
-              setShowForm(true);
-              setSelectedAircraft(null);
-              setIsEditing(false);
-              setFormData(getEmptyForm());
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Aircraft Management
+          </h1>
+          <p className="text-muted-foreground">
+            Manage your fleet of aircraft and their specifications
+          </p>
+        </div>
+        <Button variant="gold" asChild>
+          <Link href="/dashboard/aircraft/new">
+            <Plus className="mr-2 h-4 w-4" />
             Add Aircraft
-          </Button>
-        </section>
-      </header>
+          </Link>
+        </Button>
+      </div>
 
-      {/* Search, Sort & Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <section className="flex flex-col md:flex-row gap-4">
-            <section className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, model, or manufacturer..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(1);
-                }}
-                className="pl-10"
-              />
-            </section>
-
-            <section className="relative">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <select
-                value={categoryFilter}
-                onChange={(e) => {
-                  setCategoryFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="h-10 pl-10 pr-4 border border-input bg-background text-sm focus:outline-none min-w-[180px]"
-              >
-                {categories.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-            </section>
-
-            <Button
-              variant="outline"
-              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-              className="gap-2"
-            >
-              {sortOrder === "asc" ? (
-                <>
-                  <ArrowUpAZ className="h-4 w-4" />
-                  A-Z
-                </>
-              ) : (
-                <>
-                  <ArrowDownAZ className="h-4 w-4" />
-                  Z-A
-                </>
-              )}
-            </Button>
-
-            {(searchQuery || categoryFilter) && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setSearchQuery("");
-                  setCategoryFilter("");
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </section>
-        </CardContent>
-      </Card>
-
-      {/* Main Content */}
+      {/* Main Content - Table and Detail Panel */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Aircraft Table */}
-        <Card
-          className={
-            selectedAircraft || showForm ? "lg:col-span-2" : "lg:col-span-3"
-          }
-        >
+        <Card className={selectedAircraft ? "lg:col-span-2" : "lg:col-span-3"}>
           <CardHeader>
-            <CardTitle>Fleet Overview</CardTitle>
-            <CardDescription>
-              {aircraft.length > 0
-                ? `Showing ${aircraft.length} aircraft`
-                : "No aircraft found"}
-            </CardDescription>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search aircraft..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Select
+                value={categorySelectValue}
+                onValueChange={(value) =>
+                  setCategoryFilter(value === "ALL" ? "" : value)
+                }
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories
+                    .filter((cat) => cat.value !== "")
+                    .map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="icon" onClick={fetchAircraft}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <section className="space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <section key={i} className="h-16 bg-muted animate-pulse" />
-                ))}
-              </section>
-            ) : aircraft.length > 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : aircraft.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Plane className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No aircraft found</p>
+              </div>
+            ) : (
               <>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Aircraft</TableHead>
+                      <TableHead>Image</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Manufacturer</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Capacity</TableHead>
-                      <TableHead>Range</TableHead>
+                      <TableHead>Price/Hour</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {aircraft.map((item) => (
+                    {aircraft.map((ac) => (
                       <TableRow
-                        key={item.id}
-                        className={`cursor-pointer hover:bg-accent ${selectedAircraft?.id === item.id ? "bg-accent" : ""}`}
+                        key={ac.id}
+                        className={`cursor-pointer ${
+                          selectedAircraft?.id === ac.id ? "bg-muted" : ""
+                        }`}
                         onClick={() => {
-                          setSelectedAircraft(item);
-                          setShowForm(false);
-                          setIsEditing(false);
+                          setSelectedAircraft(ac);
                         }}
                       >
                         <TableCell>
-                          <section className="flex items-center gap-3">
-                            {item.thumbnailImage ? (
-                              <Image
-                                src={item.thumbnailImage}
-                                alt={item.name}
-                                width={60}
-                                height={40}
-                                className="object-cover"
-                              />
-                            ) : (
-                              <section className="w-[60px] h-[40px] bg-muted flex items-center justify-center">
-                                <Plane className="h-5 w-5 text-muted-foreground" />
-                              </section>
-                            )}
-                            <article>
-                              <p className="font-medium">{item.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.manufacturer} {item.model}
-                              </p>
-                            </article>
-                          </section>
+                          {ac.image ? (
+                            <Image
+                              src={ac.image}
+                              alt={ac.name}
+                              width={60}
+                              height={40}
+                              className="rounded object-cover"
+                            />
+                          ) : (
+                            <div className="w-[60px] h-[40px] bg-muted rounded flex items-center justify-center">
+                              <Plane className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          )}
                         </TableCell>
+                        <TableCell className="font-medium">{ac.name}</TableCell>
+                        <TableCell>{ac.manufacturer}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant={getCategoryColor(item.category) as any}
-                          >
-                            {item.category.replace(/_/g, " ")}
+                          <Badge variant={getCategoryColor(ac.category) as any}>
+                            {getCategoryLabel(ac.category)}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {item.passengerCapacityMin}-
-                          {item.passengerCapacityMax} pax
+                          {ac.minPax || "-"} - {ac.maxPax || "-"} pax
                         </TableCell>
-                        <TableCell>
-                          {item.rangeNm.toLocaleString()} nm
+                        <TableCell className="font-mono text-black">
+                          {ac.basePricePerHour
+                            ? `$${ac.basePricePerHour.toLocaleString()}`
+                            : "-"}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1354,485 +339,221 @@ export default function AircraftPage() {
                 </Table>
 
                 {/* Pagination */}
-                <section className="flex items-center justify-between mt-4">
+                <div className="flex items-center justify-between mt-4">
                   <p className="text-sm text-muted-foreground">
                     Page {page} of {totalPages}
                   </p>
-                  <section className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
+                      onClick={() => setPage(page - 1)}
+                      disabled={page <= 1}
                     >
                       Previous
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages, p + 1))
-                      }
-                      disabled={page === totalPages}
+                      onClick={() => setPage(page + 1)}
+                      disabled={page >= totalPages}
                     >
                       Next
                     </Button>
-                  </section>
-                </section>
+                  </div>
+                </div>
               </>
-            ) : (
-              <section className="text-center py-12">
-                <Plane className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  No aircraft found
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  {searchQuery || categoryFilter
-                    ? "Try different search or filter"
-                    : "Add your first aircraft"}
-                </p>
-                {!searchQuery && !categoryFilter && (
-                  <Button variant="gold" onClick={() => setShowForm(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Aircraft
-                  </Button>
-                )}
-              </section>
             )}
           </CardContent>
         </Card>
 
-        {/* Detail Panel (View Mode) */}
-        {selectedAircraft && !showForm && !isEditing && (
+        {/* Detail Panel */}
+        {selectedAircraft && (
           <Card className="lg:col-span-1">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
               <div>
-                <CardTitle className="text-lg">
-                  {selectedAircraft.name}
-                </CardTitle>
+                <CardTitle className="text-lg">Aircraft Details</CardTitle>
                 <CardDescription>
-                  {selectedAircraft.manufacturer} {selectedAircraft.model}
+                  {selectedAircraft.category} - {selectedAircraft.manufacturer}
                 </CardDescription>
-              </div>
-              <div className="flex gap-1">
-                <Button variant="outline" size="icon" onClick={startEdit}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSelectedAircraft(null)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Tabs defaultValue="details" className="w-full">
-                <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
-                  <TabsTrigger
-                    value="details"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary"
-                  >
-                    Details
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="specs"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary"
-                  >
-                    Specs
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="images"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary"
-                  >
-                    Images
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* Details Tab */}
-                <TabsContent value="details" className="p-4 space-y-3 mt-0">
-                  <ScrollArea className="h-[350px] pr-4">
-                    <article className="grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Category
-                        </p>
-                        <Badge
-                          variant={
-                            getCategoryColor(selectedAircraft.category) as any
-                          }
-                          className="mt-1"
-                        >
-                          {selectedAircraft.category.replace(/_/g, " ")}
-                        </Badge>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Availability
-                        </p>
-                        <Badge
-                          variant={
-                            selectedAircraft.availability === "BOTH"
-                              ? "success"
-                              : selectedAircraft.availability === "NONE"
-                                ? "secondary"
-                                : "warning"
-                          }
-                          className="mt-1"
-                        >
-                          {selectedAircraft.availability}
-                        </Badge>
-                      </div>
-                    </article>
-
-                    <Separator className="my-3" />
-
-                    <article>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                        Passengers
-                      </p>
-                      <p className="font-medium">
-                        {selectedAircraft.passengerCapacityMin}-
-                        {selectedAircraft.passengerCapacityMax}
-                      </p>
-                    </article>
-
-                    {selectedAircraft.yearOfManufacture && (
-                      <article className="mt-3">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                          Year
-                        </p>
-                        <p className="font-medium">
-                          {selectedAircraft.yearOfManufacture}
-                        </p>
-                      </article>
-                    )}
-
-                    {selectedAircraft.hourlyRateUsd && (
-                      <article className="mt-3">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                          Hourly Rate
-                        </p>
-                        <p className="font-medium">
-                          ${selectedAircraft.hourlyRateUsd.toLocaleString()}/hr
-                        </p>
-                      </article>
-                    )}
-
-                    {selectedAircraft.description && (
-                      <>
-                        <Separator className="my-3" />
-                        <article>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                            Description
-                          </p>
-                          <p className="text-sm">
-                            {selectedAircraft.description}
-                          </p>
-                        </article>
-                      </>
-                    )}
-                  </ScrollArea>
-
-                  <section className="pt-2 border-t">
-                    <Button
-                      variant="destructive"
-                      className="w-full"
-                      onClick={() => setDeleteDialogOpen(true)}
-                      disabled={deleting}
-                    >
-                      {deleting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </>
-                      )}
-                    </Button>
-                  </section>
-                </TabsContent>
-
-                {/* Specs Tab */}
-                <TabsContent value="specs" className="p-4 mt-0">
-                  <ScrollArea className="h-[400px] pr-4">
-                    <section className="space-y-4">
-                      <article>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                          Performance
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">
-                              Range:
-                            </span>{" "}
-                            <span className="font-medium">
-                              {selectedAircraft.rangeNm.toLocaleString()} nm
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">
-                              Speed:
-                            </span>{" "}
-                            <span className="font-medium">
-                              {selectedAircraft.cruiseSpeedKnots} kts
-                            </span>
-                          </div>
-                        </div>
-                      </article>
-
-                      {selectedAircraft.baggageCapacityCuFt && (
-                        <article>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                            Baggage
-                          </p>
-                          <p className="text-sm font-medium">
-                            {selectedAircraft.baggageCapacityCuFt} cu ft
-                          </p>
-                        </article>
-                      )}
-
-                      {(selectedAircraft.cabinLengthFt ||
-                        selectedAircraft.cabinWidthFt ||
-                        selectedAircraft.cabinHeightFt) && (
-                        <article>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                            Cabin Dimensions
-                          </p>
-                          <div className="grid grid-cols-3 gap-2 text-sm">
-                            {selectedAircraft.cabinLengthFt && (
-                              <div>
-                                <span className="text-muted-foreground">
-                                  L:
-                                </span>{" "}
-                                <span className="font-medium">
-                                  {selectedAircraft.cabinLengthFt} ft
-                                </span>
-                              </div>
-                            )}
-                            {selectedAircraft.cabinWidthFt && (
-                              <div>
-                                <span className="text-muted-foreground">
-                                  W:
-                                </span>{" "}
-                                <span className="font-medium">
-                                  {selectedAircraft.cabinWidthFt} ft
-                                </span>
-                              </div>
-                            )}
-                            {selectedAircraft.cabinHeightFt && (
-                              <div>
-                                <span className="text-muted-foreground">
-                                  H:
-                                </span>{" "}
-                                <span className="font-medium">
-                                  {selectedAircraft.cabinHeightFt} ft
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </article>
-                      )}
-
-                      {(selectedAircraft.lengthFt ||
-                        selectedAircraft.wingspanFt ||
-                        selectedAircraft.heightFt) && (
-                        <article>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                            Exterior Dimensions
-                          </p>
-                          <div className="grid grid-cols-3 gap-2 text-sm">
-                            {selectedAircraft.lengthFt && (
-                              <div>
-                                <span className="text-muted-foreground">
-                                  L:
-                                </span>{" "}
-                                <span className="font-medium">
-                                  {selectedAircraft.lengthFt} ft
-                                </span>
-                              </div>
-                            )}
-                            {selectedAircraft.wingspanFt && (
-                              <div>
-                                <span className="text-muted-foreground">
-                                  Span:
-                                </span>{" "}
-                                <span className="font-medium">
-                                  {selectedAircraft.wingspanFt} ft
-                                </span>
-                              </div>
-                            )}
-                            {selectedAircraft.heightFt && (
-                              <div>
-                                <span className="text-muted-foreground">
-                                  H:
-                                </span>{" "}
-                                <span className="font-medium">
-                                  {selectedAircraft.heightFt} ft
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </article>
-                      )}
-                    </section>
-                  </ScrollArea>
-                </TabsContent>
-
-                {/* Images Tab */}
-                <TabsContent value="images" className="p-4 mt-0">
-                  <ScrollArea className="h-[400px] pr-4">
-                    <Accordion
-                      type="multiple"
-                      defaultValue={["exterior", "interior"]}
-                      className="w-full"
-                    >
-                      <AccordionItem value="exterior">
-                        <AccordionTrigger className="text-sm">
-                          Exterior Images (
-                          {selectedAircraft.exteriorImages.length})
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          {selectedAircraft.exteriorImages.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-2">
-                              {selectedAircraft.exteriorImages.map(
-                                (img, idx) => (
-                                  <Image
-                                    key={idx}
-                                    src={img}
-                                    alt={`Exterior ${idx + 1}`}
-                                    width={150}
-                                    height={100}
-                                    className="object-cover w-full h-20"
-                                  />
-                                ),
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                              <ImageIcon className="h-8 w-8 mb-2" />
-                              <p className="text-xs">No exterior images</p>
-                            </div>
-                          )}
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      <AccordionItem value="interior">
-                        <AccordionTrigger className="text-sm">
-                          Interior Images (
-                          {selectedAircraft.interiorImages?.length || 0})
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          {selectedAircraft.interiorImages?.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-2">
-                              {selectedAircraft.interiorImages.map(
-                                (img, idx) => (
-                                  <Image
-                                    key={idx}
-                                    src={img}
-                                    alt={`Interior ${idx + 1}`}
-                                    width={150}
-                                    height={100}
-                                    className="object-cover w-full h-20"
-                                  />
-                                ),
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                              <ImageIcon className="h-8 w-8 mb-2" />
-                              <p className="text-xs">No interior images</p>
-                            </div>
-                          )}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </ScrollArea>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Edit Panel */}
-        {selectedAircraft && isEditing && !showForm && (
-          <Card className="lg:col-span-1">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-              <div>
-                <CardTitle className="text-lg">Edit Aircraft</CardTitle>
-                <CardDescription>{selectedAircraft.name}</CardDescription>
-              </div>
-              <Button variant="ghost" size="icon" onClick={cancelEdit}>
-                <X className="h-4 w-4" />
-              </Button>
-            </CardHeader>
-            <CardContent className="p-0">{renderForm()}</CardContent>
-          </Card>
-        )}
-
-        {/* Add Aircraft Form */}
-        {showForm && !isEditing && (
-          <Card className="lg:col-span-1">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-              <div>
-                <CardTitle className="text-lg">Add Aircraft</CardTitle>
-                <CardDescription>Enter aircraft details</CardDescription>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => {
-                  setShowForm(false);
-                  setPendingExteriorFiles([]);
-                  setPendingInteriorFiles([]);
-                }}
+                onClick={() => setSelectedAircraft(null)}
               >
                 <X className="h-4 w-4" />
               </Button>
             </CardHeader>
-            <CardContent className="p-0">{renderForm()}</CardContent>
+            <CardContent className="space-y-6">
+              {/* Aircraft Image */}
+              {selectedAircraft.image && (
+                <section className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                    Aircraft Image
+                  </h3>
+                  <div className="border rounded-lg overflow-hidden bg-muted/30">
+                    <Image
+                      src={selectedAircraft.image}
+                      alt={selectedAircraft.name}
+                      width={400}
+                      height={250}
+                      className="w-full h-auto object-contain max-h-80"
+                    />
+                  </div>
+                </section>
+              )}
+
+              {/* Aircraft Name */}
+              <section className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Aircraft
+                </h3>
+                <article className="flex items-center gap-3">
+                  <Plane className="h-5 w-5 text-[#D4AF37]" />
+                  <section className="text-center">
+                    <p className="text-lg font-bold">{selectedAircraft.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedAircraft.manufacturer}
+                    </p>
+                  </section>
+                </article>
+              </section>
+
+              {/* Basic Information */}
+              <section className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Specifications
+                </h3>
+                <article className="space-y-2">
+                  <p className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Category
+                    </span>
+                    <span className="font-medium">
+                      {getCategoryLabel(selectedAircraft.category)}
+                    </span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Availability
+                    </span>
+                    <span className="font-medium">
+                      {
+                        availabilityOptions.find(
+                          (o) => o.value === selectedAircraft.availability,
+                        )?.label
+                      }
+                    </span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Max Passengers
+                    </span>
+                    <span className="font-medium">
+                      {selectedAircraft.maxPax || "-"}
+                    </span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Baggage
+                    </span>
+                    <span className="font-medium">
+                      {selectedAircraft.baggageCuFt
+                        ? `${selectedAircraft.baggageCuFt} cu ft`
+                        : "-"}
+                    </span>
+                  </p>
+                </article>
+              </section>
+
+              {/* Performance */}
+              <section className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Performance
+                </h3>
+                <article className="space-y-2">
+                  <p className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Range</span>
+                    <span className="font-medium">
+                      {selectedAircraft.rangeNm
+                        ? `${selectedAircraft.rangeNm} NM`
+                        : "-"}
+                    </span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Speed</span>
+                    <span className="font-medium">
+                      {selectedAircraft.cruiseSpeedKnots
+                        ? `${selectedAircraft.cruiseSpeedKnots} kts`
+                        : "-"}
+                    </span>
+                  </p>
+                </article>
+              </section>
+
+              {/* Pricing */}
+              <section className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Pricing
+                </h3>
+                <article className="space-y-2">
+                  <p className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Base Price/Hour
+                    </span>
+                    <span className="font-mono font-medium text-black">
+                      {selectedAircraft.basePricePerHour
+                        ? `$${selectedAircraft.basePricePerHour.toLocaleString()}`
+                        : "-"}
+                    </span>
+                  </p>
+                </article>
+              </section>
+
+              {/* Actions */}
+              <section className="pt-4 space-y-2">
+                <Button
+                  onClick={() =>
+                    router.push(
+                      `/dashboard/aircraft/${selectedAircraft.id}/edit`,
+                    )
+                  }
+                  className="w-full"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Aircraft
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  disabled={deleting}
+                  className="w-full"
+                >
+                  {deleting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Delete Aircraft
+                </Button>
+              </section>
+            </CardContent>
           </Card>
         )}
       </section>
 
-      {/* Delete Aircraft Confirmation Dialog */}
+      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Delete Aircraft"
-        description="Are you sure you want to delete this aircraft? This action cannot be undone."
+        description={`Are you sure you want to delete ${selectedAircraft?.name}? This action cannot be undone.`}
+        onConfirm={() => selectedAircraft && handleDelete(selectedAircraft.id)}
         confirmText="Delete"
         cancelText="Cancel"
         variant="destructive"
-        onConfirm={() => {
-          if (selectedAircraft) {
-            handleDelete(selectedAircraft.id);
-          }
-          setDeleteDialogOpen(false);
-        }}
       />
-
-      {/* Delete Image Confirmation Dialog */}
-      <ConfirmDialog
-        open={deleteImageDialogOpen}
-        onOpenChange={setDeleteImageDialogOpen}
-        title="Delete Image"
-        description="Are you sure you want to delete this image?"
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="destructive"
-        onConfirm={() => {
-          if (pendingDeleteImage) {
-            handleImageDelete(pendingDeleteImage.url, pendingDeleteImage.type);
-          }
-          setDeleteImageDialogOpen(false);
-          setPendingDeleteImage(null);
-        }}
-      />
-    </section>
+    </div>
   );
 }

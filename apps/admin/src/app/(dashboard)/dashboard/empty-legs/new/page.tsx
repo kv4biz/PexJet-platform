@@ -36,12 +36,11 @@ import {
 interface Aircraft {
   id: string;
   name: string;
-  model: string;
   manufacturer: string;
   category: string;
-  passengerCapacityMax: number;
-  cruiseSpeedKnots: number;
-  thumbnailImage: string | null;
+  maxPax: number | null;
+  cruiseSpeedKnots: number | null;
+  image: string | null;
 }
 
 interface Airport {
@@ -77,8 +76,8 @@ export default function NewEmptyLegPage() {
     departureAirportId: "",
     arrivalAirportId: "",
     totalSeats: "",
-    originalPriceUsd: "",
-    discountPriceUsd: "",
+    priceType: "FIXED" as "FIXED" | "CONTACT",
+    priceUsd: "",
   });
 
   // Departure date/time state for Calendar20
@@ -208,18 +207,11 @@ export default function NewEmptyLegPage() {
     setFormData((prev) => ({
       ...prev,
       aircraftId,
-      totalSeats: aircraft ? aircraft.passengerCapacityMax.toString() : "",
+      totalSeats: aircraft?.maxPax?.toString() || "",
     }));
   };
 
-  const calculateDiscount = () => {
-    const original = parseFloat(formData.originalPriceUsd) || 0;
-    const discount = parseFloat(formData.discountPriceUsd) || 0;
-    if (original > 0 && discount > 0) {
-      return Math.round(((original - discount) / original) * 100);
-    }
-    return 0;
-  };
+  // Calculate discount is no longer needed since we don't have discount pricing
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -274,34 +266,12 @@ export default function NewEmptyLegPage() {
       return;
     }
     if (
-      !formData.originalPriceUsd ||
-      parseFloat(formData.originalPriceUsd) <= 0
+      formData.priceType === "FIXED" &&
+      (!formData.priceUsd || parseFloat(formData.priceUsd) <= 0)
     ) {
       toast({
         title: "Error",
-        description: "Please enter valid original price",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (
-      !formData.discountPriceUsd ||
-      parseFloat(formData.discountPriceUsd) <= 0
-    ) {
-      toast({
-        title: "Error",
-        description: "Please enter valid discount price",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (
-      parseFloat(formData.discountPriceUsd) >=
-      parseFloat(formData.originalPriceUsd)
-    ) {
-      toast({
-        title: "Error",
-        description: "Discount price must be less than original price",
+        description: "Please enter valid price",
         variant: "destructive",
       });
       return;
@@ -319,7 +289,14 @@ export default function NewEmptyLegPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
-        body: JSON.stringify({ ...formData, departureDateTime }),
+        body: JSON.stringify({
+          ...formData,
+          departureDateTime,
+          // Don't send priceUsd if priceType is CONTACT
+          ...(formData.priceType === "FIXED" && {
+            priceUsd: formData.priceUsd,
+          }),
+        }),
       });
 
       if (response.ok) {
@@ -402,8 +379,7 @@ export default function NewEmptyLegPage() {
                       <SelectContent>
                         {aircraftList.map((aircraft) => (
                           <SelectItem key={aircraft.id} value={aircraft.id}>
-                            {aircraft.name} ({aircraft.manufacturer}{" "}
-                            {aircraft.model})
+                            {aircraft.name} ({aircraft.manufacturer})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -419,12 +395,11 @@ export default function NewEmptyLegPage() {
                           {selectedAircraft.category.replace(/_/g, " ")}
                         </span>
                         <span>
-                          Max Passengers:{" "}
-                          {selectedAircraft.passengerCapacityMax}
+                          Max Passengers: {selectedAircraft.maxPax || "N/A"}
                         </span>
                         <span>
-                          Cruise Speed: {selectedAircraft.cruiseSpeedKnots}{" "}
-                          knots
+                          Cruise Speed:{" "}
+                          {selectedAircraft.cruiseSpeedKnots || "N/A"} knots
                         </span>
                       </section>
                     </article>
@@ -612,13 +587,13 @@ export default function NewEmptyLegPage() {
                           }))
                         }
                         min="1"
-                        max={selectedAircraft?.passengerCapacityMax || 20}
+                        max={selectedAircraft?.maxPax || 20}
                         className="pl-10"
                       />
                     </section>
                     {selectedAircraft && (
                       <p className="text-xs text-muted-foreground">
-                        Max capacity: {selectedAircraft.passengerCapacityMax}{" "}
+                        Max capacity: {selectedAircraft.maxPax || "N/A"}{" "}
                         passengers
                       </p>
                     )}
@@ -634,80 +609,56 @@ export default function NewEmptyLegPage() {
                   <DollarSign className="h-5 w-5 text-[#D4AF37]" />
                   Pricing
                 </CardTitle>
-                <CardDescription>
-                  Set original and discounted prices (per seat)
-                </CardDescription>
+                <CardDescription>Set price type and amount</CardDescription>
               </CardHeader>
               <CardContent>
                 <section className="grid gap-6 md:grid-cols-2">
                   <article className="space-y-2">
-                    <Label htmlFor="originalPriceUsd">
-                      Original Price (USD) *
-                    </Label>
-                    <section className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        id="originalPriceUsd"
-                        type="number"
-                        placeholder="e.g., 5000"
-                        value={formData.originalPriceUsd}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            originalPriceUsd: e.target.value,
-                          }))
-                        }
-                        min="0"
-                        step="1000"
-                        className="pl-8"
-                      />
-                    </section>
+                    <Label htmlFor="priceType">Price Type *</Label>
+                    <Select
+                      value={formData.priceType}
+                      onValueChange={(value: "FIXED" | "CONTACT") =>
+                        setFormData((prev) => ({ ...prev, priceType: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select price type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="FIXED">Fixed Price</SelectItem>
+                        <SelectItem value="CONTACT">
+                          Contact for Price
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </article>
 
-                  <article className="space-y-2">
-                    <Label htmlFor="discountPriceUsd">
-                      Discount Price (USD) *
-                    </Label>
-                    <section className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        id="discountPriceUsd"
-                        type="number"
-                        placeholder="e.g., 3500"
-                        value={formData.discountPriceUsd}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            discountPriceUsd: e.target.value,
-                          }))
-                        }
-                        min="0"
-                        step="1000"
-                        className="pl-8"
-                      />
-                    </section>
-                  </article>
+                  {formData.priceType === "FIXED" && (
+                    <article className="space-y-2">
+                      <Label htmlFor="priceUsd">Price (USD) *</Label>
+                      <section className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          id="priceUsd"
+                          type="number"
+                          placeholder="e.g., 5000"
+                          value={formData.priceUsd}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              priceUsd: e.target.value,
+                            }))
+                          }
+                          min="0"
+                          step="0.01"
+                          className="pl-8"
+                        />
+                      </section>
+                    </article>
+                  )}
                 </section>
-
-                {calculateDiscount() > 0 && (
-                  <article className="mt-4 p-4 bg-green-500/10 border border-green-500/20">
-                    <p className="text-green-600 dark:text-green-400 font-medium">
-                      {calculateDiscount()}% discount applied
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Savings: $
-                      {(
-                        parseFloat(formData.originalPriceUsd || "0") -
-                        parseFloat(formData.discountPriceUsd || "0")
-                      ).toLocaleString()}{" "}
-                      per seat
-                    </p>
-                  </article>
-                )}
               </CardContent>
             </Card>
           </section>
@@ -754,7 +705,13 @@ export default function NewEmptyLegPage() {
                     <p className="font-medium">
                       {new Date(
                         `${departureDate.date}T${departureDate.time}`,
-                      ).toLocaleString()}
+                      ).toLocaleString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </p>
                   ) : (
                     <p className="text-muted-foreground">Not set</p>
@@ -777,34 +734,18 @@ export default function NewEmptyLegPage() {
 
                 {/* Pricing */}
                 <article className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    Price per Seat
+                  <p className="text-sm text-muted-foreground">Price Type</p>
+                  <p className="font-medium">
+                    {formData.priceType === "FIXED"
+                      ? "Fixed Price"
+                      : "Contact for Price"}
                   </p>
-                  {formData.discountPriceUsd ? (
-                    <section>
-                      <p className="text-sm line-through text-muted-foreground">
-                        $
-                        {parseFloat(
-                          formData.originalPriceUsd || "0",
-                        ).toLocaleString()}
-                      </p>
-                      <p className="text-xl font-bold text-[#D4AF37]">
-                        $
-                        {parseFloat(formData.discountPriceUsd).toLocaleString()}
-                      </p>
-                    </section>
-                  ) : (
-                    <p className="text-muted-foreground">Not set</p>
+                  {formData.priceType === "FIXED" && formData.priceUsd && (
+                    <p className="text-xl font-bold text-[#D4AF37]">
+                      ${parseFloat(formData.priceUsd || "0").toLocaleString()}
+                    </p>
                   )}
                 </article>
-
-                {calculateDiscount() > 0 && (
-                  <article className="p-3 bg-[#D4AF37]/10 text-center">
-                    <p className="text-[#D4AF37] font-bold text-lg">
-                      {calculateDiscount()}% OFF
-                    </p>
-                  </article>
-                )}
 
                 <Separator />
 

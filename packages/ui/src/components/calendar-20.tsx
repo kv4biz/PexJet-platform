@@ -67,12 +67,12 @@ export function Calendar20({
         ? `${date.toLocaleDateString()} • Select time`
         : placeholder;
 
-  // Define today and 12 months ahead
+  // Define today and extend to December 2026
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to beginning of day
 
   const maxDate = new Date();
-  maxDate.setFullYear(maxDate.getFullYear() + 1);
+  maxDate.setFullYear(2026, 11, 31); // December 31, 2026
   maxDate.setHours(23, 59, 59, 999);
 
   // Handle date selection - FIXED DATE FORMATTING
@@ -161,6 +161,8 @@ export function Calendar20({
               captionLayout="dropdown"
               fromDate={today}
               toDate={maxDate}
+              fromYear={today.getFullYear()}
+              toYear={2026}
               className="text-xs sm:text-sm"
             />
 

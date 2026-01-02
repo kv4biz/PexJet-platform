@@ -68,7 +68,7 @@ export function LoadingAnimation({ onComplete }: LoadingAnimationProps) {
   }, [onComplete]);
 
   return (
-    <div className="relative mx-auto lg:items-start h-100 w-[400px] cursor-pointer overflow-hidden">
+    <div className="relative mx-auto lg:items-center h-100 w-[400px] cursor-pointer overflow-hidden">
       <div className="text-center mb-8">
         <h3 className="text-2xl font-bold mb-2">Finding Your Perfect Jet</h3>
         <p className="text-gray-600">We're searching our global network</p>

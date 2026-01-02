@@ -38,120 +38,62 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    const files = formData.getAll("images") as File[];
-    const type = formData.get("type") as string;
-    const thumbnailFile = formData.get("thumbnail") as File | null;
+    const imageFile = formData.get("image") as File | null;
 
-    // Handle thumbnail upload
-    if (thumbnailFile && thumbnailFile.size > 0) {
-      const bytes = await thumbnailFile.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-
-      const result = await new Promise<any>((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              folder: `pexjet/aircraft/${params.id}/thumbnail`,
-              resource_type: "image",
-              transformation: [
-                { width: 600, height: 400, crop: "fill" },
-                { quality: "auto" },
-                { fetch_format: "auto" },
-              ],
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            },
-          )
-          .end(buffer);
-      });
-
-      const updatedAircraft = await prisma.aircraft.update({
-        where: { id: params.id },
-        data: { thumbnailImage: result.secure_url },
-      });
-
-      // Log activity
-      await prisma.activityLog.create({
-        data: {
-          action: "AIRCRAFT_UPDATE",
-          targetType: "Aircraft",
-          targetId: aircraft.id,
-          adminId: payload.sub,
-          description: `Updated thumbnail image for ${aircraft.name}`,
-          ipAddress: request.headers.get("x-forwarded-for") || "unknown",
-        },
-      });
-
-      return NextResponse.json({
-        aircraft: updatedAircraft,
-        thumbnailUrl: result.secure_url,
-      });
+    if (!imageFile || imageFile.size === 0) {
+      return NextResponse.json({ error: "No image provided" }, { status: 400 });
     }
 
-    // Handle exterior/interior images upload
-    if (!files || files.length === 0) {
+    // Validate file type
+    if (!imageFile.type.startsWith("image/")) {
       return NextResponse.json(
-        { error: "No images provided" },
+        { error: "Invalid file type. Please upload an image." },
         { status: 400 },
       );
     }
 
-    if (!type || !["exterior", "interior"].includes(type)) {
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (imageFile.size > maxSize) {
       return NextResponse.json(
-        { error: "Invalid image type" },
+        { error: "Image too large. Maximum size is 5MB." },
         { status: 400 },
       );
     }
 
-    const uploadedUrls: string[] = [];
+    // Convert file to buffer
+    const bytes = await imageFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
 
-    for (const file of files) {
-      // Convert file to buffer
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
+    // Upload to Cloudinary
+    const result = await new Promise<any>((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            folder: `pexjet/aircraft/${params.id}`,
+            resource_type: "image",
+            transformation: [
+              { width: 1200, height: 800, crop: "fit" },
+              { quality: "auto:good" },
+            ],
+          },
+          (error, result) => {
+            if (error) {
+              console.error("Cloudinary upload error:", error);
+              reject(error);
+            } else {
+              console.log("Cloudinary upload success:", result);
+              resolve(result);
+            }
+          },
+        )
+        .end(buffer);
+    });
 
-      // Upload to Cloudinary
-      const result = await new Promise<any>((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              folder: `pexjet/aircraft/${params.id}/${type}`,
-              resource_type: "image",
-              transformation: [
-                { width: 1200, height: 800, crop: "limit" },
-                { quality: "auto" },
-                { fetch_format: "auto" },
-              ],
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            },
-          )
-          .end(buffer);
-      });
-
-      uploadedUrls.push(result.secure_url);
-    }
-
-    // Update aircraft with new images
-    const currentImages =
-      type === "exterior" ? aircraft.exteriorImages : aircraft.interiorImages;
-    const updatedImages = [...currentImages, ...uploadedUrls];
-
-    const updateData =
-      type === "exterior"
-        ? {
-            exteriorImages: updatedImages,
-            thumbnailImage: aircraft.thumbnailImage || uploadedUrls[0],
-          }
-        : { interiorImages: updatedImages };
-
+    // Update aircraft with new image
     const updatedAircraft = await prisma.aircraft.update({
       where: { id: params.id },
-      data: updateData,
+      data: { image: result.secure_url },
     });
 
     // Log activity
@@ -161,19 +103,19 @@ export async function POST(
         targetType: "Aircraft",
         targetId: aircraft.id,
         adminId: payload.sub,
-        description: `Uploaded ${uploadedUrls.length} ${type} image(s) to ${aircraft.name}`,
+        description: `Updated image for ${aircraft.name}`,
         ipAddress: request.headers.get("x-forwarded-for") || "unknown",
       },
     });
 
     return NextResponse.json({
       aircraft: updatedAircraft,
-      uploadedUrls,
+      imageUrl: result.secure_url,
     });
   } catch (error: any) {
     console.error("Image upload error:", error);
     return NextResponse.json(
-      { error: "Failed to upload images" },
+      { error: "Failed to upload image" },
       { status: 500 },
     );
   }
@@ -194,16 +136,6 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { imageUrl, type } = body;
-
-    if (!imageUrl || !type) {
-      return NextResponse.json(
-        { error: "Missing imageUrl or type" },
-        { status: 400 },
-      );
-    }
-
     // Check if aircraft exists
     const aircraft = await prisma.aircraft.findUnique({
       where: { id: params.id },
@@ -216,36 +148,34 @@ export async function DELETE(
       );
     }
 
-    // Extract public_id from Cloudinary URL for deletion
-    try {
-      const urlParts = imageUrl.split("/");
-      const publicIdWithExtension = urlParts.slice(-4).join("/"); // pexjet/aircraft/id/type/filename
-      const publicId = publicIdWithExtension.replace(/\.[^/.]+$/, ""); // Remove extension
-
-      await cloudinary.uploader.destroy(publicId);
-    } catch (cloudinaryError) {
-      console.error("Cloudinary delete error:", cloudinaryError);
-      // Continue even if Cloudinary delete fails
+    // Delete from Cloudinary if image exists
+    if (aircraft.image) {
+      try {
+        const urlParts = aircraft.image.split("/");
+        const publicIdWithExtension = urlParts.slice(-3).join("/");
+        const publicId = publicIdWithExtension.replace(/\.[^/.]+$/, "");
+        await cloudinary.uploader.destroy(publicId);
+      } catch (cloudinaryError) {
+        console.error("Cloudinary delete error:", cloudinaryError);
+      }
     }
 
     // Remove image from aircraft
-    const currentImages =
-      type === "exterior" ? aircraft.exteriorImages : aircraft.interiorImages;
-    const updatedImages = currentImages.filter((img) => img !== imageUrl);
-
-    const updateData: any =
-      type === "exterior"
-        ? { exteriorImages: updatedImages }
-        : { interiorImages: updatedImages };
-
-    // Update thumbnail if deleted image was the thumbnail
-    if (type === "exterior" && aircraft.thumbnailImage === imageUrl) {
-      updateData.thumbnailImage = updatedImages[0] || null;
-    }
-
     const updatedAircraft = await prisma.aircraft.update({
       where: { id: params.id },
-      data: updateData,
+      data: { image: null },
+    });
+
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        action: "AIRCRAFT_UPDATE",
+        targetType: "Aircraft",
+        targetId: aircraft.id,
+        adminId: payload.sub,
+        description: `Removed image from ${aircraft.name}`,
+        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      },
     });
 
     return NextResponse.json({ aircraft: updatedAircraft });

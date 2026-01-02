@@ -27,32 +27,28 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         manufacturer: true,
-        model: true,
         category: true,
         availability: true,
         // Specifications
-        passengerCapacityMin: true,
-        passengerCapacityMax: true,
+        minPax: true,
+        maxPax: true,
         rangeNm: true,
         cruiseSpeedKnots: true,
-        baggageCapacityCuFt: true,
+        baggageCuFt: true,
         fuelCapacityGal: true,
         // Interior Dimensions
         cabinLengthFt: true,
         cabinWidthFt: true,
         cabinHeightFt: true,
         // Exterior Dimensions
-        lengthFt: true,
-        wingspanFt: true,
-        heightFt: true,
+        exteriorLengthFt: true,
+        exteriorWingspanFt: true,
+        exteriorHeightFt: true,
         // Additional Info
-        yearOfManufacture: true,
-        hourlyRateUsd: true,
-        description: true,
-        // Images
-        exteriorImages: true,
-        interiorImages: true,
-        thumbnailImage: true,
+        basePricePerHour: true,
+        image: true,
+        createdAt: true,
+        updatedAt: true,
       },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     });
@@ -62,49 +58,43 @@ export async function GET(request: NextRequest) {
       id: a.id,
       name: a.name,
       manufacturer: a.manufacturer,
-      model: a.model,
+      model: null, // Not available in schema
       type: a.category
         .replace(/_/g, " ")
         .replace(/\b\w/g, (c) => c.toUpperCase()),
       category: a.category,
       availability: a.availability,
+      // Database fields (exact match)
+      basePricePerHour: a.basePricePerHour,
+      cabinLengthFt: a.cabinLengthFt,
+      cabinWidthFt: a.cabinWidthFt,
+      cabinHeightFt: a.cabinHeightFt,
+      baggageCuFt: a.baggageCuFt,
+      exteriorHeightFt: a.exteriorHeightFt,
+      exteriorLengthFt: a.exteriorLengthFt,
+      exteriorWingspanFt: a.exteriorWingspanFt,
+      image: a.image,
+      maxPax: a.maxPax,
+      minPax: a.minPax,
+      cruiseSpeedKnots: a.cruiseSpeedKnots,
+      fuelCapacityGal: a.fuelCapacityGal,
+      rangeNm: a.rangeNm,
       // Transformed availability flags
       availableForLocal:
         a.availability === "LOCAL" || a.availability === "BOTH",
       availableForInternational:
         a.availability === "INTERNATIONAL" || a.availability === "BOTH",
-      // Specifications
-      passengerCapacity: a.passengerCapacityMax,
-      passengerCapacityMin: a.passengerCapacityMin,
-      passengerCapacityMax: a.passengerCapacityMax,
-      rangeNm: a.rangeNm,
+      // Legacy fields for backward compatibility
+      passengerCapacity: a.maxPax || 0,
+      luggageCapacity: a.baggageCuFt ? `${a.baggageCuFt} cu ft` : null,
       range: a.rangeNm ? `${a.rangeNm.toLocaleString()} nm` : null,
-      cruiseSpeedKnots: a.cruiseSpeedKnots,
       cruiseSpeed: a.cruiseSpeedKnots ? `${a.cruiseSpeedKnots} kts` : null,
-      luggageCapacity: a.baggageCapacityCuFt
-        ? `${a.baggageCapacityCuFt} cu ft`
-        : null,
-      baggageCapacityCuFt: a.baggageCapacityCuFt,
-      fuelCapacityGal: a.fuelCapacityGal,
-      // Interior Dimensions
-      cabinLengthFt: a.cabinLengthFt,
-      cabinWidthFt: a.cabinWidthFt,
-      cabinHeightFt: a.cabinHeightFt,
       cabinLength: a.cabinLengthFt ? `${a.cabinLengthFt} ft` : null,
       cabinWidth: a.cabinWidthFt ? `${a.cabinWidthFt} ft` : null,
       cabinHeight: a.cabinHeightFt ? `${a.cabinHeightFt} ft` : null,
-      // Exterior Dimensions
-      lengthFt: a.lengthFt,
-      wingspanFt: a.wingspanFt,
-      heightFt: a.heightFt,
-      // Additional Info
-      yearOfManufacture: a.yearOfManufacture,
-      hourlyRateUsd: a.hourlyRateUsd,
-      description: a.description,
-      // Images
-      exteriorImages: a.exteriorImages,
-      interiorImages: a.interiorImages,
-      thumbnailImage: a.thumbnailImage,
+      hourlyRateUsd: a.basePricePerHour || 0,
+      exteriorImages: a.image ? [a.image] : [],
+      interiorImages: [], // Not available in schema
     }));
 
     return NextResponse.json({

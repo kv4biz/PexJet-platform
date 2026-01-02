@@ -30,7 +30,7 @@ import {
   Loader2,
   Search,
 } from "lucide-react";
-import { emptyLegsPageData } from "@/data";
+import { EmptyLegLoadingAnimation } from "./EmptyLegLoadingAnimation";
 
 interface Airport {
   id: string;
@@ -54,20 +54,24 @@ interface EmptyLeg {
     model: string;
     category: string;
     maxPassengers: number;
+    images: string[];
   };
   departureDate: string;
   availableSeats: number;
   totalSeats: number;
-  priceUsd: number;
-  originalPriceUsd: number;
-  discountPercent: number;
+  priceUsd: number | null;
+  priceText: string;
+  priceType: string;
   status: string;
+  source?: string; // ADMIN, INSTACHARTER, OPERATOR
+  ownerType: "admin" | "operator";
 }
 
 export function EmptyLegDealsSection() {
   // State
   const [emptyLegs, setEmptyLegs] = useState<EmptyLeg[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInitialLoading, setShowInitialLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const { toast } = useToast();
@@ -75,14 +79,14 @@ export function EmptyLegDealsSection() {
   // Search params from hero section
   const [searchFrom, setSearchFrom] = useState("");
   const [searchTo, setSearchTo] = useState("");
-  const [searchDate, setSearchDate] = useState("");
-  const [searchPassengers, setSearchPassengers] = useState(0);
+  const [searchStartDate, setSearchStartDate] = useState("");
+  const [searchEndDate, setSearchEndDate] = useState("");
 
   // Filters
   const [fromRadius, setFromRadius] = useState("0");
   const [toRadius, setToRadius] = useState("0");
-  const [minDiscount, setMinDiscount] = useState("0");
-  const [sortBy, setSortBy] = useState("date");
+  const [priceType, setPriceType] = useState("all");
+  const [sortOrder, setSortOrder] = useState("asc");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -96,19 +100,29 @@ export function EmptyLegDealsSection() {
       const data = await response.json();
 
       if (response.ok) {
-        setEmptyLegs(data.emptyLegs || []);
+        setEmptyLegs(data.emptyLegs || data || []); // Handle both response formats
+      } else {
+        console.error("API Error:", data.error);
+        setEmptyLegs([]);
       }
     } catch (error) {
       console.error("Failed to fetch empty legs:", error);
+      setEmptyLegs([]);
     } finally {
       setLoading(false);
       setSearchLoading(false);
     }
   }, []);
 
-  // Initial load
+  // Initial load - show loading animation first
   useEffect(() => {
-    fetchEmptyLegs();
+    // Complete initial loading animation after 7.5 seconds, then fetch data
+    const timer = setTimeout(() => {
+      setShowInitialLoading(false);
+      fetchEmptyLegs();
+    }, 7500);
+
+    return () => clearTimeout(timer);
   }, [fetchEmptyLegs]);
 
   // Listen for search events from hero section
@@ -122,19 +136,20 @@ export function EmptyLegDealsSection() {
       // Store search params for filter integration
       setSearchFrom(data.departureAirport || "");
       setSearchTo(data.destinationAirport || "");
-      setSearchDate(data.departureDate || "");
-      setSearchPassengers(data.passengers || 0);
+      setSearchStartDate(data.startDate || "");
+      setSearchEndDate(data.endDate || "");
 
       // Build search params
       const params = new URLSearchParams();
       if (data.departureAirport) params.set("from", data.departureAirport);
       if (data.destinationAirport) params.set("to", data.destinationAirport);
-      if (data.departureDate) params.set("date", data.departureDate);
-      if (data.passengers) params.set("passengers", data.passengers.toString());
+      if (data.startDate) params.set("startDate", data.startDate);
+      if (data.endDate) params.set("endDate", data.endDate);
       if (fromRadius !== "0") params.set("fromRadius", fromRadius);
       if (toRadius !== "0") params.set("toRadius", toRadius);
-      if (minDiscount !== "0") params.set("minDiscount", minDiscount);
-      params.set("sortBy", sortBy);
+      if (priceType !== "all") params.set("priceType", priceType);
+      params.set("sortBy", "date");
+      params.set("sortOrder", sortOrder);
 
       fetchEmptyLegs(params);
 
@@ -155,7 +170,7 @@ export function EmptyLegDealsSection() {
         handleSearchSubmitted as EventListener,
       );
     };
-  }, [fetchEmptyLegs, sortBy, fromRadius, toRadius, minDiscount]);
+  }, [fetchEmptyLegs, sortOrder, fromRadius, toRadius, priceType]);
 
   // Apply filters - include search params from hero
   const applyFilters = () => {
@@ -166,41 +181,48 @@ export function EmptyLegDealsSection() {
     // Include search params
     if (searchFrom) params.set("from", searchFrom);
     if (searchTo) params.set("to", searchTo);
-    if (searchDate) params.set("date", searchDate);
-    if (searchPassengers > 0)
-      params.set("passengers", searchPassengers.toString());
+    if (searchStartDate) params.set("startDate", searchStartDate);
+    if (searchEndDate) params.set("endDate", searchEndDate);
     // Include filters
     if (fromRadius !== "0") params.set("fromRadius", fromRadius);
     if (toRadius !== "0") params.set("toRadius", toRadius);
-    if (minDiscount !== "0") params.set("minDiscount", minDiscount);
-    params.set("sortBy", sortBy);
+    if (priceType !== "all") params.set("priceType", priceType);
+    params.set("sortBy", "date");
+    params.set("sortOrder", sortOrder);
 
     fetchEmptyLegs(params);
   };
 
-  // Handle sort change - include search params from hero
-  const handleSortChange = (value: string) => {
-    setSortBy(value);
+  // Handle sort order change
+  const handleSortOrderChange = (value: string) => {
+    setSortOrder(value);
     setSearchLoading(true);
 
     const params = new URLSearchParams();
     // Include search params
     if (searchFrom) params.set("from", searchFrom);
     if (searchTo) params.set("to", searchTo);
-    if (searchDate) params.set("date", searchDate);
-    if (searchPassengers > 0)
-      params.set("passengers", searchPassengers.toString());
+    if (searchStartDate) params.set("startDate", searchStartDate);
+    if (searchEndDate) params.set("endDate", searchEndDate);
     // Include filters
     if (fromRadius !== "0") params.set("fromRadius", fromRadius);
     if (toRadius !== "0") params.set("toRadius", toRadius);
-    if (minDiscount !== "0") params.set("minDiscount", minDiscount);
-    params.set("sortBy", value);
+    if (priceType !== "all") params.set("priceType", priceType);
+    params.set("sortBy", "date");
+    params.set("sortOrder", value);
 
     fetchEmptyLegs(params);
   };
 
   // Format price in USD
-  const formatPrice = (priceUsd: number) => {
+  const formatPrice = (
+    priceUsd: number | null,
+    priceText?: string,
+    priceType?: string,
+  ) => {
+    if (priceText) return priceText;
+    if (priceType === "CONTACT") return "Contact";
+    if (priceUsd === null || priceUsd === undefined) return "Contact";
     return `$${priceUsd.toLocaleString()}`;
   };
 
@@ -310,93 +332,81 @@ export function EmptyLegDealsSection() {
     const estArrivalTime = calculateArrivalTime(deal.departureDate, distanceNm);
 
     return (
-      <Link href={`/empty-legs/${deal.slug}`}>
-        <Card
-          className={`overflow-hidden hover:border-[#D4AF37] my-2 transition-all cursor-pointer ${isSoldOut ? "opacity-60" : ""}`}
-        >
-          <div className="flex flex-col md:flex-row">
-            {/* Left Section - Route Info */}
-            <div className="flex-1 p-4 md:p-6">
-              {/* Discount Badge */}
-              <div className="flex items-center justify-between mb-4">
-                <Badge className="bg-red-500 text-white px-3 py-1">
-                  {deal.discountPercent}% OFF
-                </Badge>
-              </div>
-
-              {/* Route */}
-              <div className="flex items-center justify-between mb-4">
-                {/* Departure */}
-                <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-bold text-gray-900">
-                    {deal.departureAirport.code}
-                  </div>
-                  <div className="text-sm text-gray-600 max-w-[100px] truncate">
-                    {deal.departureAirport.city}
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    {formatTime(deal.departureDate)}
-                  </div>
+      <Card
+        className={`overflow-hidden hover:border-[#D4AF37] my-2 transition-all ${isSoldOut ? "opacity-60" : ""}`}
+      >
+        <div className="flex flex-col md:flex-row">
+          {/* Left Section - Route Info */}
+          <div className="flex-1 p-4 md:p-6">
+            {/* Route */}
+            <div className="flex items-center justify-between mb-4">
+              {/* Departure */}
+              <div className="text-center">
+                <div className="text-2xl md:text-3xl font-bold text-gray-900">
+                  {deal.departureAirport.code}
                 </div>
-
-                {/* Flight Path */}
-                <div className="flex-1 px-4 md:px-8">
-                  <div className="relative flex items-center justify-center">
-                    <div className="absolute w-full border-t-2 border-dashed border-gray-300" />
-                    <div className="relative bg-white px-2">
-                      <Plane className="w-5 h-5 text-[#D4AF37]  rotate-45" />
-                    </div>
-                  </div>
-                  <div className="text-center mt-1">
-                    <span className="text-xs text-gray-500">
-                      {Math.round(distanceNm).toLocaleString()} nm
-                    </span>
-                  </div>
+                <div className="text-sm text-gray-600 max-w-[100px] truncate">
+                  {deal.departureAirport.city}
                 </div>
-
-                {/* Arrival */}
-                <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-bold text-gray-900">
-                    {deal.arrivalAirport.code}
-                  </div>
-                  <div className="text-sm text-gray-600 max-w-[100px] truncate">
-                    {deal.arrivalAirport.city}
-                  </div>
-                  <div className="text-xs text-gray-400">{estArrivalTime}</div>
+                <div className="text-xs text-gray-400">
+                  {formatTime(deal.departureDate)}
                 </div>
               </div>
 
-              {/* Details Row */}
-              <div className="flex items-center justify-between text-sm border-t pt-3">
-                <div className="flex items-center gap-1 text-gray-600">
-                  <Calendar className="w-4 h-4" />
-                  <span>{formatDate(deal.departureDate)}</span>
+              {/* Flight Path */}
+              <div className="flex-1 px-4 md:px-8">
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute w-full border-t-2 border-dashed border-gray-300" />
+                  <div className="relative bg-white px-2">
+                    <Plane className="w-5 h-5 text-[#D4AF37]  rotate-45" />
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 text-gray-600">
-                  <Users className="w-4 h-4" />
-                  <span>
-                    {deal.availableSeats}/{deal.totalSeats} seats
+                <div className="text-center mt-1">
+                  <span className="text-xs text-gray-500">
+                    {Math.round(distanceNm).toLocaleString()} nm
                   </span>
                 </div>
-                <div className="text-gray-600 hidden md:block">
-                  {deal.aircraft.name}
+              </div>
+
+              {/* Arrival */}
+              <div className="text-center">
+                <div className="text-2xl md:text-3xl font-bold text-gray-900">
+                  {deal.arrivalAirport.code}
                 </div>
+                <div className="text-sm text-gray-600 max-w-[100px] truncate">
+                  {deal.arrivalAirport.city}
+                </div>
+                <div className="text-xs text-gray-400">{estArrivalTime}</div>
               </div>
             </div>
 
-            {/* Right Section - Price & CTA */}
-            <div className="bg-gray-50 p-4 md:p-6 md:w-48 flex flex-col justify-center items-center border-t md:border-t-0 md:border-l border-dashed border-gray-300">
-              {/* Original Price */}
-              <div className="text-sm text-gray-400 line-through">
-                {formatPrice(deal.originalPriceUsd)}
+            {/* Details Row */}
+            <div className="flex items-center justify-between text-sm border-t pt-3">
+              <div className="flex items-center gap-1 text-gray-600">
+                <Calendar className="w-4 h-4" />
+                <span>{formatDate(deal.departureDate)}</span>
               </div>
-
-              {/* Discounted Price */}
-              <div className="text-2xl md:text-3xl font-bold text-[#D4AF37] mb-4">
-                {formatPrice(deal.priceUsd)}
+              <div className="flex items-center gap-1 text-gray-600">
+                <Users className="w-4 h-4" />
+                <span>
+                  {deal.availableSeats}/{deal.totalSeats} seats
+                </span>
               </div>
+              <div className="text-gray-600 hidden md:block">
+                {deal.aircraft.name}
+              </div>
+            </div>
+          </div>
 
-              {/* CTA Button */}
+          {/* Right Section - Price & CTA */}
+          <div className="bg-gray-50 p-4 md:p-6 md:w-48 flex flex-col justify-center items-center border-t md:border-t-0 md:border-l border-dashed border-gray-300">
+            {/* Price Display */}
+            <div className="text-md capitalize md:text-lg font-bold text-[#D4AF37] mb-4 text-center">
+              {formatPrice(deal.priceUsd, deal.priceText, deal.priceType)}
+            </div>
+
+            {/* CTA Button */}
+            <Link href={`/empty-legs/${deal.slug}`}>
               <Button
                 className={`w-full ${isSoldOut ? "bg-gray-400" : "bg-[#D4AF37]"} text-black`}
                 disabled={isSoldOut}
@@ -404,10 +414,10 @@ export function EmptyLegDealsSection() {
                 {isSoldOut ? "Sold Out" : "View Deal"}
                 {!isSoldOut && <ArrowRight className="w-4 h-4 ml-1" />}
               </Button>
-            </div>
+            </Link>
           </div>
-        </Card>
-      </Link>
+        </div>
+      </Card>
     );
   };
 
@@ -419,7 +429,7 @@ export function EmptyLegDealsSection() {
         <span className="font-semibold text-gray-900">Filters & Sort</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 lg:gap-4">
         {/* From Radius */}
         <div>
           <Label className="text-xs text-gray-500 mb-1 block">
@@ -435,6 +445,7 @@ export function EmptyLegDealsSection() {
               <SelectItem value="25">Within 25km</SelectItem>
               <SelectItem value="50">Within 50km</SelectItem>
               <SelectItem value="100">Within 100km</SelectItem>
+              <SelectItem value="1000">Within 1000km</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -454,41 +465,36 @@ export function EmptyLegDealsSection() {
               <SelectItem value="25">Within 25km</SelectItem>
               <SelectItem value="50">Within 50km</SelectItem>
               <SelectItem value="100">Within 100km</SelectItem>
+              <SelectItem value="1000">Within 1000km</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Discount Filter */}
+        {/* Price Type Filter */}
         <div>
-          <Label className="text-xs text-gray-500 mb-1 block">
-            Min Discount
-          </Label>
-          <Select value={minDiscount} onValueChange={setMinDiscount}>
+          <Label className="text-xs text-gray-500 mb-1 block">Price Type</Label>
+          <Select value={priceType} onValueChange={setPriceType}>
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="Any" />
+              <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="0">Any Discount</SelectItem>
-              <SelectItem value="10">10%+ Off</SelectItem>
-              <SelectItem value="20">20%+ Off</SelectItem>
-              <SelectItem value="30">30%+ Off</SelectItem>
-              <SelectItem value="50">50%+ Off</SelectItem>
+              <SelectItem value="all">All Prices</SelectItem>
+              <SelectItem value="fixed">Fixed Price</SelectItem>
+              <SelectItem value="contact">Contact for Price</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Sort By */}
+        {/* Sort Order */}
         <div>
-          <Label className="text-xs text-gray-500 mb-1 block">Sort By</Label>
-          <Select value={sortBy} onValueChange={handleSortChange}>
+          <Label className="text-xs text-gray-500 mb-1 block">Sort Order</Label>
+          <Select value={sortOrder} onValueChange={handleSortOrderChange}>
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="Sort" />
+              <SelectValue placeholder="Order" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="date">Date (Earliest)</SelectItem>
-              <SelectItem value="cheapest">Cheapest First</SelectItem>
-              <SelectItem value="discount">Biggest Discount</SelectItem>
-              <SelectItem value="alphabetic">Alphabetic (A-Z)</SelectItem>
+              <SelectItem value="asc">Earliest First</SelectItem>
+              <SelectItem value="desc">Latest First</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -503,22 +509,33 @@ export function EmptyLegDealsSection() {
           </span>
         </div>
 
-        <Button onClick={applyFilters} className="bg-[#D4AF37] text-black">
-          <Search className="w-4 h-4 mr-2" />
-          Apply Filters
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setFromRadius("0");
+              setToRadius("0");
+              setPriceType("all");
+              setSortOrder("asc");
+              setSearchPerformed(false);
+              setSearchFrom("");
+              setSearchTo("");
+              setSearchStartDate("");
+              setSearchEndDate("");
+              fetchEmptyLegs();
+            }}
+            className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+          >
+            Reset Filters
+          </Button>
+          <Button onClick={applyFilters} className="bg-[#D4AF37] text-black">
+            <Search className="w-4 h-4 mr-2" />
+            Apply Filters
+          </Button>
+        </div>
       </div>
     </div>
   );
-
-  // Icon mapping for dynamic rendering
-  const iconMap: Record<string, React.ReactNode> = {
-    DollarSign: (
-      <DollarSign className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
-    ),
-    Clock4: <Clock4 className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />,
-    Shield: <Shield className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />,
-  };
 
   // Empty Leg Explanation Sidebar
   const EmptyLegExplanation = () => (
@@ -526,45 +543,85 @@ export function EmptyLegDealsSection() {
       <div className="space-y-4">
         <div className="text-center">
           <h3 className="text-xl font-bold text-gray-900 mb-2">
-            {emptyLegsPageData.whatAreEmptyLegs.title}
+            What Are Empty Leg Deals?
           </h3>
+          <p className="text-sm text-gray-600">
+            Save up to 75% on private jet flights
+          </p>
         </div>
 
         <div className="space-y-3">
-          {emptyLegsPageData.whatAreEmptyLegs.benefits.map((benefit, index) => (
-            <div key={index} className="flex items-start gap-3">
-              {iconMap[benefit.icon]}
-              <div>
-                <h4 className="font-semibold text-gray-900">{benefit.title}</h4>
-                <p className="text-sm text-gray-600">{benefit.description}</p>
-              </div>
+          <div className="flex items-start gap-3">
+            <DollarSign className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
+            <div>
+              <h4 className="font-semibold text-gray-900">Huge Savings</h4>
+              <p className="text-sm text-gray-600">
+                Empty leg flights cost significantly less than regular charters
+              </p>
             </div>
-          ))}
+          </div>
+          <div className="flex items-start gap-3">
+            <Clock4 className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
+            <div>
+              <h4 className="font-semibold text-gray-900">
+                Spontaneous Travel
+              </h4>
+              <p className="text-sm text-gray-600">
+                Perfect for flexible travel schedules and last-minute trips
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Shield className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
+            <div>
+              <h4 className="font-semibold text-gray-900">Same Luxury</h4>
+              <p className="text-sm text-gray-600">
+                Enjoy the same aircraft and service as regular charters
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/20 p-4 mt-4">
-          <h4 className="font-semibold text-gray-900 mb-2">
-            {emptyLegsPageData.whatAreEmptyLegs.howItWorks.title}
-          </h4>
+          <h4 className="font-semibold text-gray-900 mb-2">How It Works</h4>
           <ol className="text-sm text-gray-600 space-y-2">
-            {emptyLegsPageData.whatAreEmptyLegs.howItWorks.steps.map(
-              (step, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <span className="font-semibold text-[#D4AF37]">
-                    {index + 1}.
-                  </span>
-                  <span>{step}</span>
-                </li>
-              ),
-            )}
+            <li className="flex items-start gap-2">
+              <span className="font-semibold text-[#D4AF37]">1.</span>
+              <span>Private jets need to reposition without passengers</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="font-semibold text-[#D4AF37]">2.</span>
+              <span>These empty legs are offered at discounted rates</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="font-semibold text-[#D4AF37]">3.</span>
+              <span>Book quickly - they're first come, first served!</span>
+            </li>
           </ol>
         </div>
       </div>
     </div>
   );
 
-  // Initial loading state
-  if (loading) {
+  // Initial loading state - show loading animation
+  if (showInitialLoading) {
+    return (
+      <section id="empty-leg-deals-section" className="py-16 bg-gray-50">
+        <div className="w-full lg:w-10/12 mx-auto px-4 lg:px-12">
+          <div className="flex justify-center items-center min-h-96">
+            <EmptyLegLoadingAnimation
+              onComplete={() => {
+                setShowInitialLoading(false);
+              }}
+            />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Regular loading state (for subsequent searches)
+  if (loading && !showInitialLoading) {
     return (
       <section id="empty-leg-deals-section" className="py-16 bg-gray-50">
         <div className="w-full lg:w-10/12 mx-auto px-4 lg:px-12">
@@ -632,9 +689,13 @@ export function EmptyLegDealsSection() {
                       onClick={() => {
                         setFromRadius("0");
                         setToRadius("0");
-                        setMinDiscount("0");
-                        setSortBy("date");
+                        setPriceType("all");
+                        setSortOrder("asc");
                         setSearchPerformed(false);
+                        setSearchFrom("");
+                        setSearchTo("");
+                        setSearchStartDate("");
+                        setSearchEndDate("");
                         fetchEmptyLegs();
                       }}
                       className="bg-[#D4AF37] text-black"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Card,
@@ -19,161 +19,186 @@ import {
   SelectValue,
   useToast,
   Separator,
-  Calendar20,
 } from "@pexjet/ui";
 import {
   ArrowLeft,
   Plane,
+  Loader2,
+  Save,
   MapPin,
-  Calendar as CalendarIcon,
+  Calendar,
   DollarSign,
   Users,
-  Loader2,
-  Search,
+  Clock,
 } from "lucide-react";
 
-interface Aircraft {
-  id: string;
-  name: string;
-  model: string;
-  manufacturer: string;
-  category: string;
-  passengerCapacityMax: number;
-  cruiseSpeedKnots: number;
-  thumbnailImage: string | null;
-}
+const statusOptions = [
+  { value: "PUBLISHED", label: "Published" },
+  { value: "OPEN", label: "Open" },
+  { value: "CLOSED", label: "Closed" },
+  { value: "UNAVAILABLE", label: "Unavailable" },
+];
 
-interface Airport {
-  id: string;
-  name: string;
-  municipality: string | null;
-  iataCode: string | null;
-  icaoCode: string | null;
-  countryCode: string;
-}
+const priceTypeOptions = [
+  { value: "FIXED", label: "Fixed Price" },
+  { value: "CONTACT", label: "Contact for Price" },
+];
 
-interface EmptyLegData {
+interface EmptyLeg {
   id: string;
   slug: string;
   status: string;
-  originalPriceUsd: number;
-  discountPriceUsd: number;
+  source: "ADMIN" | "OPERATOR" | "INSTACHARTER";
+  priceType: "FIXED" | "CONTACT";
+  priceUsd: number | null;
   totalSeats: number;
   availableSeats: number;
   departureDateTime: string;
-  aircraftId: string;
-  departureAirportId: string;
-  arrivalAirportId: string;
-  aircraft: Aircraft;
-  departureAirport: Airport;
-  arrivalAirport: Airport;
+  estimatedArrival: string | null;
+  estimatedDurationMin: number | null;
+  aircraftId: string | null;
+  departureAirportId: string | null;
+  arrivalAirportId: string | null;
+  // Relations
+  aircraft: {
+    id: string;
+    name: string;
+    manufacturer: string;
+    category: string;
+    maxPax: number | null;
+    image: string | null;
+  } | null;
+  departureAirport: {
+    id: string;
+    name: string;
+    municipality: string | null;
+    iataCode: string | null;
+    icaoCode: string | null;
+    countryCode: string;
+  } | null;
+  arrivalAirport: {
+    id: string;
+    name: string;
+    municipality: string | null;
+    iataCode: string | null;
+    icaoCode: string | null;
+    countryCode: string;
+  } | null;
+  createdByAdmin: { id: string; fullName: string } | null;
+  createdByOperator: { id: string; fullName: string } | null;
 }
 
-export default function EditEmptyLegPage() {
-  const params = useParams();
+export default function EditEmptyLegPage({
+  params,
+}: {
+  params: { id: string };
+}) {
   const router = useRouter();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [aircraftList, setAircraftList] = useState<Aircraft[]>([]);
-  const [loadingAircraft, setLoadingAircraft] = useState(true);
-
-  // Airport search states
-  const [departureSearch, setDepartureSearch] = useState("");
-  const [arrivalSearch, setArrivalSearch] = useState("");
-  const [departureResults, setDepartureResults] = useState<Airport[]>([]);
-  const [arrivalResults, setArrivalResults] = useState<Airport[]>([]);
-  const [searchingDeparture, setSearchingDeparture] = useState(false);
-  const [searchingArrival, setSearchingArrival] = useState(false);
-  const [showDepartureDropdown, setShowDepartureDropdown] = useState(false);
-  const [showArrivalDropdown, setShowArrivalDropdown] = useState(false);
-
-  // Form state
+  const [aircraft, setAircraft] = useState<any[]>([]);
+  const [airports, setAirports] = useState<any[]>([]);
+  const [emptyLeg, setEmptyLeg] = useState<EmptyLeg | null>(null);
   const [formData, setFormData] = useState({
     aircraftId: "",
     departureAirportId: "",
     arrivalAirportId: "",
+    departureDate: "",
+    departureTime: "",
     totalSeats: "",
     availableSeats: "",
-    originalPriceUsd: "",
-    discountPriceUsd: "",
-    status: "",
+    priceType: "FIXED" as "FIXED" | "CONTACT",
+    priceUsd: "",
+    status: "PUBLISHED",
   });
 
-  // Departure date/time state for Calendar20
-  const [departureDate, setDepartureDate] = useState<{
-    date?: string | null;
-    time?: string | null;
-  }>({ date: null, time: null });
-
-  const [selectedDeparture, setSelectedDeparture] = useState<Airport | null>(
-    null,
+  // Helper functions for computed values
+  const selectedAircraft = aircraft.find((a) => a.id === formData.aircraftId);
+  const selectedDeparture = airports.find(
+    (a) => a.id === formData.departureAirportId,
   );
-  const [selectedArrival, setSelectedArrival] = useState<Airport | null>(null);
-  const [selectedAircraft, setSelectedAircraft] = useState<Aircraft | null>(
-    null,
+  const selectedArrival = airports.find(
+    (a) => a.id === formData.arrivalAirportId,
   );
 
-  // Fetch data on mount
+  const calculateDiscount = () => {
+    // This is a placeholder - implement based on your business logic
+    return 0;
+  };
+
   useEffect(() => {
-    if (params.id) {
-      Promise.all([fetchEmptyLeg(), fetchAircraft()]);
-    }
+    fetchData();
   }, [params.id]);
 
-  const fetchEmptyLeg = async () => {
+  const fetchData = async () => {
     try {
-      const response = await fetch(`/api/empty-legs/${params.id}`, {
+      // Fetch empty leg details
+      const emptyLegResponse = await fetch(`/api/empty-legs/${params.id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       });
 
-      if (response.ok) {
-        const data: EmptyLegData = await response.json();
+      if (emptyLegResponse.ok) {
+        const data = await emptyLegResponse.json();
+        setEmptyLeg(data);
 
-        // Populate form
+        // Parse departure datetime
+        const depDateTime = new Date(data.departureDateTime);
+        const dateStr = depDateTime.toISOString().split("T")[0];
+        const timeStr = depDateTime.toTimeString().slice(0, 5);
+
         setFormData({
-          aircraftId: data.aircraft.id,
-          departureAirportId: data.departureAirport.id,
-          arrivalAirportId: data.arrivalAirport.id,
+          aircraftId: data.aircraft?.id || "",
+          departureAirportId: data.departureAirport?.id || "",
+          arrivalAirportId: data.arrivalAirport?.id || "",
+          departureDate: dateStr,
+          departureTime: timeStr,
           totalSeats: data.totalSeats.toString(),
           availableSeats: data.availableSeats.toString(),
-          originalPriceUsd: data.originalPriceUsd.toString(),
-          discountPriceUsd: data.discountPriceUsd.toString(),
+          priceType: data.priceType,
+          priceUsd: data.priceUsd?.toString() || "",
           status: data.status,
         });
-
-        // Set departure date/time for Calendar20
-        const depDate = new Date(data.departureDateTime);
-        setDepartureDate({
-          date: `${depDate.getFullYear()}-${String(depDate.getMonth() + 1).padStart(2, "0")}-${String(depDate.getDate()).padStart(2, "0")}`,
-          time: `${String(depDate.getHours()).padStart(2, "0")}:${String(depDate.getMinutes()).padStart(2, "0")}`,
-        });
-
-        setSelectedAircraft(data.aircraft);
-        setSelectedDeparture(data.departureAirport);
-        setSelectedArrival(data.arrivalAirport);
-        setDepartureSearch(
-          `${data.departureAirport.municipality || data.departureAirport.name} (${data.departureAirport.iataCode || data.departureAirport.icaoCode})`,
-        );
-        setArrivalSearch(
-          `${data.arrivalAirport.municipality || data.arrivalAirport.name} (${data.arrivalAirport.iataCode || data.arrivalAirport.icaoCode})`,
-        );
       } else {
         toast({
           title: "Error",
-          description: "Failed to load empty leg",
+          description: "Empty leg not found",
           variant: "destructive",
         });
         router.push("/dashboard/empty-legs");
+        return;
+      }
+
+      // Fetch aircraft options
+      const aircraftResponse = await fetch("/api/aircraft", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+
+      if (aircraftResponse.ok) {
+        const aircraftData = await aircraftResponse.json();
+        setAircraft(aircraftData.aircraft || []);
+      }
+
+      // Fetch airport options
+      const airportsResponse = await fetch("/api/airports", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+
+      if (airportsResponse.ok) {
+        const airportsData = await airportsResponse.json();
+        setAirports(airportsData.airports || []);
       }
     } catch (error) {
-      console.error("Failed to fetch empty leg:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "Failed to fetch data",
         variant: "destructive",
       });
     } finally {
@@ -181,187 +206,82 @@ export default function EditEmptyLegPage() {
     }
   };
 
-  const fetchAircraft = async () => {
-    try {
-      const response = await fetch(
-        "/api/aircraft?limit=100&availability=BOTH,LOCAL,INTERNATIONAL",
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        },
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setAircraftList(data.aircraft || []);
-      }
-    } catch (error) {
-      console.error("Failed to fetch aircraft:", error);
-    } finally {
-      setLoadingAircraft(false);
-    }
-  };
-
-  // Search airports with debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (departureSearch.length >= 2 && !selectedDeparture) {
-        searchAirports(departureSearch, "departure");
-      } else {
-        setDepartureResults([]);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [departureSearch, selectedDeparture]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (arrivalSearch.length >= 2 && !selectedArrival) {
-        searchAirports(arrivalSearch, "arrival");
-      } else {
-        setArrivalResults([]);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [arrivalSearch, selectedArrival]);
-
-  const searchAirports = async (
-    query: string,
-    type: "departure" | "arrival",
-  ) => {
-    if (type === "departure") {
-      setSearchingDeparture(true);
-    } else {
-      setSearchingArrival(true);
-    }
-
-    try {
-      const response = await fetch(
-        `/api/airports?search=${encodeURIComponent(query)}&limit=10`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        },
-      );
-      if (response.ok) {
-        const data = await response.json();
-        if (type === "departure") {
-          setDepartureResults(data.airports || []);
-          setShowDepartureDropdown(true);
-        } else {
-          setArrivalResults(data.airports || []);
-          setShowArrivalDropdown(true);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to search airports:", error);
-    } finally {
-      if (type === "departure") {
-        setSearchingDeparture(false);
-      } else {
-        setSearchingArrival(false);
-      }
-    }
-  };
-
-  const selectAirport = (airport: Airport, type: "departure" | "arrival") => {
-    if (type === "departure") {
-      setSelectedDeparture(airport);
-      setFormData((prev) => ({ ...prev, departureAirportId: airport.id }));
-      setDepartureSearch(
-        `${airport.municipality || airport.name} (${airport.iataCode || airport.icaoCode})`,
-      );
-      setShowDepartureDropdown(false);
-    } else {
-      setSelectedArrival(airport);
-      setFormData((prev) => ({ ...prev, arrivalAirportId: airport.id }));
-      setArrivalSearch(
-        `${airport.municipality || airport.name} (${airport.iataCode || airport.icaoCode})`,
-      );
-      setShowArrivalDropdown(false);
-    }
-  };
-
-  const handleAircraftChange = (aircraftId: string) => {
-    const aircraft = aircraftList.find((a) => a.id === aircraftId);
-    setSelectedAircraft(aircraft || null);
-    setFormData((prev) => ({
-      ...prev,
-      aircraftId,
-    }));
-  };
-
-  const calculateDiscount = () => {
-    const original = parseFloat(formData.originalPriceUsd) || 0;
-    const discount = parseFloat(formData.discountPriceUsd) || 0;
-    if (original > 0 && discount > 0) {
-      return Math.round(((original - discount) / original) * 100);
-    }
-    return 0;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validation
-    if (!formData.aircraftId) {
-      toast({
-        title: "Error",
-        description: "Please select an aircraft",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!formData.departureAirportId) {
-      toast({
-        title: "Error",
-        description: "Please select a departure airport",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!formData.arrivalAirportId) {
-      toast({
-        title: "Error",
-        description: "Please select an arrival airport",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (formData.departureAirportId === formData.arrivalAirportId) {
-      toast({
-        title: "Error",
-        description: "Departure and arrival airports must be different",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!departureDate.date || !departureDate.time) {
-      toast({
-        title: "Error",
-        description: "Please select departure date and time",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (
-      parseFloat(formData.discountPriceUsd) >=
-      parseFloat(formData.originalPriceUsd)
-    ) {
-      toast({
-        title: "Error",
-        description: "Discount price must be less than original price",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setSaving(true);
 
     try {
-      // Combine date and time into ISO datetime string
-      const departureDateTime = `${departureDate.date}T${departureDate.time}:00`;
+      // Validation
+      if (!formData.aircraftId) {
+        toast({
+          title: "Validation Error",
+          description: "Please select aircraft",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+
+      if (!formData.departureAirportId || !formData.arrivalAirportId) {
+        toast({
+          title: "Validation Error",
+          description: "Please select both airports",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+
+      if (formData.departureAirportId === formData.arrivalAirportId) {
+        toast({
+          title: "Validation Error",
+          description: "Departure and arrival airports must be different",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+
+      if (!formData.totalSeats || parseInt(formData.totalSeats) <= 0) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter valid total seats",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+
+      if (
+        formData.priceType === "FIXED" &&
+        (!formData.priceUsd || parseFloat(formData.priceUsd) <= 0)
+      ) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter valid price",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+
+      // Combine date and time
+      const dateTime = new Date(
+        `${formData.departureDate}T${formData.departureTime}`,
+      );
+
+      const updateData = {
+        aircraftId: formData.aircraftId,
+        departureAirportId: formData.departureAirportId,
+        arrivalAirportId: formData.arrivalAirportId,
+        departureDateTime: dateTime.toISOString(),
+        totalSeats: parseInt(formData.totalSeats),
+        availableSeats: parseInt(formData.availableSeats),
+        priceType: formData.priceType,
+        priceUsd:
+          formData.priceType === "FIXED" ? parseFloat(formData.priceUsd) : null,
+        status: formData.status,
+      };
 
       const response = await fetch(`/api/empty-legs/${params.id}`, {
         method: "PUT",
@@ -369,28 +289,28 @@ export default function EditEmptyLegPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
-        body: JSON.stringify({ ...formData, departureDateTime }),
+        body: JSON.stringify(updateData),
       });
 
       if (response.ok) {
         toast({
-          title: "Success",
-          description: "Empty leg updated successfully",
+          title: "Empty Leg Updated",
+          description: "Changes saved successfully.",
         });
-        router.push(`/dashboard/empty-legs/${params.id}`);
+        router.push("/dashboard/empty-legs");
       } else {
         const error = await response.json();
         toast({
-          title: "Error",
-          description: error.error || "Failed to update empty leg",
+          title: "Save Failed",
+          description: error.error,
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error("Failed to update empty leg:", error);
+      console.error("Submit error:", error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred",
+        title: "Save Failed",
+        description: "An error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -400,429 +320,346 @@ export default function EditEmptyLegPage() {
 
   if (loading) {
     return (
-      <section className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </section>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
     );
   }
+
+  if (!emptyLeg) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Empty leg not found</p>
+      </div>
+    );
+  }
+
+  // Check if this is an InstaCharter deal (read-only)
+  const isInstaCharterDeal = emptyLeg.source === "INSTACHARTER";
+
+  // Fields that should be editable after creation
+  const isEditable = !isInstaCharterDeal;
+
+  // Fields that should never be editable (only display)
+  const isReadOnlyField = (fieldName: string) => {
+    // These fields shouldn't be changeable after creation
+    const nonEditableFields = [
+      "departureAirportId",
+      "arrivalAirportId",
+      "aircraftId",
+      "departureDate",
+      "departureTime",
+    ];
+    return nonEditableFields.includes(fieldName);
+  };
 
   return (
     <section className="space-y-6">
       {/* Header */}
       <header className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/dashboard/empty-legs/${params.id}`}>
-            <ArrowLeft className="h-5 w-5" />
+          <Link href="/dashboard/empty-legs">
+            <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <article>
-          <h1 className="text-3xl font-bold">Edit Empty Leg</h1>
-          <p className="text-muted-foreground">Update empty leg deal details</p>
-        </article>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Edit Empty Leg</h1>
+          <p className="text-muted-foreground">
+            Update empty leg details
+            {isInstaCharterDeal && (
+              <span className="ml-2 text-orange-600">
+                (InstaCharter Deal - Read Only)
+              </span>
+            )}
+          </p>
+        </div>
       </header>
 
-      <form onSubmit={handleSubmit}>
-        <section className="grid gap-6 lg:grid-cols-3">
-          {/* Main Form */}
-          <section className="lg:col-span-2 space-y-6">
-            {/* Status */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Status</CardTitle>
-              </CardHeader>
-              <CardContent>
+      {/* Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Empty Leg Information</CardTitle>
+          <CardDescription>
+            Modify the details for this empty leg deal
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Status - Editable for admin-created deals */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Status
+              </h3>
+              <div className="space-y-2">
+                <Label>Status</Label>
                 <Select
                   value={formData.status}
                   onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, status: value }))
+                    isEditable && setFormData({ ...formData, status: value })
                   }
+                  disabled={!isEditable}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PUBLISHED">Published</SelectItem>
-                    <SelectItem value="OPEN">Open</SelectItem>
-                    <SelectItem value="CLOSED">Closed</SelectItem>
+                    {statusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Aircraft Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plane className="h-5 w-5 text-[#D4AF37]" />
-                  Aircraft
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <section className="space-y-4">
-                  <article className="space-y-2">
-                    <Label htmlFor="aircraft">Aircraft *</Label>
-                    <Select
-                      value={formData.aircraftId}
-                      onValueChange={handleAircraftChange}
-                      disabled={loadingAircraft}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select aircraft" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {aircraftList.map((aircraft) => (
-                          <SelectItem key={aircraft.id} value={aircraft.id}>
-                            {aircraft.name} ({aircraft.manufacturer}{" "}
-                            {aircraft.model})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </article>
+            {/* Route Information */}
+            <Separator />
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Route Information
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="departureAirport">Departure Airport</Label>
+                  <Select
+                    value={formData.departureAirportId}
+                    onValueChange={(value) =>
+                      isEditable &&
+                      !isReadOnlyField("departureAirportId") &&
+                      setFormData({ ...formData, departureAirportId: value })
+                    }
+                    disabled={
+                      !isEditable || isReadOnlyField("departureAirportId")
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select departure airport" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {airports.map((airport) => (
+                        <SelectItem key={airport.id} value={airport.id}>
+                          {airport.name} ({airport.iataCode || airport.icaoCode}
+                          )
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="arrivalAirport">Arrival Airport</Label>
+                  <Select
+                    value={formData.arrivalAirportId}
+                    onValueChange={(value) =>
+                      isEditable &&
+                      !isReadOnlyField("arrivalAirportId") &&
+                      setFormData({ ...formData, arrivalAirportId: value })
+                    }
+                    disabled={
+                      !isEditable || isReadOnlyField("arrivalAirportId")
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select arrival airport" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {airports.map((airport) => (
+                        <SelectItem key={airport.id} value={airport.id}>
+                          {airport.name} ({airport.iataCode || airport.icaoCode}
+                          )
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="departureDate">Departure Date</Label>
+                  <Input
+                    id="departureDate"
+                    type="date"
+                    value={formData.departureDate}
+                    onChange={(e) =>
+                      isEditable &&
+                      !isReadOnlyField("departureDate") &&
+                      setFormData({
+                        ...formData,
+                        departureDate: e.target.value,
+                      })
+                    }
+                    disabled={!isEditable || isReadOnlyField("departureDate")}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="departureTime">Departure Time</Label>
+                  <Input
+                    id="departureTime"
+                    type="time"
+                    value={formData.departureTime}
+                    onChange={(e) =>
+                      isEditable &&
+                      !isReadOnlyField("departureTime") &&
+                      setFormData({
+                        ...formData,
+                        departureTime: e.target.value,
+                      })
+                    }
+                    disabled={!isEditable || isReadOnlyField("departureTime")}
+                  />
+                </div>
+              </div>
+            </div>
 
-                  {selectedAircraft && (
-                    <article className="p-4 bg-muted/50 space-y-2">
-                      <p className="font-medium">{selectedAircraft.name}</p>
-                      <section className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                        <span>
-                          Category:{" "}
-                          {selectedAircraft.category.replace(/_/g, " ")}
-                        </span>
-                        <span>
-                          Max Passengers:{" "}
-                          {selectedAircraft.passengerCapacityMax}
-                        </span>
-                      </section>
-                    </article>
-                  )}
-                </section>
-              </CardContent>
-            </Card>
-
-            {/* Route Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-[#D4AF37]" />
-                  Route
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <section className="grid gap-6 md:grid-cols-2">
-                  {/* Departure Airport */}
-                  <article className="space-y-2 relative">
-                    <Label htmlFor="departure">Departure Airport *</Label>
-                    <section className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="departure"
-                        placeholder="Search city, airport, or code..."
-                        value={departureSearch}
-                        onChange={(e) => {
-                          setDepartureSearch(e.target.value);
-                          setSelectedDeparture(null);
-                          setFormData((prev) => ({
-                            ...prev,
-                            departureAirportId: "",
-                          }));
-                        }}
-                        onFocus={() =>
-                          departureResults.length > 0 &&
-                          setShowDepartureDropdown(true)
-                        }
-                        className="pl-10"
-                      />
-                      {searchingDeparture && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />
-                      )}
-                    </section>
-                    {showDepartureDropdown && departureResults.length > 0 && (
-                      <section className="absolute z-50 w-full mt-1 bg-background border shadow-lg max-h-60 overflow-auto">
-                        {departureResults.map((airport) => (
-                          <button
-                            key={airport.id}
-                            type="button"
-                            className="w-full px-4 py-2 text-left hover:bg-muted flex flex-col"
-                            onClick={() => selectAirport(airport, "departure")}
-                          >
-                            <span className="font-medium">
-                              {airport.municipality || airport.name}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {airport.name} (
-                              {airport.iataCode || airport.icaoCode})
-                            </span>
-                          </button>
-                        ))}
-                      </section>
-                    )}
-                  </article>
-
-                  {/* Arrival Airport */}
-                  <article className="space-y-2 relative">
-                    <Label htmlFor="arrival">Arrival Airport *</Label>
-                    <section className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="arrival"
-                        placeholder="Search city, airport, or code..."
-                        value={arrivalSearch}
-                        onChange={(e) => {
-                          setArrivalSearch(e.target.value);
-                          setSelectedArrival(null);
-                          setFormData((prev) => ({
-                            ...prev,
-                            arrivalAirportId: "",
-                          }));
-                        }}
-                        onFocus={() =>
-                          arrivalResults.length > 0 &&
-                          setShowArrivalDropdown(true)
-                        }
-                        className="pl-10"
-                      />
-                      {searchingArrival && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />
-                      )}
-                    </section>
-                    {showArrivalDropdown && arrivalResults.length > 0 && (
-                      <section className="absolute z-50 w-full mt-1 bg-background border shadow-lg max-h-60 overflow-auto">
-                        {arrivalResults.map((airport) => (
-                          <button
-                            key={airport.id}
-                            type="button"
-                            className="w-full px-4 py-2 text-left hover:bg-muted flex flex-col"
-                            onClick={() => selectAirport(airport, "arrival")}
-                          >
-                            <span className="font-medium">
-                              {airport.municipality || airport.name}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {airport.name} (
-                              {airport.iataCode || airport.icaoCode})
-                            </span>
-                          </button>
-                        ))}
-                      </section>
-                    )}
-                  </article>
-                </section>
-              </CardContent>
-            </Card>
-
-            {/* Schedule */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-[#D4AF37]" />
-                  Schedule & Seats
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <section className="grid gap-6 md:grid-cols-3">
-                  <article className="space-y-2">
-                    <Label>Departure Date & Time *</Label>
-                    <Calendar20
-                      placeholder="Select departure date & time"
-                      value={departureDate}
-                      onChange={setDepartureDate}
-                    />
-                  </article>
-
-                  <article className="space-y-2">
-                    <Label htmlFor="totalSeats">Total Seats *</Label>
-                    <Input
-                      id="totalSeats"
-                      type="number"
-                      value={formData.totalSeats}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          totalSeats: e.target.value,
-                        }))
-                      }
-                      min="1"
-                    />
-                  </article>
-
-                  <article className="space-y-2">
-                    <Label htmlFor="availableSeats">Available Seats *</Label>
-                    <Input
-                      id="availableSeats"
-                      type="number"
-                      value={formData.availableSeats}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          availableSeats: e.target.value,
-                        }))
-                      }
-                      min="0"
-                      max={formData.totalSeats}
-                    />
-                  </article>
-                </section>
-              </CardContent>
-            </Card>
+            {/* Aircraft Information */}
+            <Separator />
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Aircraft Information
+              </h3>
+              <div className="space-y-2">
+                <Label htmlFor="aircraft">Aircraft</Label>
+                <Select
+                  value={formData.aircraftId}
+                  onValueChange={(value) =>
+                    isEditable &&
+                    !isReadOnlyField("aircraftId") &&
+                    setFormData({ ...formData, aircraftId: value })
+                  }
+                  disabled={!isEditable || isReadOnlyField("aircraftId")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select aircraft" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {aircraft.map((craft) => (
+                      <SelectItem key={craft.id} value={craft.id}>
+                        {craft.name} - {craft.manufacturer}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="totalSeats">Total Seats</Label>
+                  <Input
+                    id="totalSeats"
+                    type="number"
+                    value={formData.totalSeats}
+                    onChange={(e) =>
+                      isEditable &&
+                      setFormData({ ...formData, totalSeats: e.target.value })
+                    }
+                    disabled={!isEditable}
+                    min="1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="availableSeats">Available Seats</Label>
+                  <Input
+                    id="availableSeats"
+                    type="number"
+                    value={formData.availableSeats}
+                    onChange={(e) =>
+                      isEditable &&
+                      setFormData({
+                        ...formData,
+                        availableSeats: e.target.value,
+                      })
+                    }
+                    disabled={!isEditable}
+                    min="0"
+                  />
+                </div>
+              </div>
+            </div>
 
             {/* Pricing */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-[#D4AF37]" />
-                  Pricing (per seat)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <section className="grid gap-6 md:grid-cols-2">
-                  <article className="space-y-2">
-                    <Label htmlFor="originalPriceUsd">
-                      Original Price (USD) *
-                    </Label>
-                    <section className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        id="originalPriceUsd"
-                        type="number"
-                        value={formData.originalPriceUsd}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            originalPriceUsd: e.target.value,
-                          }))
-                        }
-                        min="0"
-                        step="1000"
-                        className="pl-8"
-                      />
-                    </section>
-                  </article>
+            <Separator />
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Pricing
+              </h3>
+              <div className="space-y-2">
+                <Label htmlFor="priceType">Price Type</Label>
+                <Select
+                  value={formData.priceType}
+                  onValueChange={(value) =>
+                    isEditable &&
+                    setFormData({
+                      ...formData,
+                      priceType: value as "FIXED" | "CONTACT",
+                    })
+                  }
+                  disabled={!isEditable}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select price type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {priceTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.priceType === "FIXED" && (
+                <div className="space-y-2">
+                  <Label htmlFor="priceUsd">Price per Seat (USD)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      id="priceUsd"
+                      type="number"
+                      value={formData.priceUsd}
+                      onChange={(e) =>
+                        isEditable &&
+                        setFormData({ ...formData, priceUsd: e.target.value })
+                      }
+                      disabled={!isEditable}
+                      min="0"
+                      step="0.01"
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
-                  <article className="space-y-2">
-                    <Label htmlFor="discountPriceUsd">
-                      Discount Price (USD) *
-                    </Label>
-                    <section className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        id="discountPriceUsd"
-                        type="number"
-                        value={formData.discountPriceUsd}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            discountPriceUsd: e.target.value,
-                          }))
-                        }
-                        min="0"
-                        step="1000"
-                        className="pl-8"
-                      />
-                    </section>
-                  </article>
-                </section>
-
-                {calculateDiscount() > 0 && (
-                  <article className="mt-4 p-4 bg-green-500/10 border border-green-500/20">
-                    <p className="text-green-600 dark:text-green-400 font-medium">
-                      {calculateDiscount()}% discount
-                    </p>
-                  </article>
+            {/* Actions */}
+            <Separator />
+            <div className="flex justify-end gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="gold"
+                disabled={saving || !isEditable}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
                 )}
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* Sidebar */}
-          <section className="space-y-6">
-            <Card className="sticky top-6">
-              <CardHeader>
-                <CardTitle>Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <article className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Route</p>
-                  {selectedDeparture && selectedArrival ? (
-                    <p className="font-medium">
-                      {selectedDeparture.municipality || selectedDeparture.name}{" "}
-                      → {selectedArrival.municipality || selectedArrival.name}
-                    </p>
-                  ) : (
-                    <p className="text-muted-foreground">Not selected</p>
-                  )}
-                </article>
-
-                <Separator />
-
-                <article className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Aircraft</p>
-                  {selectedAircraft ? (
-                    <p className="font-medium">{selectedAircraft.name}</p>
-                  ) : (
-                    <p className="text-muted-foreground">Not selected</p>
-                  )}
-                </article>
-
-                <Separator />
-
-                <article className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    Price per Seat
-                  </p>
-                  {formData.discountPriceUsd ? (
-                    <section>
-                      <p className="text-sm line-through text-muted-foreground">
-                        $
-                        {parseFloat(
-                          formData.originalPriceUsd || "0",
-                        ).toLocaleString()}
-                      </p>
-                      <p className="text-xl font-bold text-[#D4AF37]">
-                        $
-                        {parseFloat(formData.discountPriceUsd).toLocaleString()}
-                      </p>
-                    </section>
-                  ) : (
-                    <p className="text-muted-foreground">Not set</p>
-                  )}
-                </article>
-
-                <Separator />
-
-                <section className="space-y-2 pt-4">
-                  <Button
-                    type="submit"
-                    variant="gold"
-                    className="w-full"
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Changes"
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => router.back()}
-                  >
-                    Cancel
-                  </Button>
-                </section>
-              </CardContent>
-            </Card>
-          </section>
-        </section>
-      </form>
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </section>
   );
 }

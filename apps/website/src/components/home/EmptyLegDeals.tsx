@@ -11,31 +11,42 @@ interface EmptyLegDeal {
   id: string;
   slug: string;
   departureAirport: {
+    id: string;
     name: string;
     city: string;
     country: string;
     code: string;
+    latitude: number;
+    longitude: number;
   };
   arrivalAirport: {
+    id: string;
     name: string;
     city: string;
     country: string;
     code: string;
+    latitude: number;
+    longitude: number;
   };
   aircraft: {
+    id: string;
     name: string;
     manufacturer: string;
     model: string;
+    category: string;
     maxPassengers: number;
     images: string[];
   };
   departureDate: string;
   availableSeats: number;
   totalSeats: number;
-  priceUsd: number;
-  originalPriceUsd: number;
-  discountPercent: number;
+  priceUsd: number | null;
+  priceText: string;
+  priceType: string;
   status: string;
+  createdByAdminId?: string;
+  createdByOperatorId?: string;
+  ownerType: string;
 }
 
 // Helper to format duration
@@ -274,18 +285,15 @@ export default function EmptyLegDeals() {
                     {/* Price & CTA */}
                     <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
                       <div>
-                        <div className="text-xs text-gray-500 line-through">
-                          {formatPrice(deal.originalPriceUsd)}
-                        </div>
                         <div className="text-2xl font-bold text-[#D4AF37]">
-                          {formatPrice(deal.priceUsd)}
+                          {deal.priceText}
                         </div>
                       </div>
                       <Link
                         href={`/empty-legs/${deal.slug}`}
                         className="bg-[#D4AF37] text-white px-4 py-2 font-semibold hover:bg-[#B8962E] transition-colors"
                       >
-                        Book Now
+                        {deal.priceType === "CONTACT" ? "Inquire" : "Book Now"}
                       </Link>
                     </div>
                   </div>
@@ -369,18 +377,15 @@ export default function EmptyLegDeals() {
                     {/* Price & CTA */}
                     <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
                       <div>
-                        <div className="text-xs text-gray-500 line-through">
-                          {formatPrice(deal.originalPriceUsd)}
-                        </div>
-                        <div className="text-2xl font-bold text-[#D4AF37]">
-                          {formatPrice(deal.priceUsd)}
+                        <div className="text-xl font-bold text-[#D4AF37]">
+                          {deal.priceText}
                         </div>
                       </div>
                       <Link
                         href={`/empty-legs/${deal.slug}`}
                         className="bg-[#D4AF37] text-white px-4 py-2 font-semibold hover:bg-[#B8962E] transition-colors"
                       >
-                        Book Now
+                        {deal.priceType === "CONTACT" ? "Inquire" : "Book Now"}
                       </Link>
                     </div>
                   </div>

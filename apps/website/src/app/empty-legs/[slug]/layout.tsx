@@ -35,7 +35,7 @@ export async function generateMetadata({
         aircraft: {
           select: {
             name: true,
-            thumbnailImage: true,
+            image: true,
           },
         },
       },
@@ -53,13 +53,24 @@ export async function generateMetadata({
     const departureCountry = emptyLeg.departureAirport.country?.name || "";
     const arrivalCountry = emptyLeg.arrivalAirport.country?.name || "";
     const aircraftName = emptyLeg.aircraft.name;
-    const discountPercent = Math.round(
-      ((emptyLeg.originalPriceUsd - emptyLeg.discountPriceUsd) /
-        emptyLeg.originalPriceUsd) *
-        100,
-    );
 
-    const priceUsd = emptyLeg.discountPriceUsd;
+    // Handle pricing based on priceType and priceUsd
+    let priceText = "";
+    let priceUsd = 0;
+
+    if (emptyLeg.priceType === "CONTACT") {
+      priceText = "Contact for price";
+    } else if (
+      emptyLeg.priceType === "FIXED" &&
+      emptyLeg.priceUsd &&
+      emptyLeg.priceUsd > 0
+    ) {
+      priceUsd = emptyLeg.priceUsd;
+      priceText = `$${emptyLeg.priceUsd.toLocaleString()}`;
+    } else {
+      priceText = "Contact for price";
+    }
+
     const dateStr = emptyLeg.departureDateTime
       ? new Date(emptyLeg.departureDateTime).toLocaleDateString("en-US", {
           month: "short",
@@ -69,10 +80,10 @@ export async function generateMetadata({
       : "";
 
     // SEO-optimized title with searchable keywords
-    const title = `Private Jet ${departureCity} to ${arrivalCity} | ${discountPercent}% Off Empty Leg Flight`;
+    const title = `Private Jet ${departureCity} to ${arrivalCity} | Empty Leg Flight`;
 
     // Rich description with keywords people search for
-    const description = `Book a private jet from ${departureCity} to ${arrivalCity} for $${priceUsd.toLocaleString()} (${discountPercent}% off). Empty leg flight on ${aircraftName}${dateStr ? ` departing ${dateStr}` : ""}. Fly private for less with PexJet Nigeria.`;
+    const description = `Book a private jet from ${departureCity} to ${arrivalCity}. Empty leg flight on ${aircraftName}${dateStr ? ` departing ${dateStr}` : ""}. Fly private for less with PexJet Nigeria.`;
 
     // Additional keywords for this route
     const keywords = [
@@ -86,14 +97,14 @@ export async function generateMetadata({
       "discounted private jet",
     ];
 
-    const ogImage = emptyLeg.aircraft.thumbnailImage || seoData.openGraph.image;
+    const ogImage = emptyLeg.aircraft.image || seoData.openGraph.image;
 
     return {
       title,
       description,
       keywords,
       openGraph: {
-        title: `${departureCity} to ${arrivalCity} - ${discountPercent}% Off | PexJet Empty Leg`,
+        title: `${departureCity} to ${arrivalCity} | PexJet Empty Leg`,
         description,
         url: `${seoData.siteUrl}/empty-legs/${slug}`,
         siteName: seoData.siteName,
@@ -109,7 +120,7 @@ export async function generateMetadata({
       },
       twitter: {
         card: "summary_large_image",
-        title: `${departureCity} → ${arrivalCity} | ${discountPercent}% Off Private Jet`,
+        title: `${departureCity} → ${arrivalCity} | Private Jet Empty Leg`,
         description,
         images: [ogImage],
       },

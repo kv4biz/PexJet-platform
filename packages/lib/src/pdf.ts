@@ -1,4 +1,4 @@
-import PDFDocument from "pdfkit";
+import type PDFKit from "pdfkit";
 import { COLORS } from "./constants";
 
 interface QuoteConfirmationData {
@@ -71,6 +71,14 @@ function generatePDFBuffer(doc: PDFKit.PDFDocument): Promise<Buffer> {
   });
 }
 
+async function createPDFDocument(
+  options: PDFKit.PDFDocumentOptions,
+): Promise<PDFKit.PDFDocument> {
+  const mod: any = await import("pdfkit");
+  const PDFDocumentCtor = (mod?.default ?? mod) as any;
+  return new PDFDocumentCtor(options) as PDFKit.PDFDocument;
+}
+
 /**
  * Add header to PDF
  */
@@ -86,10 +94,7 @@ function addHeader(doc: PDFKit.PDFDocument, title: string): void {
     .text("PEXJET", 50, 25);
 
   // Title
-  doc
-    .fontSize(12)
-    .fillColor("#FFFFFF")
-    .text(title, 50, 55);
+  doc.fontSize(12).fillColor("#FFFFFF").text(title, 50, 55);
 
   // Reset position
   doc.fillColor("#000000").moveDown(3);
@@ -113,9 +118,9 @@ function addFooter(doc: PDFKit.PDFDocument): void {
  * Generate Quote Confirmation PDF
  */
 export async function generateQuoteConfirmationPDF(
-  data: QuoteConfirmationData
+  data: QuoteConfirmationData,
 ): Promise<Buffer> {
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = await createPDFDocument({ margin: 50 });
 
   addHeader(doc, "QUOTE CONFIRMATION");
 
@@ -235,9 +240,9 @@ export async function generateQuoteConfirmationPDF(
  * Generate Flight Confirmation PDF
  */
 export async function generateFlightConfirmationPDF(
-  data: FlightConfirmationData
+  data: FlightConfirmationData,
 ): Promise<Buffer> {
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = await createPDFDocument({ margin: 50 });
 
   addHeader(doc, "FLIGHT CONFIRMATION");
 
@@ -369,7 +374,7 @@ export async function generateFlightConfirmationPDF(
  * Generate Payment Receipt PDF
  */
 export async function generateReceiptPDF(data: ReceiptData): Promise<Buffer> {
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = await createPDFDocument({ margin: 50 });
 
   addHeader(doc, "PAYMENT RECEIPT");
 
@@ -494,7 +499,7 @@ export async function generateEmptyLegConfirmationPDF(data: {
   paymentDeadline: string;
   paymentLink: string;
 }): Promise<Buffer> {
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = await createPDFDocument({ margin: 50 });
 
   addHeader(doc, "EMPTY LEG BOOKING CONFIRMATION");
 

@@ -1,0 +1,1379 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pexjet Charter Widget Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .metallic-gold {
+        background: linear-gradient(
+          135deg,
+          #d4af37 0%,
+          #f4e4bc 50%,
+          #d4af37 100%
+        );
+      }
+      .gold-text {
+        color: #d4af37;
+      }
+      .widget-container {
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+      }
+      .step-indicator {
+        transition: all 0.3s ease;
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+      }
+      .step-indicator.active {
+        background: #d4af37;
+        color: white;
+        border-color: #d4af37;
+      }
+      .step-indicator.completed {
+        background: #2d3748;
+        color: white;
+        border-color: #2d3748;
+      }
+      .form-input {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 8px 12px 8px 36px;
+        font-size: 14px;
+        transition: border-color 0.2s;
+        width: 100%;
+      }
+      .form-input:focus {
+        outline: none;
+        border-color: #d4af37;
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+      }
+      .input-with-icon {
+        position: relative;
+      }
+      .input-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: #9ca3af;
+        pointer-events: none;
+      }
+      .aircraft-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        transition: all 0.2s;
+      }
+      .aircraft-card:hover {
+        border-color: #d4af37;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .aircraft-card.selected {
+        border-color: #d4af37;
+        background: #fefdf8;
+      }
+      .btn-primary {
+        background: linear-gradient(
+          135deg,
+          #d4af37 0%,
+          #f4e4bc 50%,
+          #d4af37 100%
+        );
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+      .btn-primary:hover {
+        opacity: 0.9;
+      }
+      .btn-secondary {
+        background: white;
+        color: #374151;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-secondary:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+      }
+      .airport-suggestion {
+        border-bottom: 1px solid #f3f4f6;
+      }
+      .airport-suggestion:last-child {
+        border-bottom: none;
+      }
+      .airport-suggestion:hover {
+        background: #f9fafb;
+      }
+      .price-display {
+        font-size: 24px;
+        font-weight: 600;
+        color: #d4af37;
+      }
+      .aircraft-image {
+        width: 60px;
+        height: 40px;
+        background: #f3f4f6;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: #6b7280;
+      }
+      .swap-button {
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .swap-button:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+      <!-- Widget Header -->
+      <div class="widget-container p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-3">
+            <div
+              class="w-10 h-10 metallic-gold rounded-full flex items-center justify-center"
+            >
+              <span class="text-white font-bold text-lg">P</span>
+            </div>
+            <div>
+              <h1 class="text-xl font-bold text-gray-900">Pexjet</h1>
+              <p class="text-sm text-gray-600">Private Jet Charter</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-gray-500">Powered by</div>
+            <div class="text-sm font-semibold text-gray-700">InstaCharter</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step Indicator -->
+      <div class="flex justify-between mb-6">
+        <div class="flex items-center">
+          <div
+            class="step-indicator active rounded-full flex items-center justify-center font-semibold border-2 border-gray-300"
+            id="step1"
+          >
+            1
+          </div>
+          <span class="ml-2 text-sm font-medium text-gray-700">Search</span>
+        </div>
+        <div class="flex-1 h-px bg-gray-300 mx-4 self-center"></div>
+        <div class="flex items-center">
+          <div
+            class="step-indicator rounded-full flex items-center justify-center font-semibold border-2 border-gray-300 bg-gray-300"
+            id="step2"
+          >
+            2
+          </div>
+          <span class="ml-2 text-sm font-medium text-gray-400">Select</span>
+        </div>
+        <div class="flex-1 h-px bg-gray-300 mx-4 self-center"></div>
+        <div class="flex items-center">
+          <div
+            class="step-indicator rounded-full flex items-center justify-center font-semibold border-2 border-gray-300 bg-gray-300"
+            id="step3"
+          >
+            3
+          </div>
+          <span class="ml-2 text-sm font-medium text-gray-400">Details</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Search Form -->
+      <div id="searchStep" class="widget-container p-6">
+        <h2 class="text-xl font-bold mb-2 text-black uppercase tracking-wide">
+          Charter Flights
+        </h2>
+
+        <!-- Trip type radio -->
+        <div class="flex gap-4 mb-4">
+          <label class="flex items-center gap-2 cursor-pointer text-black">
+            <input
+              type="radio"
+              name="tripType"
+              value="one-way"
+              checked
+              class="accent-[#D4AF37] w-4 h-4"
+            />
+            <span class="text-sm">One Way</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer text-black">
+            <input
+              type="radio"
+              name="tripType"
+              value="round-trip"
+              class="accent-[#D4AF37] w-4 h-4"
+            />
+            <span class="text-sm">Round Trip</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer text-black">
+            <input
+              type="radio"
+              name="tripType"
+              value="multi-leg"
+              class="accent-[#D4AF37] w-4 h-4"
+            />
+            <span class="text-sm">Multi-Leg</span>
+          </label>
+        </div>
+
+        <form id="searchForm">
+          <div class="flex flex-col lg:flex-row lg:items-start gap-2">
+            <!-- FROM -->
+            <div class="flex w-full lg:flex-1">
+              <div class="relative flex-1 min-w-0">
+                <div class="input-with-icon">
+                  <svg
+                    class="input-icon"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    ></path>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    ></path>
+                  </svg>
+                  <input
+                    type="text"
+                    id="fromInput"
+                    placeholder="From"
+                    class="form-input"
+                  />
+                  <div
+                    id="fromSuggestions"
+                    class="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto hidden"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- Swap Button -->
+              <button
+                type="button"
+                class="p-2 border border-gray-200 bg-white text-black hover:bg-gray-50 shrink-0 swap-button"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                  ></path>
+                </svg>
+              </button>
+            </div>
+
+            <!-- TO -->
+            <div class="relative w-full lg:flex-1 lg:min-w-0">
+              <div class="input-with-icon">
+                <svg
+                  class="input-icon"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  ></path>
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  ></path>
+                </svg>
+                <input
+                  type="text"
+                  id="toInput"
+                  placeholder="To"
+                  class="form-input"
+                />
+                <div
+                  id="toSuggestions"
+                  class="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto hidden"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Date input -->
+            <div class="w-full lg:flex-1 lg:min-w-0">
+              <div class="input-with-icon">
+                <svg
+                  class="input-icon"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  ></path>
+                </svg>
+                <input
+                  type="datetime-local"
+                  id="dateInput"
+                  class="form-input"
+                />
+              </div>
+            </div>
+
+            <!-- Passengers -->
+            <div class="flex items-center w-full lg:flex-1">
+              <div
+                class="flex w-full items-center px-3 pt-1 pb-1.5 bg-white border border-gray-300 justify-between"
+              >
+                <svg
+                  class="w-4 h-4 text-gray-500 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                  ></path>
+                </svg>
+                <div class="flex gap-2 items-center ml-2">
+                  <button
+                    type="button"
+                    class="w-7 h-7 inline-flex items-center justify-center border border-gray-300 text-black shrink-0"
+                  >
+                    <svg
+                      class="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M20 12H4"
+                      ></path>
+                    </svg>
+                  </button>
+                  <span
+                    class="w-6 text-center text-black text-sm"
+                    id="passengerCount"
+                    >1</span
+                  >
+                  <button
+                    type="button"
+                    class="w-7 h-7 inline-flex items-center justify-center border border-gray-300 text-black shrink-0"
+                  >
+                    <svg
+                      class="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"
+                      ></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <!-- Airport Summary -->
+            <div
+              id="airportSummary"
+              class="bg-gray-50 p-3 rounded-md mb-4 hidden"
+            >
+              <h4 class="text-sm font-semibold text-gray-700 mb-2">
+                Selected Airports
+              </h4>
+              <div class="text-xs text-gray-600 space-y-1">
+                <div id="fromAirportSummary">From: -</div>
+                <div id="toAirportSummary">To: -</div>
+                <div id="passengerSummary">Passengers: 1</div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="btn-primary w-full py-2 flex items-center justify-center"
+            >
+              <svg
+                class="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                ></path>
+              </svg>
+              Search Flights
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 2: Aircraft Options -->
+      <div id="optionsStep" class="widget-container p-6 hidden">
+        <h2 class="text-lg font-semibold mb-4 text-gray-900">
+          Select Aircraft
+        </h2>
+        <div id="aircraftOptions" class="space-y-3">
+          <!-- Options will be populated here -->
+        </div>
+        <div class="mt-6 flex gap-3">
+          <button onclick="goBackToSearch()" class="btn-secondary flex-1">
+            Back
+          </button>
+          <button
+            onclick="proceedToDetails()"
+            id="proceedBtn"
+            class="btn-primary flex-1 disabled:opacity-50"
+            disabled
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Customer Details -->
+      <div id="detailsStep" class="widget-container p-6 hidden">
+        <h2 class="text-lg font-semibold mb-4 text-gray-900">Your Details</h2>
+        <form id="detailsForm">
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1"
+                  >Full Name *</label
+                >
+                <input
+                  type="text"
+                  id="nameInput"
+                  required
+                  class="form-input w-full"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1"
+                  >Email *</label
+                >
+                <input
+                  type="email"
+                  id="emailInput"
+                  required
+                  class="form-input w-full"
+                />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1"
+                  >Phone</label
+                >
+                <input type="tel" id="phoneInput" class="form-input w-full" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1"
+                  >Currency</label
+                >
+                <select id="currencyInput" class="form-input w-full">
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="CAD">CAD</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Message</label
+              >
+              <textarea
+                id="messageInput"
+                rows="3"
+                class="form-input w-full"
+              ></textarea>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-md">
+              <h3 class="font-semibold mb-2 text-gray-900">Flight Summary</h3>
+              <div id="flightSummary" class="text-sm text-gray-600"></div>
+            </div>
+            <div class="flex gap-3">
+              <button
+                type="button"
+                onclick="goBackToOptions()"
+                class="btn-secondary flex-1"
+              >
+                Back
+              </button>
+              <button type="submit" class="btn-primary flex-1">
+                Submit Request
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div
+        id="loadingOverlay"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden"
+      >
+        <div class="bg-white p-6 rounded-lg">
+          <div
+            class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto"
+          ></div>
+          <p class="mt-4 text-gray-700">Processing your request...</p>
+        </div>
+      </div>
+
+      <!-- Success Message -->
+      <div
+        id="successMessage"
+        class="bg-green-50 border border-green-200 rounded-lg p-6 hidden"
+      >
+        <h3 class="text-green-800 font-semibold mb-2">
+          Request Submitted Successfully!
+        </h3>
+        <p class="text-green-700">
+          Your charter request has been received. We'll contact you shortly with
+          available options.
+        </p>
+      </div>
+
+      <!-- Error Message -->
+      <div
+        id="errorMessage"
+        class="bg-red-50 border border-red-200 rounded-lg p-6 hidden"
+      >
+        <h3 class="text-red-800 font-semibold mb-2">Error</h3>
+        <p class="text-red-700" id="errorText"></p>
+      </div>
+    </div>
+
+    <script>
+      // Configuration
+      const API_BASE = "https://server.instacharter.app/api/Markets";
+      const API_KEY = "92bbb93d-9051-42d7-9c3c-0dd78b18b0e8";
+      const CLIENT_ID = "df28ee97";
+
+      // State management
+      let currentStep = 1;
+      let selectedAircraft = null;
+      let searchData = {
+        from: null,
+        to: null,
+        date: null,
+        pax: 1,
+      };
+      let aircraftOptions = [];
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", function () {
+        // Set default date to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById("dateInput").value = tomorrow
+          .toISOString()
+          .slice(0, 16);
+
+        // Setup event listeners
+        document
+          .getElementById("searchForm")
+          .addEventListener("submit", handleSearch);
+        document
+          .getElementById("detailsForm")
+          .addEventListener("submit", handleSubmitDetails);
+
+        // Setup airport search
+        setupAirportSearch("fromInput", "fromSuggestions");
+        setupAirportSearch("toInput", "toSuggestions");
+
+        // Setup passenger counter
+        setupPassengerCounter();
+
+        // Setup swap button
+        setupSwapButton();
+      });
+
+      function updateAirportSummary() {
+        const summaryDiv = document.getElementById("airportSummary");
+        const fromDiv = document.getElementById("fromAirportSummary");
+        const toDiv = document.getElementById("toAirportSummary");
+        const passengerDiv = document.getElementById("passengerSummary");
+
+        if (searchData.from || searchData.to) {
+          summaryDiv.classList.remove("hidden");
+          fromDiv.textContent = searchData.from
+            ? `From: ${searchData.from.icao} - ${searchData.from.name}`
+            : "From: -";
+          toDiv.textContent = searchData.to
+            ? `To: ${searchData.to.icao} - ${searchData.to.name}`
+            : "To: -";
+          passengerDiv.textContent = `Passengers: ${searchData.pax}`;
+        } else {
+          summaryDiv.classList.add("hidden");
+        }
+      }
+
+      function setupPassengerCounter() {
+        // Use more specific selectors for the buttons
+        const passengerContainer = document.querySelector(
+          ".flex.items-center.w-full.lg\\:flex-1",
+        );
+        if (!passengerContainer) return;
+
+        const buttons = passengerContainer.querySelectorAll("button");
+        const countDisplay = document.getElementById("passengerCount");
+
+        if (buttons.length >= 2 && countDisplay) {
+          // First button is minus, second is plus
+          const minusBtn = buttons[0];
+          const plusBtn = buttons[1];
+
+          minusBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            const current = parseInt(countDisplay.textContent);
+            if (current > 1) {
+              countDisplay.textContent = current - 1;
+              searchData.pax = current - 1;
+              console.log("Passengers decreased to:", searchData.pax);
+              updateAirportSummary();
+            }
+          });
+
+          plusBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            const current = parseInt(countDisplay.textContent);
+            if (current < 12) {
+              countDisplay.textContent = current + 1;
+              searchData.pax = current + 1;
+              console.log("Passengers increased to:", searchData.pax);
+              updateAirportSummary();
+            }
+          });
+        }
+      }
+
+      function setupSwapButton() {
+        const swapBtn = document.querySelector(".swap-button");
+        if (swapBtn) {
+          swapBtn.addEventListener("click", function () {
+            const fromInput = document.getElementById("fromInput");
+            const toInput = document.getElementById("toInput");
+
+            // Swap the input values
+            const tempFrom = fromInput.value;
+            const tempFromData = { ...searchData.from };
+
+            fromInput.value = toInput.value;
+            toInput.value = tempFrom;
+
+            // Swap the search data
+            searchData.from = searchData.to;
+            searchData.to = tempFromData;
+
+            console.log("Swapped airports:", searchData);
+          });
+        }
+      }
+
+      function setupAirportSearch(inputId, suggestionsId) {
+        const input = document.getElementById(inputId);
+        const suggestions = document.getElementById(suggestionsId);
+        let debounceTimer;
+
+        input.addEventListener("input", function () {
+          clearTimeout(debounceTimer);
+          const query = this.value.trim();
+
+          if (query.length < 2) {
+            suggestions.classList.add("hidden");
+            return;
+          }
+
+          debounceTimer = setTimeout(() => {
+            searchAirports(query, suggestions, input);
+          }, 300);
+        });
+
+        input.addEventListener("blur", function () {
+          setTimeout(() => suggestions.classList.add("hidden"), 200);
+        });
+      }
+
+      async function searchAirports(query, suggestionsElement, inputElement) {
+        console.log("Searching airports for:", query);
+        try {
+          const response = await fetch(
+            `${API_BASE}/SearchAirportByITA_ICO_NAME_LOCATION?globalInput=${encodeURIComponent(query)}`,
+            {
+              headers: {
+                accept: "application/json",
+                "X-Api-Key": API_KEY,
+              },
+            },
+          );
+
+          console.log("Airport search response status:", response.status);
+
+          if (!response.ok) throw new Error("Airport search failed");
+
+          const data = await response.json();
+          console.log("Airport search results:", data);
+
+          displayAirportSuggestions(
+            data.data,
+            suggestionsElement,
+            inputElement,
+          );
+        } catch (error) {
+          console.error("Airport search error:", error);
+          // Show error in suggestions dropdown
+          suggestionsElement.innerHTML =
+            '<div class="px-4 py-3 text-red-600">Error searching airports</div>';
+          suggestionsElement.classList.remove("hidden");
+        }
+      }
+
+      function displayAirportSuggestions(
+        airports,
+        suggestionsElement,
+        inputElement,
+      ) {
+        console.log("Displaying airport suggestions:", airports);
+
+        if (!airports || airports.length === 0) {
+          suggestionsElement.innerHTML =
+            '<div class="px-4 py-3 text-gray-600">No airports found</div>';
+          suggestionsElement.classList.remove("hidden");
+          return;
+        }
+
+        const html = airports
+          .slice(0, 5)
+          .map((airport) => {
+            console.log("Processing airport:", airport);
+            return `
+                <div class="airport-suggestion px-4 py-3 cursor-pointer hover:bg-gray-50 transition" 
+                     onclick="selectAirport('${airport.icao}', '${airport.city} - ${airport.airportName}', '${inputElement.id}', ${airport.lat}, ${airport.long})">
+                    <div class="text-sm text-black">
+                        <div class="font-medium text-black">${airport.icao} (${airport.iata || ""}) - ${airport.airportName}</div>
+                        <div class="text-xs text-gray-500">${airport.city}, ${airport.country}</div>
+                    </div>
+                </div>
+            `;
+          })
+          .join("");
+
+        console.log("Generated HTML:", html);
+        suggestionsElement.innerHTML = html;
+        suggestionsElement.classList.remove("hidden");
+      }
+
+      function selectAirport(icao, name, inputId, lat, long) {
+        console.log("selectAirport called with:", {
+          icao,
+          name,
+          inputId,
+          lat,
+          long,
+        });
+
+        const input = document.getElementById(inputId);
+
+        // Format the display to show IATA/ICAO codes prominently
+        const displayName = `${icao} - ${name}`;
+        input.value = displayName;
+        input.dataset.icao = icao;
+        input.dataset.name = name;
+        input.dataset.lat = lat;
+        input.dataset.long = long;
+
+        // Hide suggestions
+        const suggestionsId = inputId.replace("Input", "Suggestions");
+        document.getElementById(suggestionsId).classList.add("hidden");
+
+        // Store coordinates from the airport data
+        if (inputId === "fromInput") {
+          searchData.from = {
+            icao,
+            name,
+            lat: parseFloat(lat) || 0,
+            long: parseFloat(long) || 0,
+          };
+        } else {
+          searchData.to = {
+            icao,
+            name,
+            lat: parseFloat(lat) || 0,
+            long: parseFloat(long) || 0,
+          };
+        }
+
+        console.log(
+          "Airport selected:",
+          inputId === "fromInput" ? searchData.from : searchData.to,
+        );
+        console.log("Updated searchData:", searchData);
+
+        // Update the airport summary display
+        updateAirportSummary();
+      }
+
+      async function handleSearch(e) {
+        e.preventDefault();
+
+        console.log("Current search data:", searchData);
+        console.log("From airport:", searchData.from);
+        console.log("To airport:", searchData.to);
+
+        if (!searchData.from || !searchData.to) {
+          console.log("Validation failed - missing airports");
+          showError("Please select valid departure and arrival airports");
+          return;
+        }
+
+        if (
+          !searchData.from.lat ||
+          !searchData.from.long ||
+          !searchData.to.lat ||
+          !searchData.to.long
+        ) {
+          console.log("Validation failed - missing coordinates");
+          showError(
+            "Airport coordinates not found. Please select airports from the dropdown list.",
+          );
+          return;
+        }
+
+        showLoading();
+
+        try {
+          const date = document.getElementById("dateInput").value;
+          const pax = searchData.pax; // Use the stored passenger count
+
+          // Use coordinates from selected airports
+          const fromCoords = {
+            lat: searchData.from.lat,
+            long: searchData.from.long,
+          };
+          const toCoords = { lat: searchData.to.lat, long: searchData.to.long };
+
+          console.log("Using coordinates:", { from: fromCoords, to: toCoords });
+
+          const payload = {
+            currency: document.getElementById("currencyInput")?.value || "USD",
+            clientId: CLIENT_ID,
+            itinerary: [
+              {
+                from: {
+                  lat: fromCoords.lat,
+                  long: fromCoords.long,
+                  name: searchData.from.name,
+                },
+                to: {
+                  lat: toCoords.lat,
+                  long: toCoords.long,
+                  name: searchData.to.name,
+                },
+                date: date.split("T")[0],
+                pax: pax,
+              },
+            ],
+          };
+
+          const response = await fetch(`${API_BASE}/GetOptions`, {
+            method: "POST",
+            headers: {
+              accept: "application/json",
+              "X-Api-Key": API_KEY,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) throw new Error("Failed to get aircraft options");
+
+          const data = await response.json();
+          aircraftOptions = data.data;
+          console.log("API Response:", data.data); // Debug logging
+          displayAircraftOptions();
+          goToStep(2);
+        } catch (error) {
+          showError("Failed to search for flights: " + error.message);
+        } finally {
+          hideLoading();
+        }
+      }
+
+      async function getAirportCoords(icao) {
+        // Mock coordinates - in real app you'd use the airport search API response
+        const coords = {
+          KTEB: { lat: 40.85, long: -74.06 },
+          KMIA: { lat: 25.8, long: -80.29 },
+          KJFK: { lat: 40.64, long: -73.78 },
+          KLAX: { lat: 33.94, long: -118.41 },
+        };
+
+        if (coords[icao]) return coords[icao];
+
+        // Default coordinates if not found
+        return { lat: 0, long: 0 };
+      }
+
+      function displayAircraftOptions() {
+        const container = document.getElementById("aircraftOptions");
+
+        if (!aircraftOptions || aircraftOptions.length === 0) {
+          // Also display empty legs if available
+          const emptyLegsHtml =
+            aircraftOptions.emptyLegs && aircraftOptions.emptyLegs.length > 0
+              ? `
+    <div class="mb-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-3">Empty Leg Deals</h3>
+      <div class="space-y-3">
+        ${aircraftOptions.emptyLegs
+          .slice(0, 3)
+          .map(
+            (leg, index) => `
+          <div class="aircraft-card p-4 cursor-pointer" onclick="selectEmptyLeg(${index})" id="empty-leg-${index}">
+            <div class="flex justify-between items-start mb-3">
+              <div class="flex-1">
+                <div class="flex items-center space-x-2 mb-2">
+                  <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">EMPTY LEG</span>
+                  <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">SAVE $${Math.round(leg.aircraft.price * 0.3).toLocaleString()}</span>
+                </div>
+                <h4 class="font-semibold text-gray-900">${leg.aircraft.acType}</h4>
+                <div class="text-sm text-gray-600">
+                  ${leg.from.fromCity} → ${leg.to.toCity}
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                  ${new Date(leg.from.dateFrom).toLocaleDateString()} - ${new Date(leg.to.dateTo).toLocaleDateString()}
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="price-display text-green-600">$${parseInt(leg.aircraft.price).toLocaleString()}</div>
+                <div class="text-xs text-gray-500 line-through">$${Math.round(parseInt(leg.aircraft.price) * 1.3).toLocaleString()}</div>
+                <div class="text-xs text-gray-600">${leg.aircraft.seats} seats</div>
+              </div>
+            </div>
+          </div>
+        `,
+          )
+          .join("")}
+      </div>
+    </div>
+  `
+              : "";
+
+          const standardOptionsHtml =
+            aircraftOptions.base && aircraftOptions.base.length > 0
+              ? `
+    <div class="mb-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-3">Standard Charter Options</h3>
+      <div class="space-y-3">
+        ${aircraftOptions.base
+          .map(
+            (option, index) => `
+            <div class="aircraft-card p-4 cursor-pointer" onclick="selectAircraft(${index})" id="aircraft-card-${index}">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-gray-900 mb-1">${option.aircraftCategory}</h3>
+                        <div class="flex items-center space-x-4 text-sm text-gray-600">
+                            <span>Max ${option.maxPax} passengers</span>
+                            <span>•</span>
+                            <span>${option.totalFlightTime} flight time</span>
+                            <span>•</span>
+                            <span>${option.range}nm range</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="price-display">${option.currencySymbol}${option.price.toLocaleString()}</div>
+                        <div class="text-xs text-gray-500">Estimated price</div>
+                        <div class="text-xs text-gray-600 mt-1">${option.currencySymbol}${Math.round(option.price / option.maxPax).toLocaleString()} per person</div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="text-sm font-medium text-gray-700 mb-2">Available Aircraft:</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        ${option.aircraftDetails
+                          .slice(0, 4)
+                          .map(
+                            (ac) => `
+                            <div class="flex items-center space-x-2 bg-gray-50 p-2 rounded">
+                                <div class="aircraft-image">
+                                    <img src="${ac.image || "https://via.placeholder.com/60x40/f3f4f6/6b7280?text=Jet"}" 
+                                         alt="${ac.aircraftName}" 
+                                         class="w-full h-full object-cover rounded"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="hidden items-center justify-center w-full h-full text-xs">Jet</div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-xs font-medium text-gray-700">${ac.aircraftName}</div>
+                                    <div class="text-xs text-gray-500">${ac.price_cat} • ${ac.search_cat}</div>
+                                </div>
+                            </div>
+                        `,
+                          )
+                          .join("")}
+                    </div>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="radio" name="aircraft" value="${index}" id="aircraft-${index}" class="mr-2">
+                    <label for="aircraft-${index}" class="text-sm font-medium text-gray-700 cursor-pointer">
+                        Select ${option.aircraftCategory}
+                    </label>
+                </div>
+            </div>
+          `,
+          )
+          .join("")}
+      </div>
+    </div>
+  `
+              : "";
+
+          // Also show operator-specific tails if available
+          const tailsHtml =
+            aircraftOptions.tails && aircraftOptions.tails.length > 0
+              ? `
+    <div>
+      <h3 class="text-lg font-semibold text-gray-900 mb-3">Specific Aircraft Available</h3>
+      <div class="space-y-3">
+        ${aircraftOptions.tails
+          .slice(0, 3)
+          .map(
+            (tail, index) => `
+          <div class="aircraft-card p-4 cursor-pointer" onclick="selectTail(${index})" id="tail-${index}">
+            <div class="flex justify-between items-start mb-3">
+              <div class="flex-1">
+                <h4 class="font-semibold text-gray-900">${tail.aircraftType}</h4>
+                <div class="text-sm text-gray-600">Tail: ${tail.tail}</div>
+                <div class="text-sm text-gray-600">Flight time: ${tail.totalFlighTime}</div>
+                ${tail.fuelStop > 0 ? `<div class="text-xs text-orange-600">${tail.fuelStop} fuel stop required</div>` : ""}
+              </div>
+              <div class="text-right">
+                <div class="price-display">${tail.price.outputcurrency}${tail.price.outPutTotalAmount.toLocaleString()}</div>
+                <div class="text-xs text-gray-500">Hourly rate: ${tail.price.outputcurrency}${tail.rate.toLocaleString()}</div>
+                ${
+                  tail.price.showPriceBreakdown
+                    ? `
+                  <button onclick="event.stopPropagation(); showPriceBreakdown(${index})" class="text-xs text-blue-600 hover:text-blue-800 mt-1">
+                    View breakdown
+                  </button>
+                `
+                    : ""
+                }
+              </div>
+            </div>
+          </div>
+        `,
+          )
+          .join("")}
+      </div>
+    </div>
+  `
+              : "";
+
+          container.innerHTML = emptyLegsHtml + standardOptionsHtml + tailsHtml;
+        }
+        document.getElementById(`aircraft-${index}`).checked = true;
+        document.getElementById("proceedBtn").disabled = false;
+
+        // Update UI to show selection
+        document
+          .querySelectorAll(".aircraft-card")
+          .forEach((card) => card.classList.remove("selected"));
+        document
+          .getElementById(`aircraft-card-${index}`)
+          .classList.add("selected");
+
+        // Update flight summary
+        updateFlightSummary();
+      }
+
+      function selectEmptyLeg(index) {
+        selectedAircraft = aircraftOptions.emptyLegs[index];
+        selectedAircraft.type = "emptyLeg";
+        document.getElementById("proceedBtn").disabled = false;
+
+        // Update UI to show selection
+        document
+          .querySelectorAll(".aircraft-card")
+          .forEach((card) => card.classList.remove("selected"));
+        document.getElementById(`empty-leg-${index}`).classList.add("selected");
+
+        // Update flight summary
+        updateFlightSummary();
+      }
+
+      function selectTail(index) {
+        selectedAircraft = aircraftOptions.tails[index];
+        selectedAircraft.type = "tail";
+        document.getElementById("proceedBtn").disabled = false;
+
+        // Update UI to show selection
+        document
+          .querySelectorAll(".aircraft-card")
+          .forEach((card) => card.classList.remove("selected"));
+        document.getElementById(`tail-${index}`).classList.add("selected");
+
+        // Update flight summary
+        updateFlightSummary();
+      }
+
+      function showPriceBreakdown(index) {
+        const tail = aircraftOptions.tails[index];
+        const breakdown = tail.price.breakdown;
+
+        alert(
+          `Price Breakdown:\n\n${breakdown
+            .map(
+              (item) =>
+                `${item.description}: ${tail.price.outputcurrency}${item.amount.toLocaleString()}`,
+            )
+            .join(
+              "\n",
+            )}\n\nTotal: ${tail.price.outputcurrency}${tail.price.outPutTotalAmount.toLocaleString()}`,
+        );
+      }
+
+      function updateFlightSummary() {
+        const summary = document.getElementById("flightSummary");
+        if (!selectedAircraft) return;
+
+        let aircraftInfo = "";
+        let priceInfo = "";
+
+        if (selectedAircraft.type === "emptyLeg") {
+          aircraftInfo = `${selectedAircraft.aircraft.acType} (Empty Leg Deal)`;
+          priceInfo = `$${parseInt(selectedAircraft.aircraft.price).toLocaleString()}`;
+        } else if (selectedAircraft.type === "tail") {
+          aircraftInfo = `${selectedAircraft.aircraftType} (Tail: ${selectedAircraft.tail})`;
+          priceInfo = `${selectedAircraft.price.outputcurrency}${selectedAircraft.price.outPutTotalAmount.toLocaleString()}`;
+        } else {
+          aircraftInfo = selectedAircraft.aircraftCategory;
+          priceInfo = `${selectedAircraft.currencySymbol}${selectedAircraft.price.toLocaleString()}`;
+        }
+
+        summary.innerHTML = `
+                <div class="space-y-2 text-sm">
+                    <div><strong>Route:</strong> ${searchData.from.name} → ${searchData.to.name}</div>
+                    <div><strong>Date:</strong> ${new Date(document.getElementById("dateInput").value).toLocaleString()}</div>
+                    <div><strong>Passengers:</strong> ${document.getElementById("paxInput").value}</div>
+                    <div><strong>Aircraft:</strong> ${aircraftInfo}</div>
+                    <div><strong>Price:</strong> ${priceInfo}</div>
+                    ${selectedAircraft.type === "emptyLeg" ? '<div class="text-green-600"><strong>Special:</strong> Empty leg discount applied</div>' : ""}
+                </div>
+            `;
+      }
+
+      async function handleSubmitDetails(e) {
+        e.preventDefault();
+
+        showLoading();
+
+        try {
+          const payload = {
+            owner: { id: CLIENT_ID },
+            choices: [
+              {
+                price: selectedAircraft.price.toString(),
+                category: selectedAircraft.aircraftCategory,
+                tailId: selectedAircraft.aircraftDetails[0]?.aircraftId || 0,
+              },
+            ],
+            haves: selectedAircraft.aircraftDetails.map((ac) => ac.aircraftId),
+            journey: [
+              {
+                depTime: document.getElementById("dateInput").value,
+                pax: parseInt(document.getElementById("paxInput").value),
+                from: {
+                  lat: searchData.from.lat || 0,
+                  long: searchData.from.long || 0,
+                  name: searchData.from.name,
+                  timeZone: "America/New_York", // Should be dynamic based on airport
+                },
+                to: {
+                  lat: searchData.to.lat || 0,
+                  long: searchData.to.long || 0,
+                  name: searchData.to.name,
+                  timeZone: "America/New_York", // Should be dynamic based on airport
+                },
+              },
+            ],
+            customer: {
+              name: document.getElementById("nameInput").value,
+              email: document.getElementById("emailInput").value,
+              phone: document.getElementById("phoneInput").value,
+              message: document.getElementById("messageInput").value,
+            },
+          };
+
+          const response = await fetch(`${API_BASE}/Sendrequest`, {
+            method: "POST",
+            headers: {
+              accept: "application/json",
+              "X-Api-Key": API_KEY,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) throw new Error("Failed to submit request");
+
+          const result = await response.json();
+
+          if (result.success) {
+            showSuccess();
+          } else {
+            showError("Request failed: " + result.message);
+          }
+        } catch (error) {
+          showError("Failed to submit request: " + error.message);
+        } finally {
+          hideLoading();
+        }
+      }
+
+      function goToStep(step) {
+        // Hide all steps
+        document.getElementById("searchStep").classList.add("hidden");
+        document.getElementById("optionsStep").classList.add("hidden");
+        document.getElementById("detailsStep").classList.add("hidden");
+
+        // Show current step
+        if (step === 1) {
+          document.getElementById("searchStep").classList.remove("hidden");
+        } else if (step === 2) {
+          document.getElementById("optionsStep").classList.remove("hidden");
+        } else if (step === 3) {
+          document.getElementById("detailsStep").classList.remove("hidden");
+          updateFlightSummary();
+        }
+
+        // Update step indicators
+        for (let i = 1; i <= 3; i++) {
+          const indicator = document.getElementById(`step${i}`);
+          indicator.classList.remove("active", "completed");
+
+          if (i < step) {
+            indicator.classList.add("completed");
+          } else if (i === step) {
+            indicator.classList.add("active");
+          } else {
+            indicator.classList.add("bg-gray-300");
+          }
+        }
+
+        currentStep = step;
+      }
+
+      function goBackToSearch() {
+        goToStep(1);
+      }
+
+      function goBackToOptions() {
+        goToStep(2);
+      }
+
+      function proceedToDetails() {
+        if (!selectedAircraft) {
+          showError("Please select an aircraft option");
+          return;
+        }
+        goToStep(3);
+      }
+
+      function showLoading() {
+        document.getElementById("loadingOverlay").classList.remove("hidden");
+      }
+
+      function hideLoading() {
+        document.getElementById("loadingOverlay").classList.add("hidden");
+      }
+
+      function showError(message) {
+        const errorDiv = document.getElementById("errorMessage");
+        const errorText = document.getElementById("errorText");
+        errorText.textContent = message;
+        errorDiv.classList.remove("hidden");
+
+        setTimeout(() => {
+          errorDiv.classList.add("hidden");
+        }, 5000);
+      }
+
+      function showSuccess() {
+        // Hide all steps
+        document.getElementById("searchStep").classList.add("hidden");
+        document.getElementById("optionsStep").classList.add("hidden");
+        document.getElementById("detailsStep").classList.add("hidden");
+
+        // Show success message
+        document.getElementById("successMessage").classList.remove("hidden");
+
+        // Update step indicators to completed
+        for (let i = 1; i <= 3; i++) {
+          document.getElementById(`step${i}`).classList.remove("active");
+          document.getElementById(`step${i}`).classList.add("completed");
+        }
+      }
+    </script>
+  </body>
+</html>

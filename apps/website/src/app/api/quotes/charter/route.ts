@@ -8,6 +8,109 @@ function generateReferenceNumber(): string {
   return `PEX-QT-${year}-${random}`;
 }
 
+// Map region/country to IANA timezone
+function getTimezoneFromRegion(
+  regionCode: string,
+  countryCode: string,
+): string {
+  // Common timezone mappings by country
+  const countryTimezones: Record<string, string> = {
+    US: "America/New_York",
+    CA: "America/Toronto",
+    GB: "Europe/London",
+    NG: "Africa/Lagos",
+    ZA: "Africa/Johannesburg",
+    AE: "Asia/Dubai",
+    SG: "Asia/Singapore",
+    AU: "Australia/Sydney",
+    DE: "Europe/Berlin",
+    FR: "Europe/Paris",
+    IT: "Europe/Rome",
+    ES: "Europe/Madrid",
+    BR: "America/Sao_Paulo",
+    MX: "America/Mexico_City",
+    JP: "Asia/Tokyo",
+    CN: "Asia/Shanghai",
+    IN: "Asia/Kolkata",
+    KE: "Africa/Nairobi",
+    EG: "Africa/Cairo",
+    GH: "Africa/Accra",
+  };
+
+  // US region-specific timezones
+  if (countryCode === "US") {
+    const usRegionTimezones: Record<string, string> = {
+      "US-CA": "America/Los_Angeles",
+      "US-WA": "America/Los_Angeles",
+      "US-OR": "America/Los_Angeles",
+      "US-NV": "America/Los_Angeles",
+      "US-AZ": "America/Phoenix",
+      "US-CO": "America/Denver",
+      "US-TX": "America/Chicago",
+      "US-IL": "America/Chicago",
+      "US-NY": "America/New_York",
+      "US-FL": "America/New_York",
+      "US-GA": "America/New_York",
+      "US-NJ": "America/New_York",
+      "US-MA": "America/New_York",
+    };
+    return usRegionTimezones[regionCode] || "America/New_York";
+  }
+
+  return countryTimezones[countryCode] || "UTC";
+}
+
+// Format airport name for InstaCharter (e.g., "Lagos (DNMM)")
+function formatAirportName(airport: any): string {
+  const code = airport.icaoCode || airport.iataCode || airport.ident;
+  const name = airport.municipality || airport.name;
+  return `${name} (${code})`;
+}
+
+// Send request to InstaCharter API
+async function sendToInstaCharter(
+  payload: any,
+): Promise<{ success: boolean; error?: string }> {
+  const apiKey = process.env.INSTACHARTER_API_KEY;
+  const ownerId = process.env.INSTACHARTER_OWNER_ID;
+
+  if (!apiKey || !ownerId) {
+    console.log("[InstaCharter] API credentials not configured, skipping");
+    return { success: false, error: "InstaCharter credentials not configured" };
+  }
+
+  try {
+    const response = await fetch(
+      "https://server.instacharter.app/api/Markets/Sendrequest",
+      {
+        method: "POST",
+        headers: {
+          accept: "*/*",
+          "X-Api-Key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          owner: { id: ownerId },
+          ...payload,
+        }),
+      },
+    );
+
+    const data = await response.json();
+
+    if (data.success) {
+      console.log("[InstaCharter] ✓ Request sent successfully");
+      return { success: true };
+    } else {
+      console.error("[InstaCharter] ✗ API error:", data.message);
+      return { success: false, error: data.message };
+    }
+  } catch (error: any) {
+    console.error("[InstaCharter] ✗ Request failed:", error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 // Map trip type from frontend to database enum
 function mapFlightType(
   tripType: string,
@@ -26,7 +129,15 @@ function mapFlightType(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { searchData, selectedAircraft, contactInfo } = body;
+
+    // Extract selectedAircraft and contactInfo, rest is search data (flat structure)
+    const { selectedAircraft, contactInfo, ...searchData } = body;
+
+    console.log("[Charter API] Received body:", JSON.stringify(body, null, 2));
+    console.log(
+      "[Charter API] Extracted searchData:",
+      JSON.stringify(searchData, null, 2),
+    );
 
     // Validate required fields
     if (
@@ -41,12 +152,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!searchData?.flights || searchData.flights.length === 0) {
+    // Get flights array - either from flights field or construct from individual fields
+    let flights = searchData?.flights;
+    if (!flights || flights.length === 0) {
+      // Construct flights from individual fields (legacy/simple format)
+      if (searchData?.departureAirport || searchData?.from) {
+        flights = [
+          {
+            id: "1",
+            from: searchData.departureAirport || searchData.from,
+            to: searchData.destinationAirport || searchData.to,
+            date: searchData.departureDate || searchData.date,
+            time: searchData.departureTime || searchData.time || "12:00",
+            returnDate: searchData.returnDate,
+            returnTime: searchData.returnTime,
+          },
+        ];
+      }
+    }
+
+    if (!flights || flights.length === 0) {
       return NextResponse.json(
         { error: "At least one flight leg is required" },
         { status: 400 },
       );
     }
+
+    console.log(
+      "[Charter API] Flights to process:",
+      JSON.stringify(flights, null, 2),
+    );
 
     // Find or create client by phone (WhatsApp number is unique identifier)
     // IMPORTANT: First name used with a WhatsApp number persists forever
@@ -75,8 +210,8 @@ export async function POST(request: NextRequest) {
 
     // Parse flights and find airport IDs
     const flightLegs = [];
-    for (let i = 0; i < searchData.flights.length; i++) {
-      const flight = searchData.flights[i];
+    for (let i = 0; i < flights.length; i++) {
+      const flight = flights[i];
 
       // Extract airport codes from the "CODE - City" format
       const fromCode = flight.from?.split(" - ")[0]?.trim();
@@ -213,6 +348,82 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Send to InstaCharter API
+    try {
+      // Build journey array from charter quote legs
+      const journey = charterQuote.legs.map((leg: any) => {
+        const depAirport = leg.departureAirport;
+        const arrAirport = leg.arrivalAirport;
+
+        return {
+          depTime: leg.departureDateTime.toISOString(),
+          pax: charterQuote.passengerCount,
+          from: {
+            lat: depAirport.latitude,
+            long: depAirport.longitude,
+            name: formatAirportName(depAirport),
+            timeZone: getTimezoneFromRegion(
+              depAirport.regionCode,
+              depAirport.countryCode,
+            ),
+          },
+          to: {
+            lat: arrAirport.latitude,
+            long: arrAirport.longitude,
+            name: formatAirportName(arrAirport),
+            timeZone: getTimezoneFromRegion(
+              arrAirport.regionCode,
+              arrAirport.countryCode,
+            ),
+          },
+        };
+      });
+
+      // Build choices array from selected aircraft
+      const choices =
+        selectedAircraft?.map((aircraft: any) => ({
+          price: aircraft.hourlyRateUsd?.toString() || "0",
+          category: aircraft.type || aircraft.category || "Unknown",
+          tailId: 0, // Not applicable for category selection
+        })) || [];
+
+      // Build customer object
+      const customer = {
+        name: `${contactInfo.firstName} ${contactInfo.lastName}`,
+        email: contactInfo.email,
+        phone: contactInfo.phone,
+        message:
+          contactInfo.notes ||
+          `Charter quote request - Ref: ${charterQuote.referenceNumber}`,
+      };
+
+      // Send to InstaCharter
+      const instaCharterPayload = {
+        choices,
+        journey,
+        customer,
+      };
+
+      console.log(
+        "[InstaCharter] Sending payload:",
+        JSON.stringify(instaCharterPayload, null, 2),
+      );
+
+      const instaResult = await sendToInstaCharter(instaCharterPayload);
+
+      if (instaResult.success) {
+        console.log("[InstaCharter] ✓ Lead created successfully");
+      } else {
+        console.log(
+          "[InstaCharter] ✗ Failed to create lead:",
+          instaResult.error,
+        );
+      }
+    } catch (instaCharterError: any) {
+      console.error("[InstaCharter] Error:", instaCharterError.message);
+      // Don't fail the request if InstaCharter fails
+    }
+
     // Send WhatsApp notification to all admins
     try {
       const admins = await prisma.admin.findMany({
@@ -221,25 +432,41 @@ export async function POST(request: NextRequest) {
 
       console.log(`[WhatsApp] Found ${admins.length} admins to notify`);
 
-      // Get first leg details for the message
-      const firstLeg = charterQuote.legs[0];
-      const departureCode =
-        firstLeg?.departureAirport?.icaoCode ||
-        firstLeg?.departureAirport?.iataCode ||
-        "N/A";
-      const arrivalCode =
-        firstLeg?.arrivalAirport?.icaoCode ||
-        firstLeg?.arrivalAirport?.iataCode ||
-        "N/A";
+      // Build itinerary details for each leg
+      const formatDateTime = (date: Date) => {
+        return date.toLocaleString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      };
+
+      let itineraryText = "";
+      for (let i = 0; i < charterQuote.legs.length; i++) {
+        const leg = charterQuote.legs[i];
+        const depAirport = leg.departureAirport;
+        const arrAirport = leg.arrivalAirport;
+        const depCode = depAirport?.icaoCode || depAirport?.iataCode || "N/A";
+        const arrCode = arrAirport?.icaoCode || arrAirport?.iataCode || "N/A";
+        const depCity = depAirport?.municipality || depAirport?.name || depCode;
+        const arrCity = arrAirport?.municipality || arrAirport?.name || arrCode;
+
+        itineraryText += `\n*Trip ${i + 1}:* ${depCity} → ${arrCity}`;
+        itineraryText += `\n   ${depCode} → ${arrCode}`;
+        itineraryText += `\n   ${formatDateTime(leg.departureDateTime)}`;
+      }
 
       const message =
         `🛩️ *New Charter Quote Request*\n\n` +
-        `Reference: ${charterQuote.referenceNumber}\n` +
-        `Client: ${charterQuote.clientName}\n` +
-        `Phone: ${charterQuote.clientPhone}\n` +
-        `Route: ${departureCode} → ${arrivalCode}\n` +
-        `Type: ${charterQuote.flightType.replace("_", " ")}\n` +
-        `Passengers: ${charterQuote.passengerCount}\n\n` +
+        `*Reference:* ${charterQuote.referenceNumber}\n` +
+        `*Client:* ${charterQuote.clientName}\n` +
+        `*Phone:* ${charterQuote.clientPhone}\n` +
+        `*Type:* ${charterQuote.flightType.replace("_", " ")}\n` +
+        `*Passengers:* ${charterQuote.passengerCount}\n\n` +
+        `*Flight Itinerary:*${itineraryText}\n\n` +
         `Please review in the admin dashboard.`;
 
       // Check Twilio credentials

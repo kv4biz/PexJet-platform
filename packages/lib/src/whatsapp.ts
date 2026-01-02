@@ -4,7 +4,21 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || "+14155238886";
 
-const client = twilio(accountSid, authToken);
+let cachedClient: ReturnType<typeof twilio> | null = null;
+
+function getTwilioClient(): ReturnType<typeof twilio> {
+  if (!accountSid || !authToken) {
+    throw new Error(
+      "Twilio credentials not configured. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.",
+    );
+  }
+
+  if (!cachedClient) {
+    cachedClient = twilio(accountSid, authToken);
+  }
+
+  return cachedClient;
+}
 
 interface WhatsAppMessage {
   to: string;
@@ -18,7 +32,7 @@ interface WhatsAppMessage {
 function formatWhatsAppNumber(phone: string): string {
   // Remove all non-digit characters except +
   let formatted = phone.replace(/[^\d+]/g, "");
-  
+
   // Ensure it starts with +
   if (!formatted.startsWith("+")) {
     // Assume Nigerian number if starts with 0
@@ -28,7 +42,7 @@ function formatWhatsAppNumber(phone: string): string {
       formatted = "+" + formatted;
     }
   }
-  
+
   return `whatsapp:${formatted}`;
 }
 
@@ -39,8 +53,13 @@ export async function sendWhatsAppMessage({
   to,
   message,
   mediaUrl,
-}: WhatsAppMessage): Promise<{ success: boolean; sid?: string; error?: string }> {
+}: WhatsAppMessage): Promise<{
+  success: boolean;
+  sid?: string;
+  error?: string;
+}> {
   try {
+    const client = getTwilioClient();
     const messageOptions: any = {
       from: `whatsapp:${whatsappNumber}`,
       to: formatWhatsAppNumber(to),
@@ -52,7 +71,7 @@ export async function sendWhatsAppMessage({
     }
 
     const result = await client.messages.create(messageOptions);
-    
+
     return { success: true, sid: result.sid };
   } catch (error: any) {
     console.error("WhatsApp send error:", error);
@@ -65,10 +84,10 @@ export async function sendWhatsAppMessage({
  */
 export async function sendOTPWhatsApp(
   phone: string,
-  otp: string
+  otp: string,
 ): Promise<{ success: boolean; error?: string }> {
   const message = `Your PexJet verification code is: ${otp}\n\nThis code expires in 10 minutes. Do not share this code with anyone.`;
-  
+
   return sendWhatsAppMessage({ to: phone, message });
 }
 
@@ -84,7 +103,7 @@ export async function notifyAdminsNewQuote(
     departure: string;
     arrival: string;
     date: string;
-  }
+  },
 ): Promise<void> {
   const message = `🛩️ *New Charter Quote Request*
 
@@ -112,7 +131,7 @@ export async function sendQuoteApprovalNotification(
     paymentDeadline: string;
     paymentLink: string;
   },
-  documentUrl?: string
+  documentUrl?: string,
 ): Promise<{ success: boolean; error?: string }> {
   const message = `✅ *Quote Approved - PexJet*
 
@@ -141,7 +160,7 @@ export async function sendQuoteRejectionNotification(
     referenceNumber: string;
     reason: string;
     note?: string;
-  }
+  },
 ): Promise<{ success: boolean; error?: string }> {
   let message = `❌ *Quote Update - PexJet*
 
@@ -172,7 +191,7 @@ export async function sendPaymentConfirmation(
     flightDetails: string;
   },
   receiptUrl?: string,
-  flightDocUrl?: string
+  flightDocUrl?: string,
 ): Promise<{ success: boolean; error?: string }> {
   const message = `🎉 *Payment Confirmed - PexJet*
 
@@ -188,8 +207,12 @@ Your flight confirmation documents have been sent to your email.
 Safe travels! ✈️`;
 
   // Send message with receipt
-  const result = await sendWhatsAppMessage({ to: phone, message, mediaUrl: receiptUrl });
-  
+  const result = await sendWhatsAppMessage({
+    to: phone,
+    message,
+    mediaUrl: receiptUrl,
+  });
+
   // Send flight document separately if provided
   if (flightDocUrl && result.success) {
     await sendWhatsAppMessage({
@@ -198,7 +221,7 @@ Safe travels! ✈️`;
       mediaUrl: flightDocUrl,
     });
   }
-  
+
   return result;
 }
 
@@ -214,7 +237,7 @@ export async function sendEmptyLegNotification(
     price: string;
     seatsAvailable: number;
     link: string;
-  }
+  },
 ): Promise<void> {
   const message = `✨ *New Empty Leg Deal - PexJet*
 
@@ -240,7 +263,7 @@ export async function sendAnnouncement(
     title: string;
     message: string;
     imageUrl?: string;
-  }
+  },
 ): Promise<void> {
   const message = `📢 *${announcement.title}*
 
@@ -255,4 +278,118 @@ ${announcement.message}
       mediaUrl: announcement.imageUrl,
     });
   }
+}
+
+/**
+ * Send quote approval with bank transfer details (no Paystack)
+ */
+export async function sendQuoteApprovalWithBankDetails(
+  phone: string,
+  details: {
+    clientName: string;
+    referenceNumber: string;
+    totalPrice: string;
+    paymentDeadline: string;
+    flightSummary: string;
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    sortCode?: string;
+  },
+  documentUrl?: string,
+): Promise<{ success: boolean; error?: string }> {
+  const message = `✅ *Quote Approved - PexJet*
+
+Dear ${details.clientName},
+
+Your charter quote has been approved!
+
+📋 Reference: ${details.referenceNumber}
+💰 Total: ${details.totalPrice}
+
+✈️ *Flight Details:*
+${details.flightSummary}
+
+🏦 *Payment Details (Bank Transfer):*
+Bank: ${details.bankName}
+Account Name: ${details.accountName}
+Account Number: ${details.accountNumber}${details.sortCode ? `\nSort Code: ${details.sortCode}` : ""}
+
+⏰ Payment Deadline: ${details.paymentDeadline}
+
+📤 After payment, please send your receipt to this WhatsApp number.
+
+Thank you for choosing PexJet!`;
+
+  return sendWhatsAppMessage({ to: phone, message, mediaUrl: documentUrl });
+}
+
+/**
+ * Notify admins when client uploads receipt
+ */
+export async function notifyAdminsReceiptUploaded(
+  adminPhones: string[],
+  details: {
+    referenceNumber: string;
+    clientName: string;
+    clientPhone: string;
+    quoteType: string;
+  },
+): Promise<void> {
+  const message = `📧 *Receipt Uploaded*
+
+Reference: ${details.referenceNumber}
+Client: ${details.clientName}
+Phone: ${details.clientPhone}
+Type: ${details.quoteType}
+
+Please review and confirm payment in the admin dashboard.`;
+
+  for (const phone of adminPhones) {
+    await sendWhatsAppMessage({ to: phone, message });
+  }
+}
+
+/**
+ * Send flight confirmation to client
+ */
+export async function sendFlightConfirmation(
+  phone: string,
+  details: {
+    clientName: string;
+    referenceNumber: string;
+    flightDetails: string;
+  },
+  flightDocUrl?: string,
+  receiptUrl?: string,
+): Promise<{ success: boolean; error?: string }> {
+  const message = `🎉 *Flight Confirmed - PexJet*
+
+Dear ${details.clientName},
+
+Your flight is confirmed! ✈️
+
+📋 Reference: ${details.referenceNumber}
+
+${details.flightDetails}
+
+Your documents are attached. Safe travels!
+
+- PexJet Team`;
+
+  const result = await sendWhatsAppMessage({
+    to: phone,
+    message,
+    mediaUrl: flightDocUrl,
+  });
+
+  if (receiptUrl && result.success) {
+    await sendWhatsAppMessage({
+      to: phone,
+      message: "📄 Your payment receipt:",
+      mediaUrl: receiptUrl,
+    });
+  }
+
+  return result;
 }

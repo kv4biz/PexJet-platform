@@ -20,6 +20,28 @@ export async function GET(
 
     const aircraft = await prisma.aircraft.findUnique({
       where: { id: params.id },
+      select: {
+        id: true,
+        name: true,
+        manufacturer: true,
+        category: true,
+        availability: true,
+        image: true,
+        minPax: true,
+        maxPax: true,
+        baggageCuFt: true,
+        rangeNm: true,
+        cruiseSpeedKnots: true,
+        fuelCapacityGal: true,
+        cabinLengthFt: true,
+        cabinWidthFt: true,
+        cabinHeightFt: true,
+        exteriorLengthFt: true,
+        exteriorWingspanFt: true,
+        exteriorHeightFt: true,
+        basePricePerHour: true as any,
+        createdAt: true,
+      },
     });
 
     if (!aircraft) {
@@ -57,25 +79,23 @@ export async function PUT(
     const body = await request.json();
     const {
       name,
-      model,
       manufacturer,
       category,
       availability,
-      passengerCapacityMin,
-      passengerCapacityMax,
+      image,
+      minPax,
+      maxPax,
+      baggageCuFt,
       rangeNm,
       cruiseSpeedKnots,
-      baggageCapacityCuFt,
       fuelCapacityGal,
       cabinLengthFt,
       cabinWidthFt,
       cabinHeightFt,
-      lengthFt,
-      wingspanFt,
-      heightFt,
-      yearOfManufacture,
-      hourlyRateUsd,
-      description,
+      exteriorLengthFt,
+      exteriorWingspanFt,
+      exteriorHeightFt,
+      basePricePerHour,
     } = body;
 
     const existing = await prisma.aircraft.findUnique({
@@ -93,23 +113,25 @@ export async function PUT(
       where: { id: params.id },
       data: {
         ...(name && { name }),
-        ...(model && { model }),
         ...(manufacturer && { manufacturer }),
         ...(category && { category }),
         ...(availability && { availability }),
-        ...(passengerCapacityMin !== undefined && {
-          passengerCapacityMin: parseInt(passengerCapacityMin),
+        ...(image !== undefined && { image: image || null }),
+        ...(minPax !== undefined && {
+          minPax: minPax ? parseInt(minPax) : null,
         }),
-        ...(passengerCapacityMax !== undefined && {
-          passengerCapacityMax: parseInt(passengerCapacityMax),
+        ...(maxPax !== undefined && {
+          maxPax: maxPax ? parseInt(maxPax) : null,
         }),
-        ...(rangeNm !== undefined && { rangeNm: parseInt(rangeNm) }),
+        ...(baggageCuFt !== undefined && {
+          baggageCuFt: baggageCuFt ? parseFloat(baggageCuFt) : null,
+        }),
+        ...(rangeNm !== undefined && {
+          rangeNm: rangeNm ? parseFloat(rangeNm) : null,
+        }),
         ...(cruiseSpeedKnots !== undefined && {
-          cruiseSpeedKnots: parseInt(cruiseSpeedKnots),
-        }),
-        ...(baggageCapacityCuFt !== undefined && {
-          baggageCapacityCuFt: baggageCapacityCuFt
-            ? parseFloat(baggageCapacityCuFt)
+          cruiseSpeedKnots: cruiseSpeedKnots
+            ? parseFloat(cruiseSpeedKnots)
             : null,
         }),
         ...(fuelCapacityGal !== undefined && {
@@ -124,24 +146,48 @@ export async function PUT(
         ...(cabinHeightFt !== undefined && {
           cabinHeightFt: cabinHeightFt ? parseFloat(cabinHeightFt) : null,
         }),
-        ...(lengthFt !== undefined && {
-          lengthFt: lengthFt ? parseFloat(lengthFt) : null,
-        }),
-        ...(wingspanFt !== undefined && {
-          wingspanFt: wingspanFt ? parseFloat(wingspanFt) : null,
-        }),
-        ...(heightFt !== undefined && {
-          heightFt: heightFt ? parseFloat(heightFt) : null,
-        }),
-        ...(yearOfManufacture !== undefined && {
-          yearOfManufacture: yearOfManufacture
-            ? parseInt(yearOfManufacture)
+        ...(exteriorLengthFt !== undefined && {
+          exteriorLengthFt: exteriorLengthFt
+            ? parseFloat(exteriorLengthFt)
             : null,
         }),
-        ...(hourlyRateUsd !== undefined && {
-          hourlyRateUsd: hourlyRateUsd ? parseFloat(hourlyRateUsd) : null,
+        ...(exteriorWingspanFt !== undefined && {
+          exteriorWingspanFt: exteriorWingspanFt
+            ? parseFloat(exteriorWingspanFt)
+            : null,
         }),
-        ...(description !== undefined && { description: description || null }),
+        ...(exteriorHeightFt !== undefined && {
+          exteriorHeightFt: exteriorHeightFt
+            ? parseFloat(exteriorHeightFt)
+            : null,
+        }),
+        ...(basePricePerHour !== undefined && {
+          basePricePerHour: basePricePerHour
+            ? (parseFloat(basePricePerHour) as any)
+            : null,
+        }),
+      },
+      select: {
+        id: true,
+        name: true,
+        manufacturer: true,
+        category: true,
+        availability: true,
+        image: true,
+        minPax: true,
+        maxPax: true,
+        baggageCuFt: true,
+        rangeNm: true,
+        cruiseSpeedKnots: true,
+        fuelCapacityGal: true,
+        cabinLengthFt: true,
+        cabinWidthFt: true,
+        cabinHeightFt: true,
+        exteriorLengthFt: true,
+        exteriorWingspanFt: true,
+        exteriorHeightFt: true,
+        basePricePerHour: true as any,
+        createdAt: true,
       },
     });
 

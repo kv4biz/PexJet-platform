@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from "react";
 import { LoadingAnimation } from "./LoadingAnimation";
 import { MultiStepForm } from "./MultiStepForm";
-import { FlightSummary } from "./FlightSummary";
 import { charterPageData } from "@/data";
 import { Button, useToast } from "@pexjet/ui";
 
@@ -37,7 +36,7 @@ export function MultiStepFormSection() {
           setSearchDataProcessed(true);
 
           // Store the search data and trigger animation
-          setFormData({ searchData });
+          setFormData(searchData);
           setShowLoading(true);
           setShowForm(false);
           setHasProcessedSearch(true);
@@ -50,16 +49,6 @@ export function MultiStepFormSection() {
             setShowLoading(false);
             setShowForm(true);
             setCurrentStep(1);
-
-            // Scroll to this section
-            setTimeout(() => {
-              const element = document.getElementById(
-                "multi-step-form-section",
-              );
-              if (element) {
-                element.scrollIntoView({ behavior: "smooth", block: "start" });
-              }
-            }, 100);
           }, 8000);
         } catch (error) {
           console.error("Error parsing stored search data:", error);
@@ -92,7 +81,7 @@ export function MultiStepFormSection() {
         searchData,
       );
 
-      setFormData({ searchData });
+      setFormData(searchData);
       setShowLoading(true);
       setShowForm(false);
       setHasProcessedSearch(true);
@@ -101,13 +90,6 @@ export function MultiStepFormSection() {
         setShowLoading(false);
         setShowForm(true);
         setCurrentStep(1);
-
-        setTimeout(() => {
-          const element = document.getElementById("multi-step-form-section");
-          if (element) {
-            element.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        }, 100);
       }, 8000);
     };
 
@@ -127,11 +109,21 @@ export function MultiStepFormSection() {
   const handleStep1Next = (data: any) => {
     setFormData({ ...formData, ...data });
     setCurrentStep(2);
+    // Scroll to top of form section so user can see step labels
+    const element = document.getElementById("multi-step-form-section");
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   const handleStep2Next = (data: any) => {
     setFormData({ ...formData, ...data });
     setCurrentStep(3);
+    // Scroll to top of form section so user can see step labels
+    const element = document.getElementById("multi-step-form-section");
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   const handleStep2Back = () => {
@@ -201,21 +193,24 @@ export function MultiStepFormSection() {
 
   return (
     <section id="multi-step-form-section" className="py-16 bg-white">
-      <div className="w-full lg:max-w-10/12 mx-auto px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Animation OR Multi-step Form */}
-          <div className="lg:col-span-2">
-            {showLoading && !showForm && (
-              <LoadingAnimation
-                onComplete={() => {
-                  setShowLoading(false);
-                  setShowForm(true);
-                  setCurrentStep(1);
-                }}
-              />
-            )}
+      <div className="w-full max-w-7xl mx-auto px-4">
+        {/* Loading Animation - Full Width */}
+        {showLoading && !showForm && (
+          <div className="flex justify-center">
+            <LoadingAnimation
+              onComplete={() => {
+                setShowLoading(false);
+                setShowForm(true);
+                setCurrentStep(1);
+              }}
+            />
+          </div>
+        )}
 
-            {showForm && !showLoading && (
+        {/* Form - Centered Layout */}
+        {showForm && !showLoading && (
+          <div className="flex justify-center w-full">
+            <div className="w-full max-w-4xl">
               <MultiStepForm
                 currentStep={currentStep}
                 formData={formData}
@@ -226,16 +221,9 @@ export function MultiStepFormSection() {
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
               />
-            )}
+            </div>
           </div>
-
-          {/* Right Column - Flight Summary */}
-          <div className="hidden lg:block lg:col-span-1">
-            {(showLoading || showForm) && (
-              <FlightSummary formData={formData} currentStep={currentStep} />
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Success Modal */}
         {showSuccessModal && (

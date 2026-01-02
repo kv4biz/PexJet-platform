@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "";
+    const source = searchParams.get("source") || "";
 
     const skip = (page - 1) * limit;
 
@@ -92,11 +93,17 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
+    if (source) {
+      where.source = source;
+    }
+
     if (search) {
       where.OR = [
         { slug: { contains: search, mode: "insensitive" } },
         { aircraft: { name: { contains: search, mode: "insensitive" } } },
-        { aircraft: { model: { contains: search, mode: "insensitive" } } },
+        {
+          aircraft: { manufacturer: { contains: search, mode: "insensitive" } },
+        },
         {
           departureAirport: { name: { contains: search, mode: "insensitive" } },
         },
@@ -131,6 +138,14 @@ export async function GET(request: NextRequest) {
             municipality: { contains: search, mode: "insensitive" },
           },
         },
+        // InstaCharter denormalized fields
+        { departureIcao: { contains: search, mode: "insensitive" } },
+        { departureCity: { contains: search, mode: "insensitive" } },
+        { arrivalIcao: { contains: search, mode: "insensitive" } },
+        { arrivalCity: { contains: search, mode: "insensitive" } },
+        { aircraftName: { contains: search, mode: "insensitive" } },
+        { aircraftType: { contains: search, mode: "insensitive" } },
+        { operatorName: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -145,11 +160,10 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               name: true,
-              model: true,
               manufacturer: true,
               category: true,
-              passengerCapacityMax: true,
-              thumbnailImage: true,
+              maxPax: true,
+              image: true,
             },
           },
           departureAirport: {
@@ -221,8 +235,8 @@ export async function POST(request: NextRequest) {
       arrivalAirportId,
       departureDateTime,
       totalSeats,
-      originalPriceUsd,
-      discountPriceUsd,
+      priceType,
+      priceUsd,
     } = body;
 
     // Validation
@@ -232,8 +246,8 @@ export async function POST(request: NextRequest) {
       !arrivalAirportId ||
       !departureDateTime ||
       !totalSeats ||
-      !originalPriceUsd ||
-      !discountPriceUsd
+      !priceType ||
+      (priceType === "FIXED" && !priceUsd)
     ) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -334,20 +348,21 @@ export async function POST(request: NextRequest) {
     const emptyLeg = await prisma.emptyLeg.create({
       data: {
         slug,
+        source: "ADMIN",
         aircraftId,
         departureAirportId,
         arrivalAirportId,
         departureDateTime: departureDT,
         totalSeats: parseInt(totalSeats),
         availableSeats: parseInt(totalSeats),
-        originalPriceUsd: parseFloat(originalPriceUsd),
-        discountPriceUsd: parseFloat(discountPriceUsd),
+        priceType: priceType,
+        priceUsd: priceType === "FIXED" ? parseFloat(priceUsd) : null,
         status: "PUBLISHED",
         createdByAdminId: payload.sub,
       },
       include: {
         aircraft: {
-          select: { name: true, model: true },
+          select: { name: true, manufacturer: true },
         },
         departureAirport: {
           select: { name: true, municipality: true, iataCode: true },
@@ -371,7 +386,7 @@ export async function POST(request: NextRequest) {
           slug,
           departureDateTime: departureDT.toISOString(),
           totalSeats,
-          discountPriceUsd,
+          priceUsd,
         },
       },
     });

@@ -1,6 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
 
+// Helper function to get airport by ICAO code
+async function getAirportByIcao(icao: string | null | undefined) {
+  if (!icao) {
+    return {
+      id: "",
+      name: "Unknown Airport",
+      city: "",
+      country: "",
+      code: "",
+      latitude: 0,
+      longitude: 0,
+    };
+  }
+
+  try {
+    const airport = await prisma.airport.findFirst({
+      where: { icaoCode: icao },
+      select: {
+        id: true,
+        name: true,
+        municipality: true,
+        countryCode: true,
+        iataCode: true,
+        icaoCode: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
+
+    if (airport) {
+      return {
+        id: airport.id,
+        name: airport.name,
+        city: airport.municipality || "",
+        country: airport.countryCode || "",
+        code: airport.iataCode || airport.icaoCode || "",
+        latitude: airport.latitude,
+        longitude: airport.longitude,
+      };
+    }
+  } catch (error) {
+    console.error(`Error finding airport by ICAO ${icao}:`, error);
+  }
+
+  // Fallback if not found
+  return {
+    id: "",
+    name: `${icao} Airport`,
+    city: "",
+    country: "",
+    code: icao,
+    latitude: 0,
+    longitude: 0,
+  };
+}
+
 // Haversine formula to calculate distance between two coordinates in km
 function calculateDistanceKm(
   lat1: number,
@@ -33,8 +89,9 @@ export async function GET(request: NextRequest) {
     const toRadius = parseInt(searchParams.get("toRadius") || "0");
     const minDiscount = parseInt(searchParams.get("minDiscount") || "0");
     const maxPrice = parseFloat(searchParams.get("maxPrice") || "0");
-    const date = searchParams.get("date");
-    const passengers = parseInt(searchParams.get("passengers") || "0");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    const priceType = searchParams.get("priceType");
 
     // Sorting
     const sortBy = searchParams.get("sortBy") || "date"; // date, price, discount, alphabetic, cheapest
@@ -50,28 +107,27 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    // Filter by date if provided - search ±3 days from selected date
-    if (date) {
-      const searchDate = new Date(date);
-      const startDate = new Date(searchDate);
-      startDate.setDate(startDate.getDate() - 3);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(searchDate);
-      endDate.setDate(endDate.getDate() + 4); // +4 to include the 3rd day fully
-      endDate.setHours(0, 0, 0, 0);
+    // Filter by date range if provided
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+
+      let end;
+      if (endDate) {
+        end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+      } else {
+        // Default to 90 days from start date if no end date provided
+        end = new Date(start);
+        end.setDate(end.getDate() + 90);
+        end.setHours(23, 59, 59, 999);
+      }
 
       // Ensure startDate is not in the past
       const now = new Date();
       where.departureDateTime = {
-        gte: startDate > now ? startDate : now,
-        lt: endDate,
-      };
-    }
-
-    // Filter by passengers
-    if (passengers > 0) {
-      where.availableSeats = {
-        gte: passengers,
+        gte: start > now ? start : now,
+        lte: end,
       };
     }
 
@@ -115,11 +171,9 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             manufacturer: true,
-            model: true,
             category: true,
-            passengerCapacityMax: true,
-            exteriorImages: true,
-            thumbnailImage: true,
+            maxPax: true,
+            image: true,
           },
         },
         createdByAdmin: {
@@ -131,63 +185,105 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Transform and filter data
-    let transformedLegs = emptyLegs.map((leg: any) => {
-      const discountPercent = Math.round(
-        ((leg.originalPriceUsd - leg.discountPriceUsd) / leg.originalPriceUsd) *
-          100,
-      );
+    console.log("Found empty legs:", emptyLegs.length);
+    console.log("Sample leg:", JSON.stringify(emptyLegs[0], null, 2));
 
-      return {
-        id: leg.id,
-        slug: leg.slug,
-        departureAirport: {
-          id: leg.departureAirport.id,
-          name: leg.departureAirport.name,
-          city: leg.departureAirport.municipality || "",
-          country: leg.departureAirport.country?.name || "",
-          code:
-            leg.departureAirport.iataCode ||
-            leg.departureAirport.icaoCode ||
-            "",
-          latitude: leg.departureAirport.latitude,
-          longitude: leg.departureAirport.longitude,
-        },
-        arrivalAirport: {
-          id: leg.arrivalAirport.id,
-          name: leg.arrivalAirport.name,
-          city: leg.arrivalAirport.municipality || "",
-          country: leg.arrivalAirport.country?.name || "",
-          code:
-            leg.arrivalAirport.iataCode || leg.arrivalAirport.icaoCode || "",
-          latitude: leg.arrivalAirport.latitude,
-          longitude: leg.arrivalAirport.longitude,
-        },
-        aircraft: {
-          id: leg.aircraft.id,
-          name: leg.aircraft.name,
-          manufacturer: leg.aircraft.manufacturer,
-          model: leg.aircraft.model,
-          category: leg.aircraft.category,
-          maxPassengers: leg.aircraft.passengerCapacityMax,
-          images: leg.aircraft.thumbnailImage
-            ? [leg.aircraft.thumbnailImage, ...leg.aircraft.exteriorImages]
-            : leg.aircraft.exteriorImages,
-        },
-        departureDate: leg.departureDateTime.toISOString(),
-        availableSeats: leg.availableSeats,
-        totalSeats: leg.totalSeats,
-        // Pricing (USD)
-        priceUsd: leg.discountPriceUsd,
-        originalPriceUsd: leg.originalPriceUsd,
-        discountPercent,
-        status: leg.status,
-        // Owner info
-        createdByAdminId: leg.createdByAdminId,
-        createdByOperatorId: leg.createdByOperatorId,
-        ownerType: leg.createdByOperatorId ? "operator" : "admin",
-      };
-    });
+    // Transform and filter data
+    let transformedLegs = await Promise.all(
+      emptyLegs.map(async (leg: any) => {
+        try {
+          // Handle pricing based on priceType and priceUsd
+          let displayPrice = null;
+          let displayText = "";
+
+          if (leg.priceType === "CONTACT") {
+            displayText = "Contact for price";
+          } else if (
+            leg.priceType === "FIXED" &&
+            leg.priceUsd &&
+            leg.priceUsd > 0
+          ) {
+            displayPrice = leg.priceUsd;
+            displayText = `$${leg.priceUsd.toLocaleString()}`;
+          } else {
+            displayText = "Contact for price";
+          }
+
+          // Get airport data - use lookup for InstaCharter deals
+          const departureAirport = leg.departureAirport
+            ? {
+                id: leg.departureAirport.id,
+                name: leg.departureAirport.name,
+                city: leg.departureAirport.municipality || "",
+                country: leg.departureAirport.country?.name || "",
+                code:
+                  leg.departureAirport.iataCode ||
+                  leg.departureAirport.icaoCode ||
+                  "",
+                latitude: leg.departureAirport.latitude,
+                longitude: leg.departureAirport.longitude,
+              }
+            : await getAirportByIcao(leg.departureIcao);
+
+          const arrivalAirport = leg.arrivalAirport
+            ? {
+                id: leg.arrivalAirport.id,
+                name: leg.arrivalAirport.name,
+                city: leg.arrivalAirport.municipality || "",
+                country: leg.arrivalAirport.country?.name || "",
+                code:
+                  leg.arrivalAirport.iataCode ||
+                  leg.arrivalAirport.icaoCode ||
+                  "",
+                latitude: leg.arrivalAirport.latitude,
+                longitude: leg.arrivalAirport.longitude,
+              }
+            : await getAirportByIcao(leg.arrivalIcao);
+
+          return {
+            id: leg.id,
+            slug: leg.slug,
+            departureAirport,
+            arrivalAirport,
+            aircraft: {
+              id: leg.aircraft?.id || "",
+              name: leg.aircraftName || leg.aircraft?.name || "",
+              manufacturer: leg.aircraft?.manufacturer || "",
+              model: leg.aircraftType || "",
+              category: leg.aircraftCategory || leg.aircraft?.category || "",
+              maxPassengers: leg.aircraft?.maxPax || 0,
+              images: leg.aircraftImage
+                ? [leg.aircraftImage]
+                : leg.aircraft?.image
+                  ? [leg.aircraft.image]
+                  : [],
+            },
+            departureDate: leg.departureDateTime.toISOString(),
+            availableSeats: leg.availableSeats || 0,
+            totalSeats: leg.totalSeats || 0,
+            // Pricing - simplified based on schema
+            priceUsd: displayPrice,
+            priceText: displayText,
+            priceType: leg.priceType,
+            status: leg.status,
+            // Owner info
+            createdByAdminId: leg.createdByAdminId,
+            createdByOperatorId: leg.createdByOperatorId,
+            ownerType: leg.createdByOperatorId ? "operator" : "admin",
+          };
+        } catch (error) {
+          console.error("Error transforming leg:", leg.id, error);
+          return null;
+        }
+      }),
+    );
+
+    // Remove any null entries from failed transformations
+    transformedLegs = transformedLegs.filter(Boolean);
+
+    // Apply departure and arrival airport filters with OR logic
+    let departureFilteredLegs = [...transformedLegs];
+    let arrivalFilteredLegs = [...transformedLegs];
 
     // Apply departure airport filter
     if (fromQuery) {
@@ -204,7 +300,7 @@ export async function GET(request: NextRequest) {
         });
 
         if (refAirport) {
-          transformedLegs = transformedLegs.filter((leg: any) => {
+          departureFilteredLegs = departureFilteredLegs.filter((leg: any) => {
             const distance = calculateDistanceKm(
               refAirport.latitude,
               refAirport.longitude,
@@ -216,7 +312,7 @@ export async function GET(request: NextRequest) {
         }
       } else {
         // Exact or partial match on airport code, city, or country
-        transformedLegs = transformedLegs.filter((leg: any) => {
+        departureFilteredLegs = departureFilteredLegs.filter((leg: any) => {
           const legCode = leg.departureAirport.code?.toUpperCase() || "";
           const legCity = leg.departureAirport.city?.toLowerCase() || "";
           const legCountry = leg.departureAirport.country?.toLowerCase() || "";
@@ -246,7 +342,7 @@ export async function GET(request: NextRequest) {
         });
 
         if (refAirport) {
-          transformedLegs = transformedLegs.filter((leg: any) => {
+          arrivalFilteredLegs = arrivalFilteredLegs.filter((leg: any) => {
             const distance = calculateDistanceKm(
               refAirport.latitude,
               refAirport.longitude,
@@ -258,7 +354,7 @@ export async function GET(request: NextRequest) {
         }
       } else {
         // Exact or partial match on airport code, city, or country
-        transformedLegs = transformedLegs.filter((leg: any) => {
+        arrivalFilteredLegs = arrivalFilteredLegs.filter((leg: any) => {
           const legCode = leg.arrivalAirport.code?.toUpperCase() || "";
           const legCity = leg.arrivalAirport.city?.toLowerCase() || "";
           const legCountry = leg.arrivalAirport.country?.toLowerCase() || "";
@@ -274,18 +370,50 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Filter by minimum discount
-    if (minDiscount > 0) {
-      transformedLegs = transformedLegs.filter(
-        (leg: any) => leg.discountPercent >= minDiscount,
+    // Combine results using OR logic
+    if (fromQuery && toQuery) {
+      // Both filters applied - use OR logic
+      const departureIds = new Set(
+        departureFilteredLegs.map((leg: any) => leg.id),
       );
+      const arrivalIds = new Set(arrivalFilteredLegs.map((leg: any) => leg.id));
+
+      transformedLegs = transformedLegs.filter(
+        (leg: any) => departureIds.has(leg.id) || arrivalIds.has(leg.id),
+      );
+    } else if (fromQuery) {
+      // Only departure filter applied
+      transformedLegs = departureFilteredLegs;
+    } else if (toQuery) {
+      // Only arrival filter applied
+      transformedLegs = arrivalFilteredLegs;
     }
+    // If neither filter applied, keep all legs
+
+    // Filter by minimum discount - REMOVED since we don't have discount logic anymore
+    // if (minDiscount > 0) {
+    //   transformedLegs = transformedLegs.filter(
+    //     (leg: any) => leg.discountPercent >= minDiscount,
+    //   );
+    // }
 
     // Filter by max price (in USD)
     if (maxPrice > 0) {
       transformedLegs = transformedLegs.filter(
-        (leg: any) => leg.priceUsd <= maxPrice,
+        (leg: any) => leg.priceUsd && leg.priceUsd <= maxPrice,
       );
+    }
+
+    // Filter by price type
+    if (priceType && priceType !== "all") {
+      transformedLegs = transformedLegs.filter((leg: any) => {
+        if (priceType === "fixed") {
+          return leg.priceType === "FIXED" && leg.priceUsd !== null;
+        } else if (priceType === "contact") {
+          return leg.priceType === "CONTACT" || leg.priceUsd === null;
+        }
+        return true;
+      });
     }
 
     // Sorting
@@ -295,10 +423,15 @@ export async function GET(request: NextRequest) {
       switch (sortBy) {
         case "price":
         case "cheapest":
-          comparison = a.priceUsd - b.priceUsd;
+          // Handle null prices - put CONTACT type at the end
+          if (!a.priceUsd && !b.priceUsd) comparison = 0;
+          else if (!a.priceUsd) comparison = 1;
+          else if (!b.priceUsd) comparison = -1;
+          else comparison = a.priceUsd - b.priceUsd;
           break;
         case "discount":
-          comparison = b.discountPercent - a.discountPercent; // Higher discount first
+          // REMOVED - no discount logic
+          comparison = 0;
           break;
         case "alphabetic":
           comparison = a.departureAirport.city.localeCompare(

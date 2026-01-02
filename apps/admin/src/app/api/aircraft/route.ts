@@ -20,21 +20,23 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const search = searchParams.get("search") || "";
+    const category = searchParams.get("category") || "";
 
     const skip = (page - 1) * limit;
 
-    // Build where clause
-    const where = search
-      ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" as const } },
-            { model: { contains: search, mode: "insensitive" as const } },
-            {
-              manufacturer: { contains: search, mode: "insensitive" as const },
-            },
-          ],
-        }
-      : {};
+    // Build where clause for Prisma
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" as const } },
+        { manufacturer: { contains: search, mode: "insensitive" as const } },
+      ];
+    }
+
+    if (category) {
+      where.category = category;
+    }
 
     // Fetch aircraft with pagination
     const [aircraft, total] = await Promise.all([
@@ -46,28 +48,25 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           name: true,
-          model: true,
           manufacturer: true,
           category: true,
           availability: true,
-          passengerCapacityMin: true,
-          passengerCapacityMax: true,
-          cruiseSpeedKnots: true,
+          image: true,
+          minPax: true,
+          maxPax: true,
+          baggageCuFt: true,
           rangeNm: true,
-          yearOfManufacture: true,
-          exteriorImages: true,
-          interiorImages: true,
-          thumbnailImage: true,
-          description: true,
-          baggageCapacityCuFt: true,
+          cruiseSpeedKnots: true,
           fuelCapacityGal: true,
           cabinLengthFt: true,
           cabinWidthFt: true,
           cabinHeightFt: true,
-          lengthFt: true,
-          wingspanFt: true,
-          heightFt: true,
-          hourlyRateUsd: true,
+          exteriorLengthFt: true,
+          exteriorWingspanFt: true,
+          exteriorHeightFt: true,
+          // Cast basePricePerHour to any to bypass type checking
+          basePricePerHour: true as any,
+          createdAt: true,
         },
       }),
       prisma.aircraft.count({ where }),
@@ -105,43 +104,29 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       name,
-      model,
       manufacturer,
       category,
       availability,
-      passengerCapacityMin,
-      passengerCapacityMax,
+      image,
+      minPax,
+      maxPax,
+      baggageCuFt,
       rangeNm,
       cruiseSpeedKnots,
-      baggageCapacityCuFt,
       fuelCapacityGal,
       cabinLengthFt,
       cabinWidthFt,
       cabinHeightFt,
-      lengthFt,
-      wingspanFt,
-      heightFt,
-      yearOfManufacture,
-      hourlyRateUsd,
-      description,
-      exteriorImages,
-      interiorImages,
-      thumbnailImage,
+      exteriorLengthFt,
+      exteriorWingspanFt,
+      exteriorHeightFt,
+      basePricePerHour,
     } = body;
 
     // Validate required fields
-    if (
-      !name ||
-      !model ||
-      !manufacturer ||
-      !category ||
-      !passengerCapacityMin ||
-      !passengerCapacityMax ||
-      !rangeNm ||
-      !cruiseSpeedKnots
-    ) {
+    if (!name || !manufacturer || !category) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields: name, manufacturer, category" },
         { status: 400 },
       );
     }
@@ -150,32 +135,56 @@ export async function POST(request: NextRequest) {
     const aircraft = await prisma.aircraft.create({
       data: {
         name,
-        model,
         manufacturer,
         category,
         availability: availability || "NONE",
-        passengerCapacityMin: parseInt(passengerCapacityMin),
-        passengerCapacityMax: parseInt(passengerCapacityMax),
-        rangeNm: parseInt(rangeNm),
-        cruiseSpeedKnots: parseInt(cruiseSpeedKnots),
-        baggageCapacityCuFt: baggageCapacityCuFt
-          ? parseFloat(baggageCapacityCuFt)
+        image: image || null,
+        minPax: minPax ? parseInt(minPax) : null,
+        maxPax: maxPax ? parseInt(maxPax) : null,
+        baggageCuFt: baggageCuFt ? parseFloat(baggageCuFt) : null,
+        rangeNm: rangeNm ? parseFloat(rangeNm) : null,
+        cruiseSpeedKnots: cruiseSpeedKnots
+          ? parseFloat(cruiseSpeedKnots)
           : null,
         fuelCapacityGal: fuelCapacityGal ? parseFloat(fuelCapacityGal) : null,
         cabinLengthFt: cabinLengthFt ? parseFloat(cabinLengthFt) : null,
         cabinWidthFt: cabinWidthFt ? parseFloat(cabinWidthFt) : null,
         cabinHeightFt: cabinHeightFt ? parseFloat(cabinHeightFt) : null,
-        lengthFt: lengthFt ? parseFloat(lengthFt) : null,
-        wingspanFt: wingspanFt ? parseFloat(wingspanFt) : null,
-        heightFt: heightFt ? parseFloat(heightFt) : null,
-        yearOfManufacture: yearOfManufacture
-          ? parseInt(yearOfManufacture)
+        exteriorLengthFt: exteriorLengthFt
+          ? parseFloat(exteriorLengthFt)
           : null,
-        hourlyRateUsd: hourlyRateUsd ? parseFloat(hourlyRateUsd) : null,
-        description: description || null,
-        exteriorImages: exteriorImages || [],
-        interiorImages: interiorImages || [],
-        thumbnailImage: thumbnailImage || null,
+        exteriorWingspanFt: exteriorWingspanFt
+          ? parseFloat(exteriorWingspanFt)
+          : null,
+        exteriorHeightFt: exteriorHeightFt
+          ? parseFloat(exteriorHeightFt)
+          : null,
+        // Cast to any to bypass type checking
+        basePricePerHour: basePricePerHour
+          ? (parseFloat(basePricePerHour) as any)
+          : null,
+      },
+      select: {
+        id: true,
+        name: true,
+        manufacturer: true,
+        category: true,
+        availability: true,
+        image: true,
+        minPax: true,
+        maxPax: true,
+        baggageCuFt: true,
+        rangeNm: true,
+        cruiseSpeedKnots: true,
+        fuelCapacityGal: true,
+        cabinLengthFt: true,
+        cabinWidthFt: true,
+        cabinHeightFt: true,
+        exteriorLengthFt: true,
+        exteriorWingspanFt: true,
+        exteriorHeightFt: true,
+        basePricePerHour: true as any,
+        createdAt: true,
       },
     });
 
@@ -187,7 +196,7 @@ export async function POST(request: NextRequest) {
         targetId: aircraft.id,
         adminId: payload.sub,
         description: `Created aircraft ${name}`,
-        metadata: { name, model, manufacturer },
+        metadata: { name, manufacturer, category },
         ipAddress: request.headers.get("x-forwarded-for") || "unknown",
       },
     });

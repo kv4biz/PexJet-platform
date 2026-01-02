@@ -1,7 +1,8 @@
 /**
  * Format a number as USD currency (e.g., $10.00)
  */
-export function formatUSD(amount: number): string {
+export function formatUSD(amount: number | null | undefined): string {
+  if (amount == null) return "$0.00";
   return `$${amount.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -11,7 +12,8 @@ export function formatUSD(amount: number): string {
 /**
  * Format a number as NGN currency (e.g., ₦10.00)
  */
-export function formatNGN(amount: number): string {
+export function formatNGN(amount: number | null | undefined): string {
+  if (amount == null) return "₦0.00";
   return `₦${amount.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

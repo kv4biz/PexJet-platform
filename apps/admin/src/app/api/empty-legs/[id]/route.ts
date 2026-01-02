@@ -26,16 +26,12 @@ export async function GET(
           select: {
             id: true,
             name: true,
-            model: true,
             manufacturer: true,
             category: true,
-            passengerCapacityMax: true,
-            passengerCapacityMin: true,
+            maxPax: true,
             rangeNm: true,
             cruiseSpeedKnots: true,
-            thumbnailImage: true,
-            exteriorImages: true,
-            interiorImages: true,
+            image: true,
           },
         },
         departureAirport: {
@@ -116,13 +112,10 @@ export async function PUT(
 
     const {
       aircraftId,
-      departureAirportId,
-      arrivalAirportId,
       departureDateTime,
       totalSeats,
-      availableSeats,
-      originalPrice,
-      discountPrice,
+      priceType,
+      priceUsd,
       status,
     } = body;
 
@@ -142,24 +135,34 @@ export async function PUT(
     const updateData: any = {};
 
     if (aircraftId) updateData.aircraftId = aircraftId;
-    if (departureAirportId) updateData.departureAirportId = departureAirportId;
-    if (arrivalAirportId) updateData.arrivalAirportId = arrivalAirportId;
     if (departureDateTime)
       updateData.departureDateTime = new Date(departureDateTime);
-    if (totalSeats !== undefined) updateData.totalSeats = parseInt(totalSeats);
-    if (availableSeats !== undefined)
-      updateData.availableSeats = parseInt(availableSeats);
-    if (originalPrice !== undefined)
-      updateData.originalPrice = parseFloat(originalPrice);
-    if (discountPrice !== undefined)
-      updateData.discountPrice = parseFloat(discountPrice);
+    if (totalSeats !== undefined) {
+      updateData.totalSeats = parseInt(totalSeats);
+      // Update availableSeats to match new total if it was equal to old total
+      if (existingEmptyLeg.availableSeats === existingEmptyLeg.totalSeats) {
+        updateData.availableSeats = parseInt(totalSeats);
+      }
+    }
+    if (priceType) updateData.priceType = priceType;
+    if (priceUsd !== undefined) {
+      updateData.priceUsd = priceType === "FIXED" ? parseFloat(priceUsd) : null;
+    }
     if (status) updateData.status = status;
 
     const emptyLeg = await prisma.emptyLeg.update({
       where: { id },
       data: updateData,
       include: {
-        aircraft: { select: { name: true, model: true } },
+        aircraft: {
+          select: {
+            name: true,
+            manufacturer: true,
+            category: true,
+            maxPax: true,
+            image: true,
+          },
+        },
         departureAirport: {
           select: { name: true, municipality: true, iataCode: true },
         },
@@ -176,7 +179,7 @@ export async function PUT(
         targetType: "EmptyLeg",
         targetId: emptyLeg.id,
         adminId: payload.sub,
-        description: `Updated empty leg: ${emptyLeg.departureAirport.municipality || emptyLeg.departureAirport.name} → ${emptyLeg.arrivalAirport.municipality || emptyLeg.arrivalAirport.name}`,
+        description: `Updated empty leg: ${emptyLeg.departureAirport?.municipality || emptyLeg.departureAirport?.name || "Unknown"} → ${emptyLeg.arrivalAirport?.municipality || emptyLeg.arrivalAirport?.name || "Unknown"}`,
         ipAddress: request.headers.get("x-forwarded-for") || "unknown",
         metadata: updateData,
       },
