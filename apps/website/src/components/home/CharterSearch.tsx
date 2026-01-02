@@ -153,9 +153,7 @@ export default function CharterSearch() {
   };
 
   const getAirportDisplay = (airport: Airport) => {
-    const code = airport.iataCode || airport.icaoCode || "";
-    const city = airport.municipality || airport.name;
-    return `${code} - ${city}`;
+    return `${airport.iataCode} - ${airport.region.name} - ${airport.name}, ${airport.country.name}`;
   };
 
   return (
@@ -238,13 +236,8 @@ export default function CharterSearch() {
                             >
                               <div className="text-sm text-black">
                                 <div className="font-medium text-black">
-                                  {airport.iataCode || airport.icaoCode} -{" "}
-                                  {airport.name}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {airport.municipality &&
-                                    `${airport.municipality}, `}
-                                  {airport.region.name}, {airport.country.name}
+                                  {airport.iataCode} - {airport.region.name} -{" "}
+                                  {airport.name}, {airport.country.name}
                                 </div>
                               </div>
                             </button>
@@ -305,13 +298,8 @@ export default function CharterSearch() {
                           >
                             <div className="text-sm text-black">
                               <div className="font-medium text-black">
-                                {airport.iataCode || airport.icaoCode} -{" "}
-                                {airport.name}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {airport.municipality &&
-                                  `${airport.municipality}, `}
-                                {airport.region.name}, {airport.country.name}
+                                {airport.iataCode} - {airport.region.name} -{" "}
+                                {airport.name}, {airport.country.name}
                               </div>
                             </div>
                           </button>

@@ -166,7 +166,7 @@ export default function EmptyLegSearch() {
                           key={airport.id}
                           onMouseDown={() => {
                             setFrom(
-                              `${airport.iataCode || airport.icaoCode} - ${airport.name}`,
+                              `${airport.iataCode} - ${airport.region.name} - ${airport.name}, ${airport.country.name}`,
                             );
                             setOpenFrom(false);
                           }}
@@ -174,13 +174,8 @@ export default function EmptyLegSearch() {
                         >
                           <div className="text-sm text-black">
                             <div className="font-medium text-black">
-                              {airport.iataCode || airport.icaoCode} -{" "}
-                              {airport.name}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {airport.municipality &&
-                                `${airport.municipality}, `}
-                              {airport.region.name}, {airport.country.name}
+                              {airport.iataCode} - {airport.region.name} -{" "}
+                              {airport.name}, {airport.country.name}
                             </div>
                           </div>
                         </button>
@@ -233,7 +228,7 @@ export default function EmptyLegSearch() {
                         key={airport.id}
                         onMouseDown={() => {
                           setTo(
-                            `${airport.iataCode || airport.icaoCode} - ${airport.name}`,
+                            `${airport.iataCode} - ${airport.region.name} - ${airport.name}, ${airport.country.name}`,
                           );
                           setOpenTo(false);
                         }}
@@ -241,13 +236,8 @@ export default function EmptyLegSearch() {
                       >
                         <div className="text-sm text-black">
                           <div className="font-medium text-black">
-                            {airport.iataCode || airport.icaoCode} -{" "}
-                            {airport.name}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {airport.municipality &&
-                              `${airport.municipality}, `}
-                            {airport.region.name}, {airport.country.name}
+                            {airport.iataCode} - {airport.region.name} -{" "}
+                            {airport.name}, {airport.country.name}
                           </div>
                         </div>
                       </button>

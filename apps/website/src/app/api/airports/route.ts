@@ -9,34 +9,47 @@ export async function GET(request: NextRequest) {
 
     const whereClause = query
       ? {
-          OR: [
-            { name: { contains: query, mode: "insensitive" as const } },
-            { municipality: { contains: query, mode: "insensitive" as const } },
-            { iataCode: { contains: query, mode: "insensitive" as const } },
-            { icaoCode: { contains: query, mode: "insensitive" as const } },
+          AND: [
+            { iataCode: { not: null } },
+            { icaoCode: { not: null } },
             {
-              country: {
-                name: { contains: query, mode: "insensitive" as const },
-              },
-            },
-            {
-              country: {
-                code: { contains: query, mode: "insensitive" as const },
-              },
-            },
-            {
-              region: {
-                name: { contains: query, mode: "insensitive" as const },
-              },
-            },
-            {
-              region: {
-                code: { contains: query, mode: "insensitive" as const },
-              },
+              OR: [
+                { name: { contains: query, mode: "insensitive" as const } },
+                {
+                  municipality: {
+                    contains: query,
+                    mode: "insensitive" as const,
+                  },
+                },
+                { iataCode: { contains: query, mode: "insensitive" as const } },
+                { icaoCode: { contains: query, mode: "insensitive" as const } },
+                {
+                  country: {
+                    name: { contains: query, mode: "insensitive" as const },
+                  },
+                },
+                {
+                  country: {
+                    code: { contains: query, mode: "insensitive" as const },
+                  },
+                },
+                {
+                  region: {
+                    name: { contains: query, mode: "insensitive" as const },
+                  },
+                },
+                {
+                  region: {
+                    code: { contains: query, mode: "insensitive" as const },
+                  },
+                },
+              ],
             },
           ],
         }
-      : {};
+      : {
+          AND: [{ iataCode: { not: null } }, { icaoCode: { not: null } }],
+        };
 
     const airports = await prisma.airport.findMany({
       where: whereClause,
