@@ -29,6 +29,88 @@ import {
 } from "lucide-react";
 import { charterPageData } from "@/data";
 
+// Utility functions copied to avoid import issues
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 3440.065; // Earth's radius in nautical miles
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
+function toRad(deg: number): number {
+  return deg * (Math.PI / 180);
+}
+
+function estimateFlightDuration(
+  distanceNm: number,
+  cruiseSpeedKnots: number = 450,
+): number {
+  // Add 30 minutes for takeoff and landing
+  const flightTimeMinutes = (distanceNm / cruiseSpeedKnots) * 60;
+  return Math.round(flightTimeMinutes + 30);
+}
+
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+}
+
+// Category specifications
+const CATEGORIES = {
+  LIGHT: {
+    name: "Light",
+    pricePerHour: 4000,
+    cruiseSpeed: 450,
+    minPassengers: 1,
+    maxPassengers: 8,
+  },
+  MIDSIZE: {
+    name: "Midsize",
+    pricePerHour: 4500,
+    cruiseSpeed: 470,
+    minPassengers: 1,
+    maxPassengers: 10,
+  },
+  SUPER_MIDSIZE: {
+    name: "Super Midsize",
+    pricePerHour: 6500,
+    cruiseSpeed: 490,
+    minPassengers: 2,
+    maxPassengers: 12,
+  },
+  ULTRA_LONG_RANGE: {
+    name: "Ultra Long Range",
+    pricePerHour: 6500,
+    cruiseSpeed: 510,
+    minPassengers: 3,
+    maxPassengers: 20,
+  },
+  HEAVY: {
+    name: "Heavy",
+    pricePerHour: 6500,
+    cruiseSpeed: 530,
+    minPassengers: 3,
+    maxPassengers: 20,
+  },
+} as const;
+
+type CategoryKey = keyof typeof CATEGORIES;
+
 interface Aircraft {
   id: string;
   name: string;
@@ -36,34 +118,9 @@ interface Aircraft {
   category: string;
   availability: string;
   basePricePerHour: number | null;
-  cabinLengthFt: number | null;
-  cabinWidthFt: number | null;
-  cabinHeightFt: number | null;
-  baggageCuFt: number | null;
-  exteriorHeightFt: number | null;
-  exteriorLengthFt: number | null;
-  exteriorWingspanFt: number | null;
-  image: string | null;
-  maxPax: number | null;
-  minPax: number | null;
-  cruiseSpeedKnots: number | null;
-  fuelCapacityGal: number | null;
-  rangeNm: number | null;
-  // Legacy fields for backward compatibility
-  model: string | null;
-  type: string;
-  passengerCapacity: number;
-  luggageCapacity: string | null;
-  cruiseSpeed: string | null;
-  range: string | null;
-  cabinHeight: string | null;
-  cabinWidth: string | null;
-  cabinLength: string | null;
-  hourlyRateUsd: number;
   exteriorImages: string[];
   interiorImages: string[];
-  availableForLocal: boolean;
-  availableForInternational: boolean;
+  // ... other fields
 }
 
 interface AircraftSelectionProps {
@@ -75,69 +132,19 @@ export function AircraftSelection({
   formData,
   onNext,
 }: AircraftSelectionProps) {
-  const [selectedAircraft, setSelectedAircraft] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<CategoryKey[]>(
+    [],
+  );
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewingAircraft, setViewingAircraft] = useState<Aircraft | null>(null);
-  const [filteredCategories, setFilteredCategories] = useState<
-    Record<string, Aircraft[]>
-  >({});
+  const [flightDistance, setFlightDistance] = useState<number | null>(null);
+  const [currentAircraftIndex, setCurrentAircraftIndex] = useState<
+    Record<CategoryKey, number>
+  >({} as Record<CategoryKey, number>);
 
-  // Group aircraft by category and filter by passenger capacity
-  const groupAndFilterAircraft = (
-    aircraft: Aircraft[],
-    passengerCount: number,
-  ) => {
-    // Group by aircraft type/category
-    const grouped = aircraft.reduce(
-      (acc, aircraft) => {
-        const category = aircraft.type || "Other";
-        if (!acc[category]) {
-          acc[category] = [];
-        }
-        acc[category].push(aircraft);
-        return acc;
-      },
-      {} as Record<string, Aircraft[]>,
-    );
-
-    // Filter categories by passenger range and find first qualifying aircraft per category
-    const filteredCategories = Object.entries(grouped).reduce(
-      (acc, [category, aircrafts]) => {
-        // Find the first aircraft in this category that can accommodate the passengers
-        const qualifyingAircraft = aircrafts.find((a) => {
-          // Use minPax/maxPax if available, otherwise fall back to passengerCapacity
-          const minPassengers = a.minPax ?? 1; // Default to 1 if null
-          const maxPassengers = a.maxPax ?? a.passengerCapacity; // Use passengerCapacity as fallback
-
-          // Ensure we have valid numbers
-          if (
-            maxPassengers === 0 ||
-            maxPassengers === null ||
-            maxPassengers === undefined
-          ) {
-            return false;
-          }
-
-          return (
-            minPassengers <= passengerCount && passengerCount <= maxPassengers
-          );
-        });
-
-        // Only include category if we found at least one qualifying aircraft
-        if (qualifyingAircraft) {
-          acc[category] = [qualifyingAircraft]; // Only include the first qualifying aircraft
-        }
-        return acc;
-      },
-      {} as Record<string, Aircraft[]>,
-    );
-
-    return filteredCategories;
-  };
-
-  // Fetch aircraft from database (only once)
+  // Fetch aircraft from database
   useEffect(() => {
     const fetchAircraft = async () => {
       try {
@@ -147,8 +154,6 @@ export function AircraftSelection({
           throw new Error("Failed to fetch aircraft");
         }
         const data = await response.json();
-
-        // Set all aircraft
         setAircraft(data.aircraft || []);
       } catch (err: any) {
         console.error("Error fetching aircraft:", err);
@@ -159,247 +164,224 @@ export function AircraftSelection({
     };
 
     fetchAircraft();
-  }, []); // Only run once on mount
+  }, []);
 
-  // Update filtered categories when aircraft or passenger count changes
+  // Calculate flight distance when route data changes
   useEffect(() => {
-    if (aircraft.length > 0) {
-      const passengerCount = formData?.passengers || 1;
-      setFilteredCategories(groupAndFilterAircraft(aircraft, passengerCount));
-    }
-  }, [aircraft, formData?.passengers]);
+    const calculateRouteDistance = async () => {
+      if (!formData?.flights || formData.flights.length === 0) {
+        console.log(
+          "AircraftSelection: No flights data found in formData",
+          formData,
+        );
+        setFlightDistance(null);
+        return;
+      }
 
-  const handleSelectAircraft = (aircraftId: string) => {
-    setSelectedAircraft((prev) => {
-      if (prev.includes(aircraftId)) {
-        return prev.filter((id) => id !== aircraftId);
+      try {
+        const flights = formData.flights;
+        let totalDistanceNm = 0;
+
+        console.log(
+          "AircraftSelection: Calculating distance for flights:",
+          flights,
+        );
+
+        // Extract airport info and fetch coordinates
+        for (const flight of flights) {
+          if (flight.from && flight.to) {
+            // Format is "CODE - Name" (e.g., "LOS - Lagos") or just the airport string
+            const fromParts = flight.from.split(" - ");
+            const toParts = flight.to.split(" - ");
+            const fromCode = fromParts[0]?.trim();
+            const toCode = toParts[0]?.trim();
+            const fromName = fromParts[1]?.trim() || fromParts[0]?.trim();
+            const toName = toParts[1]?.trim() || toParts[0]?.trim();
+
+            console.log("AircraftSelection: Looking up airports:", {
+              fromCode,
+              toCode,
+              fromName,
+              toName,
+            });
+
+            if (fromName && toName) {
+              try {
+                // Fetch airport coordinates using name for better matching
+                const [fromRes, toRes] = await Promise.all([
+                  fetch(
+                    `/api/airports?q=${encodeURIComponent(fromName)}&limit=10`,
+                  ),
+                  fetch(
+                    `/api/airports?q=${encodeURIComponent(toName)}&limit=10`,
+                  ),
+                ]);
+
+                const fromData = await fromRes.json();
+                const toData = await toRes.json();
+
+                // Find exact match by IATA/ICAO code first, then by name
+                const fromAirport =
+                  fromData.airports?.find(
+                    (a: any) =>
+                      a.iataCode === fromCode || a.icaoCode === fromCode,
+                  ) ||
+                  fromData.airports?.find(
+                    (a: any) =>
+                      a.municipality?.toLowerCase() ===
+                        fromName.toLowerCase() ||
+                      a.name?.toLowerCase().includes(fromName.toLowerCase()),
+                  ) ||
+                  fromData.airports?.[0];
+
+                const toAirport =
+                  toData.airports?.find(
+                    (a: any) => a.iataCode === toCode || a.icaoCode === toCode,
+                  ) ||
+                  toData.airports?.find(
+                    (a: any) =>
+                      a.municipality?.toLowerCase() === toName.toLowerCase() ||
+                      a.name?.toLowerCase().includes(toName.toLowerCase()),
+                  ) ||
+                  toData.airports?.[0];
+
+                console.log("AircraftSelection: Found airports:", {
+                  from: fromAirport
+                    ? {
+                        name: fromAirport.name,
+                        lat: fromAirport.latitude,
+                        lng: fromAirport.longitude,
+                      }
+                    : null,
+                  to: toAirport
+                    ? {
+                        name: toAirport.name,
+                        lat: toAirport.latitude,
+                        lng: toAirport.longitude,
+                      }
+                    : null,
+                });
+
+                if (
+                  fromAirport?.latitude &&
+                  fromAirport?.longitude &&
+                  toAirport?.latitude &&
+                  toAirport?.longitude
+                ) {
+                  const distance = calculateDistance(
+                    fromAirport.latitude,
+                    fromAirport.longitude,
+                    toAirport.latitude,
+                    toAirport.longitude,
+                  );
+                  console.log(
+                    "AircraftSelection: Calculated distance:",
+                    distance,
+                    "nm",
+                  );
+                  totalDistanceNm += distance;
+                }
+              } catch (err) {
+                console.error("Error fetching airport coordinates:", err);
+              }
+            }
+          }
+        }
+
+        // For round trip, double the distance
+        if (formData.tripType === "roundTrip") {
+          totalDistanceNm *= 2;
+        }
+
+        setFlightDistance(
+          totalDistanceNm > 0 ? Math.round(totalDistanceNm) : null,
+        );
+      } catch (error) {
+        console.error("Error calculating flight distance:", error);
+        setFlightDistance(null);
+      }
+    };
+
+    calculateRouteDistance();
+  }, [formData?.flights, formData?.tripType]);
+
+  // Initialize carousel indices
+  useEffect(() => {
+    const indices: Record<CategoryKey, number> = {} as Record<
+      CategoryKey,
+      number
+    >;
+    Object.keys(CATEGORIES).forEach((key) => {
+      indices[key as CategoryKey] = 0;
+    });
+    setCurrentAircraftIndex(indices);
+  }, []);
+
+  // Carousel rotation effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentAircraftIndex((prev) => {
+        const newIndices = { ...prev };
+        Object.keys(CATEGORIES).forEach((key) => {
+          const categoryKey = key as CategoryKey;
+          const categoryAircraft = aircraft.filter(
+            (a) => a.category === categoryKey,
+          );
+          if (categoryAircraft.length > 0) {
+            newIndices[categoryKey] =
+              (prev[categoryKey] + 1) % categoryAircraft.length;
+          }
+        });
+        return newIndices;
+      });
+    }, 15000); // Rotate every 15 seconds
+
+    return () => clearInterval(interval);
+  }, [aircraft]);
+
+  // Get available categories based on passenger count
+  const getAvailableCategories = () => {
+    const passengerCount = formData?.passengers || 1;
+    return Object.entries(CATEGORIES).filter(
+      ([_, category]) =>
+        passengerCount >= category.minPassengers &&
+        passengerCount <= category.maxPassengers,
+    ) as [CategoryKey, (typeof CATEGORIES)[CategoryKey]][];
+  };
+
+  // Get aircraft for category carousel
+  const getAircraftForCategory = (categoryKey: CategoryKey) => {
+    return aircraft.filter((a) => a.category === categoryKey);
+  };
+
+  // Get current aircraft for display
+  const getCurrentAircraft = (categoryKey: CategoryKey) => {
+    const categoryAircraft = getAircraftForCategory(categoryKey);
+    if (categoryAircraft.length === 0) return null;
+    return categoryAircraft[currentAircraftIndex[categoryKey] || 0];
+  };
+
+  const handleSelectCategory = (categoryKey: CategoryKey) => {
+    setSelectedCategories((prev) => {
+      if (prev.includes(categoryKey)) {
+        return prev.filter((key) => key !== categoryKey);
       } else if (prev.length < 5) {
-        return [...prev, aircraftId];
+        return [...prev, categoryKey];
       }
       return prev;
     });
   };
 
-  const getSelectedCategories = () => {
-    return selectedAircraft
-      .map((id) => {
-        const foundAircraft = aircraft.find((a) => a.id === id);
-        return foundAircraft ? foundAircraft.type : null;
-      })
-      .filter((category): category is string => Boolean(category));
-  };
-
-  const getSelectedAircraftDetails = () => {
-    return selectedAircraft
-      .map((id) => aircraft.find((a) => a.id === id))
-      .filter((a): a is Aircraft => Boolean(a));
-  };
-
   const handleContinue = () => {
-    if (selectedAircraft.length > 0) {
-      const selected = getSelectedAircraftDetails();
-      onNext({ selectedAircraft: selected });
+    if (selectedCategories.length > 0) {
+      const selectedCategoryData = selectedCategories.map((key) => ({
+        category: key,
+        ...CATEGORIES[key],
+        aircraft: getAircraftForCategory(key),
+      }));
+      onNext({ selectedCategories: selectedCategoryData });
     }
   };
-
-  const CategoryRow = ({
-    category,
-    representative,
-    isSelected,
-  }: {
-    category: string;
-    representative: Aircraft | null;
-    isSelected: boolean;
-  }) => {
-    if (!representative) return null;
-
-    // Calculate flight duration (mock calculation - you may want to improve this)
-    const calculateFlightDuration = () => {
-      // This is a simplified calculation - you might want to use actual route distance
-      const avgSpeed = representative.cruiseSpeedKnots || 400; // knots
-      const sampleDistance = 500; // sample distance in nm
-      const hours = sampleDistance / avgSpeed;
-      const minutes = Math.round((hours - Math.floor(hours)) * 60);
-      return `${Math.floor(hours)}h ${minutes}m`;
-    };
-
-    // Calculate estimated price
-    const calculateEstimatedPrice = () => {
-      const hourlyRate = representative.hourlyRateUsd || 0;
-      const duration = calculateFlightDuration();
-      const hours =
-        parseFloat(duration.split("h")[0]) +
-        parseFloat(duration.split("h")[1]?.split("m")[0] || "0") / 60;
-      return Math.round(hourlyRate * hours);
-    };
-
-    return (
-      <div
-        className={`relative ${
-          isSelected
-            ? "ring-2 ring-[#D4AF37] bg-[#D4AF37]/5"
-            : "border border-gray-200"
-        } rounded-lg overflow-hidden bg-white`}
-      >
-        {/* Top Half - Image with Overlay Text */}
-        <div className="relative h-48 bg-gray-100">
-          {representative.exteriorImages?.[0] ? (
-            <img
-              src={representative.exteriorImages[0]}
-              alt={representative.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              <Plane className="w-16 h-16" />
-            </div>
-          )}
-
-          {/* Category Type - Top Left */}
-          <div className="absolute top-3 left-3 bg-black/70 text-white px-3 py-1 rounded text-sm font-semibold">
-            {category}
-          </div>
-
-          {/* Aircraft Name - Bottom Left */}
-          <div className="absolute bottom-3 left-3 bg-black/70 text-white px-3 py-1 rounded">
-            <div className="font-semibold">{representative.name}</div>
-          </div>
-        </div>
-
-        {/* Bottom Half - Details */}
-        <div className="p-4 space-y-3">
-          {/* First Row - Passengers & Flight Duration */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Users className="w-4 h-4" />
-              <span>
-                Up to{" "}
-                {representative.maxPax || representative.passengerCapacity}{" "}
-                passengers
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Clock4 className="w-4 h-4" />
-              <span>{calculateFlightDuration()}</span>
-            </div>
-          </div>
-
-          {/* Second Row - Price & Button */}
-          <div className="space-y-2">
-            <div>
-              <div className="text-xs text-gray-500">Starting from</div>
-              <div className="text-xl font-bold text-[#D4AF37]">
-                USD {calculateEstimatedPrice().toLocaleString()}
-              </div>
-              <div className="text-xs text-gray-500">
-                Estimated price excluding taxes and fees
-              </div>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleSelectAircraft(representative.id);
-              }}
-              type="button"
-              className={`w-full py-2 px-4 text-sm font-medium ${
-                isSelected
-                  ? "bg-gray-500 text-white"
-                  : "bg-[#D4AF37] text-black"
-              }`}
-            >
-              {isSelected ? "Selected Category" : "Add to Quote"}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const AircraftRow = ({
-    aircraft,
-    isSelected,
-  }: {
-    aircraft: Aircraft;
-    isSelected: boolean;
-  }) => (
-    <div
-      className={`grid grid-cols-10 lg:grid-cols-12 gap-2 p-2 border-b border-gray-200 cursor-pointer ${
-        isSelected ? "bg-[#D4AF37]/5 border-l-4 border-l-[#D4AF37]" : ""
-      }`}
-      onClick={() => handleSelectAircraft(aircraft.id)}
-    >
-      {/* Aircraft Name & Type */}
-      <div className="col-span-5 lg:col-span-3 flex items-center gap-3">
-        <div
-          className={`w-3 h-3 border flex items-center justify-center shrink-0 ${
-            isSelected ? "bg-[#D4AF37] border-[#D4AF37]" : "border-gray-300"
-          }`}
-        >
-          {isSelected && <Check className="w-3 h-3 text-white" />}
-        </div>
-        <div className="min-w-0">
-          <div className="font-semibold text-gray-900 truncate">
-            {aircraft.name}
-          </div>
-          <div className="text-xs text-gray-500 truncate">{aircraft.type}</div>
-        </div>
-      </div>
-
-      {/* Seats (min) - visible on all screens */}
-      <div className="col-span-2 flex items-center gap-1 text-sm text-gray-600">
-        <Users className="w-4 h-4 shrink-0" />
-        <span>{aircraft.passengerCapacity}</span>
-      </div>
-
-      {/* Luggage */}
-      <div className="col-span-2 hidden lg:flex items-center gap-1 text-sm text-gray-600">
-        <Package className="w-4 h-4 shrink-0" />
-        <span className="truncate">{aircraft.luggageCapacity || "-"}</span>
-      </div>
-
-      {/* Speed */}
-      <div className="col-span-2 hidden lg:flex items-center gap-1 text-sm text-gray-600">
-        <Gauge className="w-4 h-4 shrink-0" />
-        <span className="truncate">{aircraft.cruiseSpeed || "-"}</span>
-      </div>
-
-      {/* Hourly Rate USD */}
-      <div className="col-span-2 flex items-center gap-1 text-sm text-gray-600">
-        <DollarSign className="w-4 h-4 shrink-0" />
-        <span className="truncate">
-          {aircraft.hourlyRateUsd
-            ? `${aircraft.hourlyRateUsd.toLocaleString()}`
-            : "-"}
-        </span>
-      </div>
-
-      {/* View Button */}
-      <div className="col-span-1 flex justify-end">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setViewingAircraft(aircraft);
-          }}
-          className="p-1 text-gray-400"
-        >
-          <Eye className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-
-  const TableHeader = () => (
-    <div className="grid grid-cols-10 lg:grid-cols-12 gap-2 p-2 bg-gray-50 border-b border-gray-200 text-sm font-semibold text-gray-700">
-      <div className="col-span-5 lg:col-span-3">Category</div>
-      <div className="col-span-2">Seats</div>
-      <div className="col-span-2 hidden lg:block">Luggage</div>
-      <div className="col-span-2 hidden lg:block">Speed</div>
-      <div className="col-span-2">Rate/hr</div>
-      <div className="col-span-1 text-right j">View</div>
-    </div>
-  );
 
   if (loading) {
     return (
@@ -410,85 +392,196 @@ export function AircraftSelection({
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 space-y-4">
-        <p className="text-red-600">{error}</p>
-        <Button onClick={() => window.location.reload()} variant="outline">
-          Try Again
-        </Button>
-      </div>
-    );
-  }
-
-  const formContent = charterPageData.form.aircraftSelection;
+  const availableCategories = getAvailableCategories();
 
   return (
     <div className="space-y-6" id="aircraft-selection-container">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          {formContent.title}
+          Select Aircraft Category
         </h2>
-        <p className="text-gray-600">{formContent.subtitle}</p>
+        <p className="text-gray-600">Choose the perfect jet for your journey</p>
         <div className="mt-2 text-sm text-gray-500">
-          Selected: {selectedAircraft.length}/{formContent.maxSelection}{" "}
-          categories
+          Selected: {selectedCategories.length}/5 categories
         </div>
       </div>
 
-      {/* Aircraft Categories List */}
+      {/* Category Cards */}
       <div className="space-y-6" id="aircraft-categories-list">
-        {Object.keys(filteredCategories).length > 0 ? (
-          Object.entries(filteredCategories).map(
-            ([category, aircrafts], index) => (
-              <CategoryRow
-                key={`${category}-${aircrafts[0]?.id || index}`}
-                category={category}
-                representative={aircrafts[0]}
-                isSelected={selectedAircraft.includes(aircrafts[0]?.id || "")}
-              />
-            ),
-          )
+        {availableCategories.length > 0 ? (
+          availableCategories.map(([categoryKey, category]) => {
+            const isSelected = selectedCategories.includes(categoryKey);
+            const currentAircraft = getCurrentAircraft(categoryKey);
+
+            // Calculate flight duration for this category
+            const calculateFlightDuration = () => {
+              if (!flightDistance || flightDistance === 0) {
+                return "Calculating...";
+              }
+              const durationMinutes = estimateFlightDuration(
+                flightDistance,
+                category.cruiseSpeed,
+              );
+              return formatDuration(durationMinutes);
+            };
+
+            // Calculate price for this category
+            const calculateEstimatedPrice = () => {
+              if (!flightDistance || flightDistance === 0) {
+                return 0;
+              }
+              const durationMinutes = estimateFlightDuration(
+                flightDistance,
+                category.cruiseSpeed,
+              );
+              const hours = durationMinutes / 60;
+              const rawPrice = category.pricePerHour * hours;
+              return Math.ceil(rawPrice / 100) * 100; // Always round up to nearest 100
+            };
+
+            return (
+              <div
+                key={categoryKey}
+                className={`relative ${
+                  isSelected
+                    ? "ring-2 ring-[#D4AF37] bg-[#D4AF37]/5"
+                    : "border border-gray-200"
+                } rounded-lg overflow-hidden bg-white`}
+              >
+                {/* Top Half - Image with Overlay Text */}
+                <div className="relative h-48 bg-gray-100">
+                  {currentAircraft?.exteriorImages?.[0] ? (
+                    <img
+                      src={currentAircraft.exteriorImages[0]}
+                      alt={currentAircraft.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <Plane className="w-16 h-16" />
+                    </div>
+                  )}
+
+                  {/* Category Type - Top Left */}
+                  <div className="absolute top-3 left-3 bg-black/70 text-white px-3 py-1 rounded text-sm font-semibold">
+                    {category.name}
+                  </div>
+
+                  {/* Aircraft Name - Bottom Left */}
+                  <div className="absolute bottom-3 left-3 bg-black/70 text-white px-3 py-1 rounded">
+                    <div className="font-semibold">
+                      {currentAircraft?.name || category.name}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Half - Details */}
+                <div className="p-4 space-y-3">
+                  {/* First Row - Passengers & Flight Duration */}
+                  <div className="flex items-start justify-between">
+                    {/* Passengers - Stacked Layout */}
+                    <div className="flex items-center justify-center gap-1">
+                      <div className="bg-gray-100 p-2 rounded-xl">
+                        <Users className="w-4 h-4 text-gray-400 my-1" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-gray-500 uppercase tracking-wide">
+                          Up to
+                        </span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {category.maxPassengers} passengers
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Flight Duration - Stacked Layout */}
+                    <div className="flex items-center justify-center gap-1">
+                      <div className="bg-gray-100 p-2 rounded-xl">
+                        <Clock4 className="w-4 h-4 text-gray-400 my-1" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-gray-500 uppercase tracking-wide">
+                          Flight
+                        </span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {calculateFlightDuration()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Second Row - Price & Button */}
+                  <div className="space-y-2">
+                    <div>
+                      <div className="text-xs text-gray-500">Starting from</div>
+                      <div className="text-xl font-bold text-[#D4AF37]">
+                        {calculateEstimatedPrice() > 0
+                          ? `USD ${calculateEstimatedPrice().toLocaleString()}`
+                          : "Calculating..."}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Estimated price excluding taxes and fees
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSelectCategory(categoryKey);
+                      }}
+                      type="button"
+                      className={`w-full py-2 px-4 text-sm font-medium ${
+                        isSelected
+                          ? "bg-gray-500 text-white"
+                          : "bg-[#D4AF37] text-black"
+                      }`}
+                    >
+                      {isSelected ? "Selected Category" : "Add to Quote"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
         ) : (
           <div className="p-8 text-center text-gray-500">
             {formData?.passengers
-              ? `No aircraft available for ${formData.passengers} passengers`
-              : "No aircraft available"}
+              ? `No aircraft categories available for ${formData.passengers} passengers`
+              : "No aircraft categories available"}
           </div>
         )}
       </div>
 
-      {/* Selected Category Preview */}
-      {selectedAircraft.length > 0 && (
+      {/* Selected Categories Preview */}
+      {selectedCategories.length > 0 && (
         <Card className="p-4 border-[#D4AF37]/20 bg-[#D4AF37]/5">
-          <h4 className="font-semibold text-gray-900 lg:mb-3">
+          <h4 className="font-semibold text-gray-900 mb-3">
             SELECTED CATEGORIES:
           </h4>
           <div className="space-y-2">
-            {getSelectedCategories().map((category, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-2 lg:px-3 lg:py-2 border border-[#D4AF37] bg-white"
-              >
-                <span className="text-sm font-medium">{category}</span>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const aircraftToRemove = getSelectedAircraftDetails().find(
-                      (a) => a.type === category,
-                    );
-                    if (aircraftToRemove) {
-                      handleSelectAircraft(aircraftToRemove.id);
-                    }
-                  }}
-                  type="button"
-                  className="text-gray-400 hover:text-red-500 text-lg"
+            {selectedCategories.map((categoryKey, index) => {
+              const category = CATEGORIES[categoryKey];
+              return (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-2 px-3 py-2 border border-[#D4AF37] bg-white"
                 >
-                  ×
-                </button>
-              </div>
-            ))}
+                  <span className="text-sm font-medium">{category.name}</span>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelectCategory(categoryKey);
+                    }}
+                    type="button"
+                    className="text-gray-400 hover:text-red-500 text-lg"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
@@ -497,187 +590,13 @@ export function AircraftSelection({
         <Button
           onClick={handleContinue}
           variant="outline"
-          disabled={selectedAircraft.length === 0}
+          disabled={selectedCategories.length === 0}
           className="bg-[#D4AF37]"
         >
-          Continue ({selectedAircraft.length} selected)
+          Continue ({selectedCategories.length} selected)
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
-
-      {/* Aircraft Detail Dialog */}
-      <Dialog
-        open={!!viewingAircraft}
-        onOpenChange={() => setViewingAircraft(null)}
-      >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          {viewingAircraft && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold">
-                  {viewingAircraft.name}
-                </DialogTitle>
-                <p className="text-sm text-gray-500">{viewingAircraft.type}</p>
-              </DialogHeader>
-
-              {/* Thumbnail Image */}
-              <div className="mt-4">
-                {viewingAircraft.exteriorImages?.[0] ? (
-                  <img
-                    src={viewingAircraft.exteriorImages[0]}
-                    alt={viewingAircraft.name}
-                    className="w-full h-48 object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400">
-                    No image available
-                  </div>
-                )}
-              </div>
-
-              {/* Short Description */}
-              <div className="mt-4">
-                <p className="text-sm text-gray-600">
-                  {viewingAircraft.manufacturer &&
-                    `${viewingAircraft.manufacturer} `}
-                  {viewingAircraft.model || viewingAircraft.name} - A{" "}
-                  {viewingAircraft.type.toLowerCase()}
-                  with seating for up to {
-                    viewingAircraft.passengerCapacity
-                  }{" "}
-                  passengers.
-                  {viewingAircraft.rangeNm > 0 &&
-                    ` Range: ${viewingAircraft.range || `${viewingAircraft.rangeNm} nm`}.`}
-                </p>
-              </div>
-
-              {/* Specifications Grid */}
-              <div className="mt-4 grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-gray-900">
-                    Specifications
-                  </h4>
-                  <div className="text-sm space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Passengers:</span>
-                      <span className="text-gray-900">
-                        {viewingAircraft.passengerCapacity}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Luggage:</span>
-                      <span className="text-gray-900">
-                        {viewingAircraft.luggageCapacity || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Speed:</span>
-                      <span className="text-gray-900">
-                        {viewingAircraft.cruiseSpeed || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Range:</span>
-                      <span className="text-gray-900">
-                        {viewingAircraft.range || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Hourly Rate:</span>
-                      <span className="text-gray-900 font-semibold">
-                        $
-                        {viewingAircraft.hourlyRateUsd?.toLocaleString() || "-"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-gray-900">
-                    Cabin Dimensions
-                  </h4>
-                  <div className="text-sm space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Height:</span>
-                      <span className="text-gray-900">
-                        {viewingAircraft.cabinHeight || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Width:</span>
-                      <span className="text-gray-900">
-                        {viewingAircraft.cabinWidth || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Length:</span>
-                      <span className="text-gray-900">
-                        {viewingAircraft.cabinLength || "-"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Interior Images */}
-              {viewingAircraft.interiorImages?.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Interior</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {viewingAircraft.interiorImages
-                      .slice(0, 3)
-                      .map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img}
-                          alt={`${viewingAircraft.name} interior ${idx + 1}`}
-                          className="w-full h-20 object-cover"
-                        />
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Exterior Images */}
-              {viewingAircraft.exteriorImages?.length > 1 && (
-                <div className="mt-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Exterior</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {viewingAircraft.exteriorImages
-                      .slice(1, 4)
-                      .map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img}
-                          alt={`${viewingAircraft.name} exterior ${idx + 1}`}
-                          className="w-full h-20 object-cover"
-                        />
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Select Button */}
-              <div className="mt-6 flex justify-end">
-                <Button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSelectAircraft(viewingAircraft.id);
-                    setViewingAircraft(null);
-                  }}
-                  className="bg-[#D4AF37] text-white hover:bg-[#B8962E]"
-                >
-                  {selectedAircraft.includes(viewingAircraft.id)
-                    ? "Deselect"
-                    : "Select"}{" "}
-                  Aircraft
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
