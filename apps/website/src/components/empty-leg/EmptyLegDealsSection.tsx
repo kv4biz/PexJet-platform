@@ -36,8 +36,10 @@ interface Airport {
   id: string;
   name: string;
   city: string;
+  region: string;
   country: string;
-  code: string;
+  iataCode: string;
+  icaoCode: string;
   latitude: number;
   longitude: number;
 }
@@ -337,24 +339,27 @@ export function EmptyLegDealsSection() {
       >
         <div className="flex flex-col md:flex-row">
           {/* Left Section - Route Info */}
-          <div className="flex-1 p-4 md:p-6">
+          <div className="flex-1 p-2 md:p-6">
             {/* Route */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-start md:items-center justify-between mb-4">
               {/* Departure */}
-              <div className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-gray-900">
-                  {deal.departureAirport.code}
+              <div className="w-[30%] lg:w-[25%] text-left">
+                <div className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight">
+                  {deal.departureAirport.iataCode}
                 </div>
-                <div className="text-sm text-gray-600 max-w-[100px] truncate">
-                  {deal.departureAirport.city}
+                <div className="text-sm font-medium text-gray-600 hidden lg:block mt-1">
+                  {deal.departureAirport.name}
                 </div>
-                <div className="text-xs text-gray-400">
-                  {formatTime(deal.departureDate)}
+                <div className="text-sm text-gray-600 mt-1 lg:mt-0">
+                  {deal.departureAirport.city || deal.departureAirport.region}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {deal.departureAirport.country}
                 </div>
               </div>
 
               {/* Flight Path */}
-              <div className="flex-1 px-4 md:px-8">
+              <div className="flex-1 px-2 mt-4 md:mt-0">
                 <div className="relative flex items-center justify-center">
                   <div className="absolute w-full border-t-2 border-dashed border-gray-300" />
                   <div className="relative bg-white px-2">
@@ -369,49 +374,52 @@ export function EmptyLegDealsSection() {
               </div>
 
               {/* Arrival */}
-              <div className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-gray-900">
-                  {deal.arrivalAirport.code}
+              <div className="w-[30%] lg:w-[25%]  text-right">
+                <div className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight">
+                  {deal.arrivalAirport.iataCode}
                 </div>
-                <div className="text-sm text-gray-600 max-w-[100px] truncate">
-                  {deal.arrivalAirport.city}
+                <div className="text-sm font-medium text-gray-600 hidden lg:block mt-1">
+                  {deal.arrivalAirport.name}
                 </div>
-                <div className="text-xs text-gray-400">{estArrivalTime}</div>
+                <div className="text-sm text-gray-600 mt-1 lg:mt-0">
+                  {deal.arrivalAirport.city || deal.arrivalAirport.region}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {deal.arrivalAirport.country}
+                </div>
               </div>
             </div>
 
             {/* Details Row */}
-            <div className="flex items-center justify-between text-sm border-t pt-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm border-t pt-3">
               <div className="flex items-center gap-1 text-gray-600">
-                <Calendar className="w-4 h-4" />
+                <Calendar className="w-4 h-4 flex-shrink-0" />
                 <span>{formatDate(deal.departureDate)}</span>
               </div>
-              <div className="flex items-center gap-1 text-gray-600">
-                <Users className="w-4 h-4" />
-                <span>
-                  {deal.availableSeats}/{deal.totalSeats} seats
-                </span>
+              <div className="flex items-center gap-1 text-gray-600 justify-end md:justify-center">
+                <Users className="w-4 h-4 flex-shrink-0" />
+                <span>{deal.availableSeats}</span>
               </div>
-              <div className="text-gray-600 hidden md:block">
-                {deal.aircraft.name}
+              <div className="flex items-center text-gray-600 col-span-2 md:col-span-1 justify-end">
+                {deal.aircraft.category}
               </div>
             </div>
           </div>
 
           {/* Right Section - Price & CTA */}
-          <div className="bg-gray-50 p-4 md:p-6 md:w-48 flex flex-col justify-center items-center border-t md:border-t-0 md:border-l border-dashed border-gray-300">
+          <div className="bg-gray-50 p-4 md:p-6 md:w-48 flex flex-row md:flex-col justify-between md:justify-center items-center border-t md:border-t-0 md:border-l border-dashed border-gray-300">
             {/* Price Display */}
-            <div className="text-md capitalize md:text-lg font-bold text-[#D4AF37] mb-4 text-center">
+            <div className="text-md capitalize md:text-lg font-bold text-[#D4AF37] md:mb-4 text-center">
               {formatPrice(deal.priceUsd, deal.priceText, deal.priceType)}
             </div>
 
             {/* CTA Button */}
             <Link href={`/empty-legs/${deal.slug}`}>
               <Button
-                className={`w-full ${isSoldOut ? "bg-gray-400" : "bg-[#D4AF37]"} text-black`}
+                className={`md:w-full ${isSoldOut ? "bg-gray-400" : "bg-[#D4AF37]"} text-black`}
                 disabled={isSoldOut}
               >
-                {isSoldOut ? "Sold Out" : "View Deal"}
+                {isSoldOut ? "Sold Out" : "Request Quote"}
                 {!isSoldOut && <ArrowRight className="w-4 h-4 ml-1" />}
               </Button>
             </Link>

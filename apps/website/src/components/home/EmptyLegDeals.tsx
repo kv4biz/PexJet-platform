@@ -14,8 +14,10 @@ interface EmptyLegDeal {
     id: string;
     name: string;
     city: string;
+    region: string;
     country: string;
-    code: string;
+    iataCode: string;
+    icaoCode: string;
     latitude: number;
     longitude: number;
   };
@@ -23,8 +25,10 @@ interface EmptyLegDeal {
     id: string;
     name: string;
     city: string;
+    region: string;
     country: string;
-    code: string;
+    iataCode: string;
+    icaoCode: string;
     latitude: number;
     longitude: number;
   };
@@ -47,15 +51,6 @@ interface EmptyLegDeal {
   createdByAdminId?: string;
   createdByOperatorId?: string;
   ownerType: string;
-}
-
-// Helper to format duration
-function formatDuration(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours === 0) return `${mins}m`;
-  if (mins === 0) return `${hours}h`;
-  return `${hours}h ${mins}m`;
 }
 
 // Helper to format time
@@ -111,8 +106,7 @@ export default function EmptyLegDeals() {
     function getCardsForWidth() {
       if (typeof window === "undefined") return 1;
       const w = window.innerWidth;
-      if (w >= 1024) return 3; // 3 cards on large screens
-      if (w >= 768) return 2;
+      if (w >= 1024) return 2; // 2 cards on large screens
       return 1;
     }
 
@@ -222,78 +216,85 @@ export default function EmptyLegDeals() {
               {deals.map((deal) => (
                 <div
                   key={deal.id}
-                  className="shrink-0 w-[85%] snap-center bg-white border border-gray-300 shadow-md overflow-hidden relative"
+                  className="shrink-0 w-[85%] snap-center bg-white border border-gray-300 shadow-md overflow-hidden relative flex flex-col"
                 >
                   {/* Ticket perforation */}
                   <div className="absolute top-0 left-0 w-full h-full flex justify-between pointer-events-none">
-                    <div className="w-3 h-full border-r-2 border-dashed border-gray-300"></div>
-                    <div className="w-3 h-full border-l-2 border-dashed border-gray-300"></div>
+                    <div className="w-1 lg:w-3 h-full border-r-2 border-dashed border-gray-300"></div>
+                    <div className="w-1 lg:w-3 h-full border-l-2 border-dashed border-gray-300"></div>
                   </div>
 
-                  <div className="p-4">
-                    {/* Header: Aircraft & Date */}
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="flex items-center gap-2">
-                        <Plane className="w-5 h-5 text-gray-600" />
-                        <span className="font-semibold text-gray-800 text-sm">
-                          {deal.aircraft.name}
-                        </span>
-                      </div>
-                      <div className="text-gray-500 text-sm">
-                        {formatDate(deal.departureDate)}
-                      </div>
-                    </div>
-
+                  <div className="py-8 px-4 flex-grow flex flex-col">
                     {/* Route: From → To */}
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex-1">
-                        <div className="text-xs text-gray-500">From</div>
-                        <div className="font-semibold text-gray-800 text-lg">
-                          {deal.departureAirport.code ||
-                            deal.departureAirport.city}
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="w-[40%] text-left">
+                        <div className="text-xs text-gray-500 mb-1">From</div>
+                        <div className="font-semibold text-gray-800 text-lg leading-tight">
+                          {deal.departureAirport.iataCode ||
+                            deal.departureAirport.icaoCode}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {deal.departureAirport.city ||
+                            deal.departureAirport.region}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {deal.departureAirport.city},{" "}
                           {deal.departureAirport.country}
                         </div>
                       </div>
-                      <div className="text-[#D4AF37] text-xl px-2">→</div>
-                      <div className="flex-1 text-right">
-                        <div className="text-xs text-gray-500">To</div>
-                        <div className="font-semibold text-gray-800 text-lg">
-                          {deal.arrivalAirport.code || deal.arrivalAirport.city}
+                      <div className="text-[#D4AF37] text-xl px-2 flex-shrink-0 mt-6">
+                        →
+                      </div>
+                      <div className="w-[40%] text-right">
+                        <div className="text-xs text-gray-500 mb-1">To</div>
+                        <div className="font-semibold text-gray-800 text-lg leading-tight">
+                          {deal.arrivalAirport.iataCode ||
+                            deal.arrivalAirport.icaoCode}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {deal.arrivalAirport.city ||
+                            deal.arrivalAirport.region}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {deal.arrivalAirport.city},{" "}
                           {deal.arrivalAirport.country}
                         </div>
                       </div>
                     </div>
-
-                    {/* Departure Time & Seats */}
-                    <div className="flex justify-between items-center mb-4 text-sm">
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Clock className="w-4 h-4" />
-                        <span>Departs {formatTime(deal.departureDate)}</span>
+                    {/* Header: Aircraft & Date */}
+                    <div className="flex justify-end lg:justify-between items-center mb-1 lg:mb-4 flex-grow">
+                      <div className="items-center gap-1 hidden lg:flex">
+                        <Plane className="w-5 h-5 text-gray-600" />
+                        <span className="text-gray-500 text-sm">
+                          {deal.aircraft.category}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Users className="w-4 h-4" />
-                        <span>{deal.availableSeats} seats</span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 text-gray-500 text-sm">
+                          <Clock className="w-4 h-4" />
+                          <span>
+                            {formatDate(deal.departureDate)}{" "}
+                            {formatTime(deal.departureDate)}
+                          </span>
+                        </div>
+                        <div className="h-4 w-px bg-gray-300"></div>
+                        <div className="flex items-center gap-1 text-gray-500">
+                          <Users className="w-4 h-4" />
+                          <span>{deal.availableSeats}</span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Price & CTA */}
-                    <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+                    <div className="pt-2 mt-auto border-t border-gray-200 flex items-center justify-between">
                       <div>
-                        <div className="text-2xl font-bold text-[#D4AF37]">
+                        <div className="text-lg lg:text-xl font-semibold capitalize text-[#D4AF37]">
                           {deal.priceText}
                         </div>
                       </div>
                       <Link
                         href={`/empty-legs/${deal.slug}`}
-                        className="bg-[#D4AF37] text-white px-4 py-2 font-semibold hover:bg-[#B8962E] transition-colors"
+                        className="bg-[#D4AF37] text-white px-4 py-1 font-medium hover:bg-[#B8962E] transition-colors"
                       >
-                        {deal.priceType === "CONTACT" ? "Inquire" : "Book Now"}
+                        Request Quote
                       </Link>
                     </div>
                   </div>
@@ -314,78 +315,87 @@ export default function EmptyLegDeals() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex-1 min-w-0 bg-white border border-gray-300 shadow-md overflow-hidden relative group"
+                  className="flex-1 min-w-0 bg-white border border-gray-300 shadow-md overflow-hidden relative group flex flex-col"
                 >
                   {/* Ticket perforation */}
                   <div className="absolute top-0 left-0 w-full h-full flex justify-between pointer-events-none">
-                    <div className="w-3 h-full border-r-2 border-dashed border-gray-300"></div>
-                    <div className="w-3 h-full border-l-2 border-dashed border-gray-300"></div>
+                    <div className="w-4 h-full border-r-2 border-dashed border-gray-300"></div>
+                    <div className="w-4 h-full border-l-2 border-dashed border-gray-300"></div>
                   </div>
 
-                  <div className="p-4 md:p-6">
-                    {/* Header: Aircraft & Date */}
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="flex items-center gap-2">
-                        <Plane className="w-5 h-5 text-gray-600" />
-                        <span className="font-semibold text-gray-800 text-sm">
-                          {deal.aircraft.name}
-                        </span>
-                      </div>
-                      <div className="text-gray-500 text-sm">
-                        {formatDate(deal.departureDate)}
-                      </div>
-                    </div>
-
+                  <div className="p-4 md:p-6 flex-grow flex flex-col">
                     {/* Route: From → To */}
                     <div className="flex justify-between items-center mb-3">
-                      <div className="flex-1">
+                      <div className="w-[42%] text-left">
                         <div className="text-xs text-gray-500">From</div>
                         <div className="font-semibold text-gray-800 text-lg">
-                          {deal.departureAirport.code ||
-                            deal.departureAirport.city}
+                          {deal.departureAirport.iataCode ||
+                            deal.departureAirport.icaoCode}
+                        </div>
+                        <div className="text-xs font-medium text-gray-600">
+                          {deal.departureAirport.name}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {deal.departureAirport.city},{" "}
-                          {deal.departureAirport.country}
+                          {deal.departureAirport.city ||
+                            deal.departureAirport.region}
+                          , {deal.departureAirport.country}
                         </div>
                       </div>
-                      <div className="text-[#D4AF37] text-xl px-2">→</div>
-                      <div className="flex-1 text-right">
+                      <div className="text-[#D4AF37] text-xl px-2 flex-shrink-0">
+                        →
+                      </div>
+                      <div className="w-[42%] text-right">
                         <div className="text-xs text-gray-500">To</div>
                         <div className="font-semibold text-gray-800 text-lg">
-                          {deal.arrivalAirport.code || deal.arrivalAirport.city}
+                          {deal.arrivalAirport.iataCode ||
+                            deal.arrivalAirport.icaoCode}
+                        </div>
+                        <div className="text-xs font-medium text-gray-600">
+                          {deal.arrivalAirport.name}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {deal.arrivalAirport.city},{" "}
-                          {deal.arrivalAirport.country}
+                          {deal.arrivalAirport.city ||
+                            deal.arrivalAirport.region}
+                          , {deal.arrivalAirport.country}
                         </div>
                       </div>
                     </div>
-
-                    {/* Departure Time & Seats */}
-                    <div className="flex justify-between items-center mb-4 text-sm">
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Clock className="w-4 h-4" />
-                        <span>Departs {formatTime(deal.departureDate)}</span>
+                    {/* Header: Aircraft & Date */}
+                    <div className="flex justify-between items-center mb-1 lg:mb-4 flex-grow">
+                      <div className="flex items-center gap-1">
+                        <Plane className="w-5 h-5 text-gray-600" />
+                        <span className="text-gray-500 text-sm">
+                          {deal.aircraft.category}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Users className="w-4 h-4" />
-                        <span>{deal.availableSeats} seats</span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 text-gray-500 text-sm">
+                          <Clock className="w-4 h-4" />
+                          <span>
+                            {formatDate(deal.departureDate)}{" "}
+                            {formatTime(deal.departureDate)}
+                          </span>
+                        </div>
+                        <div className="h-4 w-px bg-gray-300"></div>
+                        <div className="flex items-center gap-1 text-gray-500">
+                          <Users className="w-4 h-4" />
+                          <span>{deal.availableSeats}</span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Price & CTA */}
-                    <div className="pt-4 border-t border-gray-200 flex items-center justify-between">
+                    <div className="pt-2 mt-auto border-t border-gray-200 flex items-center justify-between">
                       <div>
-                        <div className="text-xl font-bold text-[#D4AF37]">
+                        <div className="text-xl font-semibold capitalize text-[#D4AF37]">
                           {deal.priceText}
                         </div>
                       </div>
                       <Link
                         href={`/empty-legs/${deal.slug}`}
-                        className="bg-[#D4AF37] text-white px-4 py-2 font-semibold hover:bg-[#B8962E] transition-colors"
+                        className="bg-[#D4AF37] text-white px-4 py-1 font-semibold hover:bg-[#B8962E] transition-colors"
                       >
-                        {deal.priceType === "CONTACT" ? "Inquire" : "Book Now"}
+                        Request Quote
                       </Link>
                     </div>
                   </div>

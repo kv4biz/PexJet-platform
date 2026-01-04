@@ -50,6 +50,11 @@ interface Airport {
   iataCode: string | null;
   icaoCode: string | null;
   countryCode: string;
+  regionCode: string;
+  type: string;
+  region?: {
+    name: string;
+  };
 }
 
 export default function NewEmptyLegPage() {
@@ -184,19 +189,16 @@ export default function NewEmptyLegPage() {
   };
 
   const selectAirport = (airport: Airport, type: "departure" | "arrival") => {
+    const displayText = `[${airport.iataCode || "N/A"}/${airport.icaoCode || "N/A"}] - ${airport.region?.name || airport.regionCode}`;
     if (type === "departure") {
       setSelectedDeparture(airport);
       setFormData((prev) => ({ ...prev, departureAirportId: airport.id }));
-      setDepartureSearch(
-        `${airport.municipality || airport.name} (${airport.iataCode || airport.icaoCode})`,
-      );
+      setDepartureSearch(displayText);
       setShowDepartureDropdown(false);
     } else {
       setSelectedArrival(airport);
       setFormData((prev) => ({ ...prev, arrivalAirportId: airport.id }));
-      setArrivalSearch(
-        `${airport.municipality || airport.name} (${airport.iataCode || airport.icaoCode})`,
-      );
+      setArrivalSearch(displayText);
       setShowArrivalDropdown(false);
     }
   };
@@ -416,7 +418,8 @@ export default function NewEmptyLegPage() {
                   Route
                 </CardTitle>
                 <CardDescription>
-                  Select departure and arrival airports
+                  Select departure and arrival airports (medium & large airports
+                  only)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -428,7 +431,7 @@ export default function NewEmptyLegPage() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="departure"
-                        placeholder="Search city, airport, or code..."
+                        placeholder="Search by IATA, ICAO code, or region..."
                         value={departureSearch}
                         onChange={(e) => {
                           setDepartureSearch(e.target.value);
@@ -445,7 +448,10 @@ export default function NewEmptyLegPage() {
                         className="pl-10"
                       />
                       {searchingDeparture && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />
+                        <Loader2
+                          className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4"
+                          style={{ animation: "spin 1s linear infinite" }}
+                        />
                       )}
                     </section>
                     {showDepartureDropdown && departureResults.length > 0 && (
@@ -454,16 +460,13 @@ export default function NewEmptyLegPage() {
                           <button
                             key={airport.id}
                             type="button"
-                            className="w-full px-4 py-2 text-left hover:bg-muted flex flex-col"
+                            className="w-full px-4 py-2 text-left hover:bg-muted"
                             onClick={() => selectAirport(airport, "departure")}
                           >
                             <span className="font-medium">
-                              {airport.municipality || airport.name}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {airport.name} (
-                              {airport.iataCode || airport.icaoCode}) -{" "}
-                              {airport.countryCode}
+                              [{airport.iataCode || "N/A"}/
+                              {airport.icaoCode || "N/A"}] -{" "}
+                              {airport.region?.name || airport.regionCode}
                             </span>
                           </button>
                         ))}
@@ -478,7 +481,7 @@ export default function NewEmptyLegPage() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="arrival"
-                        placeholder="Search city, airport, or code..."
+                        placeholder="Search by IATA, ICAO code, or region..."
                         value={arrivalSearch}
                         onChange={(e) => {
                           setArrivalSearch(e.target.value);
@@ -495,7 +498,10 @@ export default function NewEmptyLegPage() {
                         className="pl-10"
                       />
                       {searchingArrival && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />
+                        <Loader2
+                          className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4"
+                          style={{ animation: "spin 1s linear infinite" }}
+                        />
                       )}
                     </section>
                     {showArrivalDropdown && arrivalResults.length > 0 && (
@@ -504,16 +510,13 @@ export default function NewEmptyLegPage() {
                           <button
                             key={airport.id}
                             type="button"
-                            className="w-full px-4 py-2 text-left hover:bg-muted flex flex-col"
+                            className="w-full px-4 py-2 text-left hover:bg-muted"
                             onClick={() => selectAirport(airport, "arrival")}
                           >
                             <span className="font-medium">
-                              {airport.municipality || airport.name}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {airport.name} (
-                              {airport.iataCode || airport.icaoCode}) -{" "}
-                              {airport.countryCode}
+                              [{airport.iataCode || "N/A"}/
+                              {airport.icaoCode || "N/A"}] -{" "}
+                              {airport.region?.name || airport.regionCode}
                             </span>
                           </button>
                         ))}
@@ -521,6 +524,15 @@ export default function NewEmptyLegPage() {
                     )}
                   </article>
                 </section>
+
+                {/* Airport Filter Notice */}
+                <article className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Note:</strong> Search results include small, medium,
+                    and large airports only. Heliports and other facilities are
+                    excluded.
+                  </p>
+                </article>
 
                 {/* Route Preview */}
                 {selectedDeparture && selectedArrival && (

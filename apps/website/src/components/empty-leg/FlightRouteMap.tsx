@@ -84,6 +84,14 @@ export function FlightRouteMap({
           return;
         }
 
+        // Ensure container has dimensions before initializing map
+        const containerRect = mapRef.current.getBoundingClientRect();
+        if (containerRect.width === 0 || containerRect.height === 0) {
+          setError("Map container has no dimensions");
+          setIsLoading(false);
+          return;
+        }
+
         // If map already exists, clean it up first
         if (mapInstanceRef.current) {
           try {
@@ -183,9 +191,21 @@ export function FlightRouteMap({
           [depLat, depLng],
           [arrLat, arrLng],
         ]);
-        map.fitBounds(bounds, { padding: [50, 50] });
 
-        setIsLoading(false);
+        // Use setTimeout to ensure map is fully initialized before fitBounds
+        setTimeout(() => {
+          if (isMountedRef.current && mapInstanceRef.current) {
+            try {
+              map.fitBounds(bounds, { padding: [50, 50] });
+            } catch (e) {
+              console.error("Error fitting bounds:", e);
+            }
+          }
+        }, 100);
+
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
       } catch (err: any) {
         console.error("Map initialization error:", err);
         setError(err?.message || "Failed to load map");
@@ -195,7 +215,9 @@ export function FlightRouteMap({
 
     // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
-      initMap();
+      if (isMountedRef.current) {
+        initMap();
+      }
     }, 150);
 
     // Cleanup

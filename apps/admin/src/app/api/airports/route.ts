@@ -27,28 +27,33 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const whereConditions: any[] = [];
-    
-    // Search filter
+
+    // Filter for small, medium and large airports (exclude heliports, seaplane bases, etc.)
+    whereConditions.push({
+      type: { in: ["small_airport", "medium_airport", "large_airport"] },
+    });
+
+    // Search filter - only by IATA code, ICAO code, and region
     if (search) {
       whereConditions.push({
         OR: [
-          { ident: { contains: search, mode: "insensitive" as const } },
           { icaoCode: { contains: search, mode: "insensitive" as const } },
           { iataCode: { contains: search, mode: "insensitive" as const } },
-          { name: { contains: search, mode: "insensitive" as const } },
-          { municipality: { contains: search, mode: "insensitive" as const } },
-          { countryCode: { contains: search, mode: "insensitive" as const } },
-          { country: { name: { contains: search, mode: "insensitive" as const } } },
-          { region: { name: { contains: search, mode: "insensitive" as const } } },
+          {
+            region: {
+              name: { contains: search, mode: "insensitive" as const },
+            },
+          },
+          { regionCode: { contains: search, mode: "insensitive" as const } },
         ],
       });
     }
-    
-    // Type filter
+
+    // Type filter (additional filter if specified)
     if (type) {
       whereConditions.push({ type: type as any });
     }
-    
+
     const where = whereConditions.length > 0 ? { AND: whereConditions } : {};
 
     // Fetch airports with pagination
@@ -99,7 +104,7 @@ export async function GET(request: NextRequest) {
     console.error("Airports fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch airports" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

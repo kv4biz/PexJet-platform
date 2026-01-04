@@ -37,8 +37,10 @@ interface EmptyLegDetail {
     id: string;
     name: string;
     city: string;
+    region: string;
     country: string;
-    code: string;
+    iataCode: string;
+    icaoCode: string;
     latitude?: number;
     longitude?: number;
   };
@@ -46,8 +48,10 @@ interface EmptyLegDetail {
     id: string;
     name: string;
     city: string;
+    region: string;
     country: string;
-    code: string;
+    iataCode: string;
+    icaoCode: string;
     latitude?: number;
     longitude?: number;
   };
@@ -389,8 +393,18 @@ export default function EmptyLegDetailPage() {
         {/* Flight Route Map */}
         <div className="h-[400px] md:h-[500px] relative z-0">
           <FlightRouteMap
-            departureAirport={emptyLeg.departureAirport}
-            arrivalAirport={emptyLeg.arrivalAirport}
+            departureAirport={{
+              ...emptyLeg.departureAirport,
+              code:
+                emptyLeg.departureAirport.iataCode ||
+                emptyLeg.departureAirport.icaoCode,
+            }}
+            arrivalAirport={{
+              ...emptyLeg.arrivalAirport,
+              code:
+                emptyLeg.arrivalAirport.iataCode ||
+                emptyLeg.arrivalAirport.icaoCode,
+            }}
             className="h-full"
           />
         </div>
@@ -438,7 +452,7 @@ export default function EmptyLegDetailPage() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
             {/* Left Column - Deal Details & Form */}
-            <div className="lg:col-span-2 space-y-4 md:space-y-6 order-2 lg:order-1">
+            <div className="lg:col-span-2 space-y-4 md:space-y-6">
               {/* Deal Header */}
               <Card>
                 <CardContent className="p-6">
@@ -454,19 +468,18 @@ export default function EmptyLegDetailPage() {
 
                   {/* Route */}
                   <div className="flex items-center justify-between py-6">
-                    <div className="text-center flex-shrink-0 max-w-[100px] md:max-w-[200px]">
+                    <div className=" flex-shrink-0 max-w-[100px] md:max-w-[200px] text-left">
                       <div className="text-2xl md:text-4xl font-bold">
-                        {emptyLeg.departureAirport.code}
+                        {emptyLeg.departureAirport.iataCode ||
+                          emptyLeg.departureAirport.icaoCode}
                       </div>
-                      <div
-                        className="text-xs text-gray-400"
-                        title={emptyLeg.departureAirport.name}
-                      >
-                        {emptyLeg.departureAirport.name},{" "}
-                        {emptyLeg.departureAirport.city}
+                      <div className="text-xs md:text-sm text-gray-600 mt-1">
+                        {emptyLeg.departureAirport.name}
                       </div>
-                      <div className="text-xs md:text-sm text-gray-400 hidden md:block">
-                        {emptyLeg.departureAirport.country}
+                      <div className="text-xs text-gray-500 mt-1">
+                        {emptyLeg.departureAirport.city ||
+                          emptyLeg.departureAirport.region}
+                        , {emptyLeg.departureAirport.country}
                       </div>
                     </div>
                     <div className="flex-1 px-2 md:px-8">
@@ -481,19 +494,18 @@ export default function EmptyLegDetailPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="text-center flex-shrink-0 max-w-[100px] md:max-w-[200px]">
+                    <div className="text-right flex-shrink-0 max-w-[100px] md:max-w-[200px]">
                       <div className="text-2xl md:text-4xl font-bold">
-                        {emptyLeg.arrivalAirport.code}
+                        {emptyLeg.arrivalAirport.iataCode ||
+                          emptyLeg.arrivalAirport.icaoCode}
                       </div>
-                      <div
-                        className="text-xs text-gray-400"
-                        title={emptyLeg.arrivalAirport.name}
-                      >
+                      <div className="text-xs md:text-sm text-gray-600 mt-1">
                         {emptyLeg.arrivalAirport.name}
                       </div>
-                      <div className="text-xs md:text-sm text-gray-400 hidden md:block">
-                        {emptyLeg.arrivalAirport.country},{" "}
-                        {emptyLeg.arrivalAirport.city}
+                      <div className="text-xs text-gray-500 mt-1">
+                        {emptyLeg.arrivalAirport.city ||
+                          emptyLeg.arrivalAirport.region}
+                        , {emptyLeg.arrivalAirport.country}
                       </div>
                     </div>
                   </div>
@@ -534,7 +546,72 @@ export default function EmptyLegDetailPage() {
                   </div>
                 </CardContent>
               </Card>
+              {/* mobile & medium only*/}
+              <div className="lg:col-span-1 lg:hidden block">
+                <div className="">
+                  <Card>
+                    <CardContent className="p-6">
+                      <h3 className="font-semibold text-lg mb-4">
+                        Deal Summary
+                      </h3>
 
+                      {/* Aircraft Image */}
+                      {emptyLeg.aircraft.images?.[0] && (
+                        <div className="mb-4 overflow-hidden">
+                          <img
+                            src={emptyLeg.aircraft.images[0]}
+                            alt={emptyLeg.aircraft.name}
+                            className="w-full h-48 object-cover"
+                          />
+                        </div>
+                      )}
+
+                      {/* Details */}
+                      <div className="py-3 space-y-2 text-sm border-b">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Date</span>
+                          <span>
+                            {format(
+                              new Date(emptyLeg.departureDate),
+                              "MMM d, yyyy",
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Time</span>
+                          <span>
+                            {format(new Date(emptyLeg.departureDate), "h:mm a")}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Aircraft</span>
+                          <span className="font-medium">
+                            {emptyLeg.aircraft.name}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Category</span>
+                          <span>{emptyLeg.aircraft.category}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Available</span>
+                          <span>{emptyLeg.availableSeats}</span>
+                        </div>
+                      </div>
+
+                      {/* Price */}
+                      <div className="pt-4">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Price</span>
+                          <span className="text-2xl font-semibold capitalize text-[#D4AF37]">
+                            {formatPrice(emptyLeg.priceUsd, emptyLeg.priceText)}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
               {/* Multi-Step Form */}
               {!showSuccess ? (
                 <Card>
@@ -588,46 +665,6 @@ export default function EmptyLegDetailPage() {
                         <h3 className="text-xl font-semibold text-center mb-6">
                           Enter Your Contact Details
                         </h3>
-
-                        {/* Seats Selection */}
-                        <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/20">
-                          <Label className="text-sm font-medium mb-2 block">
-                            Number of Seats
-                          </Label>
-                          <div className="flex items-center gap-4">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() =>
-                                setSeatsRequested(
-                                  Math.max(1, seatsRequested - 1),
-                                )
-                              }
-                            >
-                              -
-                            </Button>
-                            <span className="text-2xl font-bold w-12 text-center">
-                              {seatsRequested}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() =>
-                                setSeatsRequested(
-                                  Math.min(
-                                    emptyLeg.availableSeats,
-                                    seatsRequested + 1,
-                                  ),
-                                )
-                              }
-                            >
-                              +
-                            </Button>
-                            <span className="text-sm text-gray-500">
-                              of {emptyLeg.availableSeats} available
-                            </span>
-                          </div>
-                        </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
@@ -732,8 +769,11 @@ export default function EmptyLegDetailPage() {
                             <div>
                               <span className="text-gray-500">Route:</span>
                               <span className="ml-2 font-medium">
-                                {emptyLeg.departureAirport.code} →{" "}
-                                {emptyLeg.arrivalAirport.code}
+                                {emptyLeg.departureAirport.iataCode ||
+                                  emptyLeg.departureAirport.icaoCode}{" "}
+                                →{" "}
+                                {emptyLeg.arrivalAirport.iataCode ||
+                                  emptyLeg.arrivalAirport.icaoCode}
                               </span>
                             </div>
                             <div>
@@ -822,9 +862,11 @@ export default function EmptyLegDetailPage() {
                               <span>Seats requested:</span>
                               <span>{seatsRequested}</span>
                             </div>
-                            <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                              <span>Price:</span>
-                              <span className="text-[#D4AF37]">
+                            <div className="flex justify-between items-center pt-2 border-t">
+                              <span className="font-semibold">
+                                Total Price:
+                              </span>
+                              <span className="text-2xl font-bold text-[#D4AF37]">
                                 {formatPrice(
                                   emptyLeg.priceUsd,
                                   emptyLeg.priceText,
@@ -832,10 +874,6 @@ export default function EmptyLegDetailPage() {
                               </span>
                             </div>
                           </div>
-                          <p className="text-xs text-gray-500 mt-2">
-                            * Price is for the entire aircraft. Final price will
-                            be confirmed upon approval.
-                          </p>
                         </div>
 
                         <div className="flex justify-between pt-4">
@@ -843,7 +881,6 @@ export default function EmptyLegDetailPage() {
                             variant="outline"
                             onClick={() => setCurrentStep(1)}
                           >
-                            <ArrowLeft className="w-4 h-4 mr-2" />
                             Back
                           </Button>
                           <Button
@@ -872,7 +909,7 @@ export default function EmptyLegDetailPage() {
             </div>
 
             {/* Right Column - Summary Sidebar */}
-            <div className="lg:col-span-1 order-1 lg:order-2">
+            <div className="lg:col-span-1 hidden lg:block">
               <div className="lg:sticky lg:top-24">
                 <Card>
                   <CardContent className="p-6">
@@ -880,35 +917,14 @@ export default function EmptyLegDetailPage() {
 
                     {/* Aircraft Image */}
                     {emptyLeg.aircraft.images?.[0] && (
-                      <div className="mb-4">
+                      <div className="mb-4 overflow-hidden">
                         <img
                           src={emptyLeg.aircraft.images[0]}
                           alt={emptyLeg.aircraft.name}
-                          className="w-full h-auto max-h-80 lg:h-40 object-cover"
+                          className="w-full h-48 object-cover"
                         />
                       </div>
                     )}
-
-                    {/* Route */}
-                    <div className="flex items-center justify-between py-3 border-b">
-                      <div className="text-center">
-                        <div className="text-xl font-bold">
-                          {emptyLeg.departureAirport.code}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {emptyLeg.departureAirport.city}
-                        </div>
-                      </div>
-                      <Plane className="w-5 h-5 text-[#D4AF37] rotate-45" />
-                      <div className="text-center">
-                        <div className="text-xl font-bold">
-                          {emptyLeg.arrivalAirport.code}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {emptyLeg.arrivalAirport.city}
-                        </div>
-                      </div>
-                    </div>
 
                     {/* Details */}
                     <div className="py-3 space-y-2 text-sm border-b">
@@ -929,42 +945,29 @@ export default function EmptyLegDetailPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Aircraft</span>
-                        <span>{emptyLeg.aircraft.name}</span>
+                        <span className="font-medium">
+                          {emptyLeg.aircraft.name}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Seats Available</span>
+                        <span className="text-gray-500">Category</span>
+                        <span>{emptyLeg.aircraft.category}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Available</span>
                         <span>{emptyLeg.availableSeats}</span>
                       </div>
                     </div>
 
                     {/* Price */}
-                    <div className="py-3">
+                    <div className="pt-4">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold">Price</span>
-                        <span className="text-2xl font-bold text-[#D4AF37]">
+                        <span className="font-medium">Price</span>
+                        <span className="text-2xl font-semibold capitalize text-[#D4AF37]">
                           {formatPrice(emptyLeg.priceUsd, emptyLeg.priceText)}
                         </span>
                       </div>
-                      <Badge className="mt-2 bg-[#D4AF37] text-black">
-                        {emptyLeg.priceType === "CONTACT"
-                          ? "Contact for Price"
-                          : "Special Offer"}
-                      </Badge>
                     </div>
-
-                    {/* Seats requested info */}
-                    {seatsRequested > 0 && (
-                      <div className="pt-3 border-t">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-500">
-                            Seats requested:
-                          </span>
-                          <span className="text-lg font-semibold">
-                            {seatsRequested}
-                          </span>
-                        </div>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -1018,22 +1021,33 @@ export default function EmptyLegDetailPage() {
 
             {/* Footer */}
             <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <div className="text-center">
+              <div className="flex justify-center gap-4">
                 <Button
-                  asChild
-                  className="bg-[#D4AF37] text-black hover:bg-[#D4AF37]/90"
+                  onClick={() => {
+                    setShowSuccess(false);
+                    setCurrentStep(1);
+                    setContactInfo({
+                      firstName: "",
+                      lastName: "",
+                      email: "",
+                      phone: "",
+                      company: "",
+                      notes: "",
+                    });
+                  }}
+                  variant="outline"
                 >
+                  Close
+                </Button>
+                <Button asChild className="bg-[#D4AF37] text-black">
                   <Link href="/empty-legs">Browse More Deals</Link>
                 </Button>
-                <p className="text-xs text-gray-500 mt-3">
-                  By submitting this request, you acknowledge and accept these
-                  terms.
-                </p>
               </div>
             </div>
           </div>
         </div>
       )}
+
       <Footer />
     </main>
   );

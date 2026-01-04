@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
 
-// Helper function to get airport by ICAO code
+// Helper function to get airport by ICAO code with full database info
 async function getAirportByIcao(icao: string | null | undefined) {
   if (!icao) {
     return {
       id: "",
       name: "Unknown Airport",
       city: "",
+      region: "",
       country: "",
-      code: "",
+      iataCode: "",
+      icaoCode: "",
       latitude: 0,
       longitude: 0,
     };
@@ -27,6 +29,16 @@ async function getAirportByIcao(icao: string | null | undefined) {
         icaoCode: true,
         latitude: true,
         longitude: true,
+        region: {
+          select: {
+            name: true,
+          },
+        },
+        country: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
 
@@ -35,8 +47,10 @@ async function getAirportByIcao(icao: string | null | undefined) {
         id: airport.id,
         name: airport.name,
         city: airport.municipality || "",
-        country: airport.countryCode || "",
-        code: airport.iataCode || airport.icaoCode || "",
+        region: airport.region?.name || "",
+        country: airport.country?.name || airport.countryCode || "",
+        iataCode: airport.iataCode || "",
+        icaoCode: airport.icaoCode || "",
         latitude: airport.latitude,
         longitude: airport.longitude,
       };
@@ -50,8 +64,10 @@ async function getAirportByIcao(icao: string | null | undefined) {
     id: "",
     name: `${icao} Airport`,
     city: "",
+    region: "",
     country: "",
-    code: icao,
+    iataCode: "",
+    icaoCode: icao,
     latitude: 0,
     longitude: 0,
   };
@@ -76,6 +92,11 @@ export async function GET(
             icaoCode: true,
             latitude: true,
             longitude: true,
+            region: {
+              select: {
+                name: true,
+              },
+            },
             country: {
               select: { name: true },
             },
@@ -90,6 +111,11 @@ export async function GET(
             icaoCode: true,
             latitude: true,
             longitude: true,
+            region: {
+              select: {
+                name: true,
+              },
+            },
             country: {
               select: { name: true },
             },
@@ -150,37 +176,92 @@ export async function GET(
     }
 
     // Transform the leg data, handling both admin-created and InstaCharter deals
+    // Prioritize IATA codes and include region data
+    let departureAirport;
+    if (emptyLeg.departureAirport) {
+      // Check if we need to lookup for IATA code
+      if (
+        !emptyLeg.departureAirport.iataCode &&
+        emptyLeg.departureAirport.icaoCode
+      ) {
+        const fullAirportData = await getAirportByIcao(
+          emptyLeg.departureAirport.icaoCode,
+        );
+        departureAirport = {
+          id: emptyLeg.departureAirport.id,
+          name: emptyLeg.departureAirport.name,
+          city: emptyLeg.departureAirport.municipality || fullAirportData.city,
+          region:
+            emptyLeg.departureAirport.region?.name || fullAirportData.region,
+          country:
+            emptyLeg.departureAirport.country?.name || fullAirportData.country,
+          iataCode: fullAirportData.iataCode || "",
+          icaoCode: emptyLeg.departureAirport.icaoCode || "",
+          latitude: emptyLeg.departureAirport.latitude,
+          longitude: emptyLeg.departureAirport.longitude,
+        };
+      } else {
+        departureAirport = {
+          id: emptyLeg.departureAirport.id,
+          name: emptyLeg.departureAirport.name,
+          city: emptyLeg.departureAirport.municipality || "",
+          region: emptyLeg.departureAirport.region?.name || "",
+          country: emptyLeg.departureAirport.country?.name || "",
+          iataCode: emptyLeg.departureAirport.iataCode || "",
+          icaoCode: emptyLeg.departureAirport.icaoCode || "",
+          latitude: emptyLeg.departureAirport.latitude,
+          longitude: emptyLeg.departureAirport.longitude,
+        };
+      }
+    } else {
+      departureAirport = await getAirportByIcao(emptyLeg.departureIcao);
+    }
+
+    let arrivalAirport;
+    if (emptyLeg.arrivalAirport) {
+      // Check if we need to lookup for IATA code
+      if (
+        !emptyLeg.arrivalAirport.iataCode &&
+        emptyLeg.arrivalAirport.icaoCode
+      ) {
+        const fullAirportData = await getAirportByIcao(
+          emptyLeg.arrivalAirport.icaoCode,
+        );
+        arrivalAirport = {
+          id: emptyLeg.arrivalAirport.id,
+          name: emptyLeg.arrivalAirport.name,
+          city: emptyLeg.arrivalAirport.municipality || fullAirportData.city,
+          region:
+            emptyLeg.arrivalAirport.region?.name || fullAirportData.region,
+          country:
+            emptyLeg.arrivalAirport.country?.name || fullAirportData.country,
+          iataCode: fullAirportData.iataCode || "",
+          icaoCode: emptyLeg.arrivalAirport.icaoCode || "",
+          latitude: emptyLeg.arrivalAirport.latitude,
+          longitude: emptyLeg.arrivalAirport.longitude,
+        };
+      } else {
+        arrivalAirport = {
+          id: emptyLeg.arrivalAirport.id,
+          name: emptyLeg.arrivalAirport.name,
+          city: emptyLeg.arrivalAirport.municipality || "",
+          region: emptyLeg.arrivalAirport.region?.name || "",
+          country: emptyLeg.arrivalAirport.country?.name || "",
+          iataCode: emptyLeg.arrivalAirport.iataCode || "",
+          icaoCode: emptyLeg.arrivalAirport.icaoCode || "",
+          latitude: emptyLeg.arrivalAirport.latitude,
+          longitude: emptyLeg.arrivalAirport.longitude,
+        };
+      }
+    } else {
+      arrivalAirport = await getAirportByIcao(emptyLeg.arrivalIcao);
+    }
+
     const transformedLeg = {
       id: emptyLeg.id,
       slug: emptyLeg.slug,
-      departureAirport: emptyLeg.departureAirport
-        ? {
-            id: emptyLeg.departureAirport.id,
-            name: emptyLeg.departureAirport.name,
-            city: emptyLeg.departureAirport.municipality || "",
-            country: emptyLeg.departureAirport.country?.name || "",
-            code:
-              emptyLeg.departureAirport.iataCode ||
-              emptyLeg.departureAirport.icaoCode ||
-              "",
-            latitude: emptyLeg.departureAirport.latitude,
-            longitude: emptyLeg.departureAirport.longitude,
-          }
-        : await getAirportByIcao(emptyLeg.departureIcao),
-      arrivalAirport: emptyLeg.arrivalAirport
-        ? {
-            id: emptyLeg.arrivalAirport.id,
-            name: emptyLeg.arrivalAirport.name,
-            city: emptyLeg.arrivalAirport.municipality || "",
-            country: emptyLeg.arrivalAirport.country?.name || "",
-            code:
-              emptyLeg.arrivalAirport.iataCode ||
-              emptyLeg.arrivalAirport.icaoCode ||
-              "",
-            latitude: emptyLeg.arrivalAirport.latitude,
-            longitude: emptyLeg.arrivalAirport.longitude,
-          }
-        : await getAirportByIcao(emptyLeg.arrivalIcao),
+      departureAirport,
+      arrivalAirport,
       aircraft: emptyLeg.aircraft
         ? {
             id: emptyLeg.aircraft.id,

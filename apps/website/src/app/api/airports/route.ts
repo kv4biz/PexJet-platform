@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@pexjet/database";
+import { prisma, AirportType } from "@pexjet/database";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +12,15 @@ export async function GET(request: NextRequest) {
           AND: [
             { iataCode: { not: null } },
             { icaoCode: { not: null } },
+            {
+              type: {
+                in: [
+                  AirportType.small_airport,
+                  AirportType.medium_airport,
+                  AirportType.large_airport,
+                ],
+              },
+            },
             {
               OR: [
                 { name: { contains: query, mode: "insensitive" as const } },
@@ -48,7 +57,19 @@ export async function GET(request: NextRequest) {
           ],
         }
       : {
-          AND: [{ iataCode: { not: null } }, { icaoCode: { not: null } }],
+          AND: [
+            { iataCode: { not: null } },
+            { icaoCode: { not: null } },
+            {
+              type: {
+                in: [
+                  AirportType.small_airport,
+                  AirportType.medium_airport,
+                  AirportType.large_airport,
+                ],
+              },
+            },
+          ],
         };
 
     const airports = await prisma.airport.findMany({
