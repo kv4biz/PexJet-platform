@@ -566,9 +566,9 @@ export default function EmptyLegDetailPage() {
                     </div>
                     <div className="text-center p-3 bg-gray-50">
                       <Users className="w-5 h-5 mx-auto mb-1 text-[#D4AF37]" />
-                      <div className="text-sm text-gray-500">Seats</div>
+                      <div className="text-sm text-gray-500">Capacity</div>
                       <div className="font-semibold">
-                        {emptyLeg.availableSeats} available
+                        {emptyLeg.availableSeats}
                       </div>
                     </div>
                     <div className="text-center p-3 bg-gray-50">
@@ -622,7 +622,7 @@ export default function EmptyLegDetailPage() {
                           <span>{emptyLeg.aircraft.category}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500">Available</span>
+                          <span className="text-gray-500">Capacity</span>
                           <span>{emptyLeg.availableSeats}</span>
                         </div>
                       </div>
