@@ -183,6 +183,10 @@ export function MultiStepFormSection() {
     setFormData({});
     setHasProcessedSearch(false);
     setSearchDataProcessed(false);
+
+    // Dispatch event to clear the search form
+    window.dispatchEvent(new CustomEvent("clearCharterSearch"));
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 

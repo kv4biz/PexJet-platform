@@ -310,11 +310,42 @@ function parsePrice(priceStr: string): number | null {
 }
 
 /**
+ * Parse a local time string and return a Date object that preserves the local time.
+ * The date string from InstaCharter is like "2025-06-14T10:00:00" (local time at departure).
+ * We store it as-is by treating it as UTC, so no timezone conversion happens.
+ */
+function parseLocalTimeAsUTC(dateString: string): Date {
+  // Extract date and time components directly from the string
+  const match = dateString.match(
+    /(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/,
+  );
+  if (!match) {
+    // Fallback: return current date if parsing fails
+    return new Date();
+  }
+
+  const [, year, month, day, hours = "00", minutes = "00", seconds = "00"] =
+    match;
+
+  // Create a UTC date with these exact values (no timezone conversion)
+  return new Date(
+    Date.UTC(
+      parseInt(year),
+      parseInt(month) - 1, // Month is 0-indexed
+      parseInt(day),
+      parseInt(hours),
+      parseInt(minutes),
+      parseInt(seconds),
+    ),
+  );
+}
+
+/**
  * Generate a unique slug for an InstaCharter deal
  */
 function generateSlug(deal: InstaCharterAvailability): string {
-  const date = new Date(deal.from.dateFrom);
-  const dateStr = date.toISOString().split("T")[0];
+  // Extract date directly from string without timezone conversion
+  const dateStr = deal.from.dateFrom.split("T")[0];
   const slug =
     `${deal.from.fromIcao}-to-${deal.to.toIcao}-${dateStr}-ic-${deal.id}`
       .toLowerCase()
@@ -350,7 +381,8 @@ function mapAircraftCategory(category: string): string | null {
 export function mapAvailabilityToEmptyLeg(
   deal: InstaCharterAvailability,
 ): MappedEmptyLegData {
-  const departureDate = new Date(deal.from.dateFrom);
+  // Parse the local time string and store as UTC to preserve the exact time
+  const departureDate = parseLocalTimeAsUTC(deal.from.dateFrom);
   const price = parsePrice(deal.aircraft.price);
 
   return {

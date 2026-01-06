@@ -770,15 +770,26 @@ export default function EmptyLegsPage() {
                     <article className="space-y-2">
                       <p className="text-xs text-muted-foreground">Departure</p>
                       <p className="font-medium">
-                        {new Date(
-                          selectedEmptyLeg.departureDateTime,
-                        ).toLocaleString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {(() => {
+                          const d = new Date(
+                            selectedEmptyLeg.departureDateTime,
+                          );
+                          const months = [
+                            "Jan",
+                            "Feb",
+                            "Mar",
+                            "Apr",
+                            "May",
+                            "Jun",
+                            "Jul",
+                            "Aug",
+                            "Sep",
+                            "Oct",
+                            "Nov",
+                            "Dec",
+                          ];
+                          return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} LT`;
+                        })()}
                       </p>
                       {selectedEmptyLeg.estimatedArrival && (
                         <>
@@ -786,15 +797,26 @@ export default function EmptyLegsPage() {
                             Estimated Arrival
                           </p>
                           <p className="font-medium">
-                            {new Date(
-                              selectedEmptyLeg.estimatedArrival,
-                            ).toLocaleString(undefined, {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {(() => {
+                              const d = new Date(
+                                selectedEmptyLeg.estimatedArrival,
+                              );
+                              const months = [
+                                "Jan",
+                                "Feb",
+                                "Mar",
+                                "Apr",
+                                "May",
+                                "Jun",
+                                "Jul",
+                                "Aug",
+                                "Sep",
+                                "Oct",
+                                "Nov",
+                                "Dec",
+                              ];
+                              return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} LT`;
+                            })()}
                           </p>
                         </>
                       )}

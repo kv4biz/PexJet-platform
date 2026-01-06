@@ -244,26 +244,53 @@ export function EmptyLegDealsSection() {
     return new Date(isoString);
   };
 
-  // Format date
+  // Format date as LT (local time) - extract raw date without timezone conversion
   const formatDate = (dateString: string) => {
-    const date = parseDateTime(dateString);
-    if (isNaN(date.getTime())) return "TBD";
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
+    if (!dateString) return "TBD";
+    try {
+      // Parse the ISO string and extract date parts directly
+      const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (!match) return "TBD";
+      const [, year, month, day] = match;
+      const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      // Create date in UTC to avoid timezone shifts
+      const date = new Date(
+        Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)),
+      );
+      const dayName = days[date.getUTCDay()];
+      const monthName = months[parseInt(month) - 1];
+      return `${dayName}, ${monthName} ${parseInt(day)}`;
+    } catch {
+      return "TBD";
+    }
   };
 
-  // Format time
+  // Format time as LT (local time) - extract raw time without timezone conversion (24-hour format)
   const formatTime = (dateString: string) => {
-    const date = parseDateTime(dateString);
-    if (isNaN(date.getTime())) return "TBD";
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+    if (!dateString) return "TBD";
+    try {
+      // Parse the ISO string and extract time parts directly
+      const match = dateString.match(/T?(\d{2}):(\d{2})/);
+      if (!match) return "TBD";
+      const [, hours, minutes] = match;
+      return `${hours}:${minutes}`; // 24-hour format, no AM/PM
+    } catch {
+      return "TBD";
+    }
   };
 
   // Pagination
@@ -300,22 +327,32 @@ export function EmptyLegDealsSection() {
     return R * c;
   };
 
-  // Calculate estimated arrival time
+  // Calculate estimated arrival time as LT (24-hour format)
   const calculateArrivalTime = (
     departureDateTime: string,
     distanceNm: number,
   ): string => {
-    const CRUISE_SPEED_KNOTS = 350;
-    const flightTimeHours = distanceNm / CRUISE_SPEED_KNOTS + 0.5; // 30 min buffer
-    const departure = parseDateTime(departureDateTime);
-    if (isNaN(departure.getTime())) return "TBD";
-    const arrivalMs = departure.getTime() + flightTimeHours * 60 * 60 * 1000;
-    const arrival = new Date(arrivalMs);
-    return arrival.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+    if (!departureDateTime) return "TBD";
+    try {
+      const CRUISE_SPEED_KNOTS = 350;
+      const flightTimeMinutes = (distanceNm / CRUISE_SPEED_KNOTS + 0.5) * 60; // 30 min buffer
+
+      // Parse departure time from string
+      const timeMatch = departureDateTime.match(/T?(\d{2}):(\d{2})/);
+      if (!timeMatch) return "TBD";
+
+      const depHours = parseInt(timeMatch[1]);
+      const depMinutes = parseInt(timeMatch[2]);
+      const totalMinutes =
+        depHours * 60 + depMinutes + Math.round(flightTimeMinutes);
+
+      const arrHours = Math.floor(totalMinutes / 60) % 24;
+      const arrMinutes = totalMinutes % 60;
+
+      return `${String(arrHours).padStart(2, "0")}:${String(arrMinutes).padStart(2, "0")}`;
+    } catch {
+      return "TBD";
+    }
   };
 
   // Ticket-style Deal Card
@@ -391,16 +428,16 @@ export function EmptyLegDealsSection() {
             </div>
 
             {/* Details Row */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm border-t pt-3">
+            <div className="grid grid-cols-3 gap-2 text-sm border-t pt-3">
               <div className="flex items-center gap-1 text-gray-600">
                 <Calendar className="w-4 h-4 flex-shrink-0" />
                 <span>{formatDate(deal.departureDate)}</span>
               </div>
-              <div className="flex items-center gap-1 text-gray-600 justify-end md:justify-center">
+              <div className="flex items-center gap-1 text-gray-600 justify-center">
                 <Users className="w-4 h-4 flex-shrink-0" />
                 <span>{deal.availableSeats}</span>
               </div>
-              <div className="flex items-center text-gray-600 col-span-2 md:col-span-1 justify-end">
+              <div className="flex items-center text-gray-600 justify-end">
                 {deal.aircraft.category}
               </div>
             </div>
@@ -419,7 +456,7 @@ export function EmptyLegDealsSection() {
                 className={`md:w-full ${isSoldOut ? "bg-gray-400" : "bg-[#D4AF37]"} text-black`}
                 disabled={isSoldOut}
               >
-                {isSoldOut ? "Sold Out" : "Request Quote"}
+                {isSoldOut ? "Sold Out" : "View Deal"}
                 {!isSoldOut && <ArrowRight className="w-4 h-4 ml-1" />}
               </Button>
             </Link>

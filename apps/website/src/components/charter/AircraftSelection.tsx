@@ -2,125 +2,33 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Button,
-  Card,
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@pexjet/ui";
-import {
-  Check,
-  Users,
-  Package,
-  ArrowRight,
-  Gauge,
-  Eye,
-  Loader2,
-  DollarSign,
-  X,
-  Plane,
-  Clock4,
-} from "lucide-react";
-import { charterPageData } from "@/data";
+import { Button, Card } from "@pexjet/ui";
+import { Users, ArrowRight, Loader2, Plane, Clock4 } from "lucide-react";
 
-// Utility functions copied to avoid import issues
-function calculateDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const R = 3440.065; // Earth's radius in nautical miles
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c);
-}
-
-function toRad(deg: number): number {
-  return deg * (Math.PI / 180);
-}
-
-function estimateFlightDuration(
-  distanceNm: number,
-  cruiseSpeedKnots: number = 450,
-): number {
-  // Add 30 minutes for takeoff and landing
-  const flightTimeMinutes = (distanceNm / cruiseSpeedKnots) * 60;
-  return Math.round(flightTimeMinutes + 30);
-}
-
-function formatDuration(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours === 0) return `${mins}m`;
-  if (mins === 0) return `${hours}h`;
-  return `${hours}h ${mins}m`;
-}
-
-// Category specifications
-const CATEGORIES = {
-  LIGHT: {
-    name: "Light",
-    pricePerHour: 4000,
-    cruiseSpeed: 450,
-    minPassengers: 1,
-    maxPassengers: 8,
-  },
-  MIDSIZE: {
-    name: "Midsize",
-    pricePerHour: 4500,
-    cruiseSpeed: 470,
-    minPassengers: 1,
-    maxPassengers: 10,
-  },
-  SUPER_MIDSIZE: {
-    name: "Super Midsize",
-    pricePerHour: 6500,
-    cruiseSpeed: 490,
-    minPassengers: 2,
-    maxPassengers: 12,
-  },
-  ULTRA_LONG_RANGE: {
-    name: "Ultra Long Range",
-    pricePerHour: 6500,
-    cruiseSpeed: 510,
-    minPassengers: 3,
-    maxPassengers: 20,
-  },
-  HEAVY: {
-    name: "Heavy",
-    pricePerHour: 6500,
-    cruiseSpeed: 530,
-    minPassengers: 3,
-    maxPassengers: 20,
-  },
-} as const;
-
-type CategoryKey = keyof typeof CATEGORIES;
-
-interface Aircraft {
-  id: string;
+// InstaCharter category data structure
+interface InstaCharterJet {
+  id: number;
   name: string;
-  manufacturer: string;
+  image: string;
+  priceCategory: string;
+  searchCategory: string;
+}
+
+interface InstaCharterCategory {
+  categoryId: number;
   category: string;
-  availability: string;
-  basePricePerHour: number | null;
-  exteriorImages: string[];
-  interiorImages: string[];
-  // ... other fields
+  originalCategory: string;
+  price: number;
+  priceFormatted: string;
+  currency: string;
+  currencySymbol: string;
+  maxPassengers: number;
+  range: number;
+  flightTime: string;
+  flightTimeFormatted: string;
+  distanceFromStart: number;
+  distanceFromEnd: number;
+  jets: InstaCharterJet[];
 }
 
 interface AircraftSelectionProps {
@@ -132,241 +40,207 @@ export function AircraftSelection({
   formData,
   onNext,
 }: AircraftSelectionProps) {
-  const [selectedCategories, setSelectedCategories] = useState<CategoryKey[]>(
-    [],
-  );
-  const [aircraft, setAircraft] = useState<Aircraft[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<
+    InstaCharterCategory[]
+  >([]);
+  const [categories, setCategories] = useState<InstaCharterCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [viewingAircraft, setViewingAircraft] = useState<Aircraft | null>(null);
-  const [flightDistance, setFlightDistance] = useState<number | null>(null);
-  const [currentAircraftIndex, setCurrentAircraftIndex] = useState<
-    Record<CategoryKey, number>
-  >({} as Record<CategoryKey, number>);
+  const [currentJetIndex, setCurrentJetIndex] = useState<
+    Record<number, number>
+  >({});
+  const [hasFetched, setHasFetched] = useState(false);
 
-  // Fetch aircraft from database
+  // Fetch charter options from InstaCharter API
   useEffect(() => {
-    const fetchAircraft = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/aircraft");
-        if (!response.ok) {
-          throw new Error("Failed to fetch aircraft");
-        }
-        const data = await response.json();
-        setAircraft(data.aircraft || []);
-      } catch (err: any) {
-        console.error("Error fetching aircraft:", err);
-        setError(err.message || "Failed to load aircraft");
-      } finally {
-        setLoading(false);
-      }
-    };
+    const fetchCharterOptions = async () => {
+      // Prevent duplicate fetches
+      if (hasFetched) return;
 
-    fetchAircraft();
-  }, []);
+      console.log("AircraftSelection: formData received:", formData);
 
-  // Calculate flight distance when route data changes
-  useEffect(() => {
-    const calculateRouteDistance = async () => {
       if (!formData?.flights || formData.flights.length === 0) {
         console.log(
           "AircraftSelection: No flights data found in formData",
           formData,
         );
-        setFlightDistance(null);
+        setLoading(false);
         return;
       }
 
       try {
-        const flights = formData.flights;
-        let totalDistanceNm = 0;
+        setLoading(true);
+        setError(null);
+        setHasFetched(true);
 
-        console.log(
-          "AircraftSelection: Calculating distance for flights:",
-          flights,
-        );
+        const flight = formData.flights[0];
+        console.log("AircraftSelection: Processing flight:", flight);
 
-        // Extract airport info and fetch coordinates
-        for (const flight of flights) {
-          if (flight.from && flight.to) {
-            // Format is "CODE - Name" (e.g., "LOS - Lagos") or just the airport string
-            const fromParts = flight.from.split(" - ");
-            const toParts = flight.to.split(" - ");
-            const fromCode = fromParts[0]?.trim();
-            const toCode = toParts[0]?.trim();
-            const fromName = fromParts[1]?.trim() || fromParts[0]?.trim();
-            const toName = toParts[1]?.trim() || toParts[0]?.trim();
-
-            console.log("AircraftSelection: Looking up airports:", {
-              fromCode,
-              toCode,
-              fromName,
-              toName,
-            });
-
-            if (fromName && toName) {
-              try {
-                // Fetch airport coordinates using name for better matching
-                const [fromRes, toRes] = await Promise.all([
-                  fetch(
-                    `/api/airports?q=${encodeURIComponent(fromName)}&limit=10`,
-                  ),
-                  fetch(
-                    `/api/airports?q=${encodeURIComponent(toName)}&limit=10`,
-                  ),
-                ]);
-
-                const fromData = await fromRes.json();
-                const toData = await toRes.json();
-
-                // Find exact match by IATA/ICAO code first, then by name
-                const fromAirport =
-                  fromData.airports?.find(
-                    (a: any) =>
-                      a.iataCode === fromCode || a.icaoCode === fromCode,
-                  ) ||
-                  fromData.airports?.find(
-                    (a: any) =>
-                      a.municipality?.toLowerCase() ===
-                        fromName.toLowerCase() ||
-                      a.name?.toLowerCase().includes(fromName.toLowerCase()),
-                  ) ||
-                  fromData.airports?.[0];
-
-                const toAirport =
-                  toData.airports?.find(
-                    (a: any) => a.iataCode === toCode || a.icaoCode === toCode,
-                  ) ||
-                  toData.airports?.find(
-                    (a: any) =>
-                      a.municipality?.toLowerCase() === toName.toLowerCase() ||
-                      a.name?.toLowerCase().includes(toName.toLowerCase()),
-                  ) ||
-                  toData.airports?.[0];
-
-                console.log("AircraftSelection: Found airports:", {
-                  from: fromAirport
-                    ? {
-                        name: fromAirport.name,
-                        lat: fromAirport.latitude,
-                        lng: fromAirport.longitude,
-                      }
-                    : null,
-                  to: toAirport
-                    ? {
-                        name: toAirport.name,
-                        lat: toAirport.latitude,
-                        lng: toAirport.longitude,
-                      }
-                    : null,
-                });
-
-                if (
-                  fromAirport?.latitude &&
-                  fromAirport?.longitude &&
-                  toAirport?.latitude &&
-                  toAirport?.longitude
-                ) {
-                  const distance = calculateDistance(
-                    fromAirport.latitude,
-                    fromAirport.longitude,
-                    toAirport.latitude,
-                    toAirport.longitude,
-                  );
-                  console.log(
-                    "AircraftSelection: Calculated distance:",
-                    distance,
-                    "nm",
-                  );
-                  totalDistanceNm += distance;
-                }
-              } catch (err) {
-                console.error("Error fetching airport coordinates:", err);
-              }
-            }
-          }
+        if (!flight?.from || !flight?.to) {
+          setError("Missing departure or arrival information");
+          setLoading(false);
+          return;
         }
 
-        // For round trip, double the distance
-        if (formData.tripType === "roundTrip") {
-          totalDistanceNm *= 2;
+        // Parse airport info from the format "CODE - Region - Name, Country"
+        const fromParts = flight.from.split(" - ");
+        const toParts = flight.to.split(" - ");
+        const fromCode = fromParts[0]?.trim();
+        const toCode = toParts[0]?.trim();
+        // Extract airport name (last part before country)
+        const fromAirportName =
+          fromParts[2]?.split(",")[0]?.trim() || fromParts[1]?.trim();
+        const toAirportName =
+          toParts[2]?.split(",")[0]?.trim() || toParts[1]?.trim();
+
+        console.log("AircraftSelection: Parsed info:", {
+          fromCode,
+          toCode,
+          fromAirportName,
+          toAirportName,
+        });
+
+        // Fetch airport coordinates - search by airport name for better accuracy
+        const [fromRes, toRes] = await Promise.all([
+          fetch(
+            `/api/airports?q=${encodeURIComponent(fromAirportName || fromCode)}&limit=10`,
+          ),
+          fetch(
+            `/api/airports?q=${encodeURIComponent(toAirportName || toCode)}&limit=10`,
+          ),
+        ]);
+
+        const fromData = await fromRes.json();
+        const toData = await toRes.json();
+
+        console.log("AircraftSelection: Airport search results:", {
+          fromResults: fromData.airports?.map((a: any) => ({
+            name: a.name,
+            iata: a.iataCode,
+          })),
+          toResults: toData.airports?.map((a: any) => ({
+            name: a.name,
+            iata: a.iataCode,
+          })),
+        });
+
+        // Find exact match by IATA/ICAO code first
+        const fromAirport =
+          fromData.airports?.find(
+            (a: any) => a.iataCode === fromCode || a.icaoCode === fromCode,
+          ) || fromData.airports?.[0];
+
+        const toAirport =
+          toData.airports?.find(
+            (a: any) => a.iataCode === toCode || a.icaoCode === toCode,
+          ) || toData.airports?.[0];
+
+        if (!fromAirport || !toAirport) {
+          setError("Could not find airport coordinates");
+          setLoading(false);
+          return;
         }
 
-        setFlightDistance(
-          totalDistanceNm > 0 ? Math.round(totalDistanceNm) : null,
-        );
-      } catch (error) {
-        console.error("Error calculating flight distance:", error);
-        setFlightDistance(null);
+        console.log("AircraftSelection: Fetching InstaCharter options for:", {
+          from: {
+            name: fromAirport.name,
+            lat: fromAirport.latitude,
+            long: fromAirport.longitude,
+          },
+          to: {
+            name: toAirport.name,
+            lat: toAirport.latitude,
+            long: toAirport.longitude,
+          },
+        });
+
+        // Call our InstaCharter options API
+        const response = await fetch("/api/charter/options", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: {
+              lat: fromAirport.latitude,
+              long: fromAirport.longitude,
+              name: fromAirport.name,
+            },
+            to: {
+              lat: toAirport.latitude,
+              long: toAirport.longitude,
+              name: toAirport.name,
+            },
+            date: flight.date || new Date().toISOString().split("T")[0],
+            pax: formData.passengers || 1,
+            tripType: formData.tripType || "oneWay",
+            flights: formData.flights,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to fetch charter options");
+        }
+
+        const data = await response.json();
+        console.log("AircraftSelection: Received InstaCharter data:", data);
+
+        if (data.categories && data.categories.length > 0) {
+          setCategories(data.categories);
+          // Initialize jet carousel indices
+          const indices: Record<number, number> = {};
+          data.categories.forEach((cat: InstaCharterCategory) => {
+            indices[cat.categoryId] = 0;
+          });
+          setCurrentJetIndex(indices);
+        } else {
+          setError("No aircraft categories available for this route");
+        }
+      } catch (err: any) {
+        console.error("Error fetching charter options:", err);
+        setError(err.message || "Failed to load aircraft options");
+      } finally {
+        setLoading(false);
       }
     };
 
-    calculateRouteDistance();
-  }, [formData?.flights, formData?.tripType]);
+    fetchCharterOptions();
+  }, [formData?.flights, formData?.passengers]);
 
-  // Initialize carousel indices
+  // Jet carousel rotation effect
   useEffect(() => {
-    const indices: Record<CategoryKey, number> = {} as Record<
-      CategoryKey,
-      number
-    >;
-    Object.keys(CATEGORIES).forEach((key) => {
-      indices[key as CategoryKey] = 0;
-    });
-    setCurrentAircraftIndex(indices);
-  }, []);
+    if (categories.length === 0) return;
 
-  // Carousel rotation effect
-  useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentAircraftIndex((prev) => {
+      setCurrentJetIndex((prev) => {
         const newIndices = { ...prev };
-        Object.keys(CATEGORIES).forEach((key) => {
-          const categoryKey = key as CategoryKey;
-          const categoryAircraft = aircraft.filter(
-            (a) => a.category === categoryKey,
-          );
-          if (categoryAircraft.length > 0) {
-            newIndices[categoryKey] =
-              (prev[categoryKey] + 1) % categoryAircraft.length;
+        categories.forEach((cat) => {
+          if (cat.jets && cat.jets.length > 0) {
+            newIndices[cat.categoryId] =
+              ((prev[cat.categoryId] || 0) + 1) % cat.jets.length;
           }
         });
         return newIndices;
       });
-    }, 15000); // Rotate every 15 seconds
+    }, 5000); // Rotate every 5 seconds
 
     return () => clearInterval(interval);
-  }, [aircraft]);
+  }, [categories]);
 
-  // Get available categories based on passenger count
-  const getAvailableCategories = () => {
-    const passengerCount = formData?.passengers || 1;
-    return Object.entries(CATEGORIES).filter(
-      ([_, category]) =>
-        passengerCount >= category.minPassengers &&
-        passengerCount <= category.maxPassengers,
-    ) as [CategoryKey, (typeof CATEGORIES)[CategoryKey]][];
+  // Get current jet for display
+  const getCurrentJet = (category: InstaCharterCategory) => {
+    if (!category.jets || category.jets.length === 0) return null;
+    return category.jets[currentJetIndex[category.categoryId] || 0];
   };
 
-  // Get aircraft for category carousel
-  const getAircraftForCategory = (categoryKey: CategoryKey) => {
-    return aircraft.filter((a) => a.category === categoryKey);
-  };
-
-  // Get current aircraft for display
-  const getCurrentAircraft = (categoryKey: CategoryKey) => {
-    const categoryAircraft = getAircraftForCategory(categoryKey);
-    if (categoryAircraft.length === 0) return null;
-    return categoryAircraft[currentAircraftIndex[categoryKey] || 0];
-  };
-
-  const handleSelectCategory = (categoryKey: CategoryKey) => {
+  const handleSelectCategory = (category: InstaCharterCategory) => {
     setSelectedCategories((prev) => {
-      if (prev.includes(categoryKey)) {
-        return prev.filter((key) => key !== categoryKey);
+      const isAlreadySelected = prev.some(
+        (c) => c.categoryId === category.categoryId,
+      );
+      if (isAlreadySelected) {
+        return prev.filter((c) => c.categoryId !== category.categoryId);
       } else if (prev.length < 5) {
-        return [...prev, categoryKey];
+        return [...prev, category];
       }
       return prev;
     });
@@ -374,12 +248,7 @@ export function AircraftSelection({
 
   const handleContinue = () => {
     if (selectedCategories.length > 0) {
-      const selectedCategoryData = selectedCategories.map((key) => ({
-        category: key,
-        ...CATEGORIES[key],
-        aircraft: getAircraftForCategory(key),
-      }));
-      onNext({ selectedCategories: selectedCategoryData });
+      onNext({ selectedCategories });
     }
   };
 
@@ -392,7 +261,16 @@ export function AircraftSelection({
     );
   }
 
-  const availableCategories = getAvailableCategories();
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
+        <p className="text-red-500">{error}</p>
+        <Button onClick={() => window.location.reload()} variant="outline">
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" id="aircraft-selection-container">
@@ -408,40 +286,16 @@ export function AircraftSelection({
 
       {/* Category Cards */}
       <div className="space-y-6" id="aircraft-categories-list">
-        {availableCategories.length > 0 ? (
-          availableCategories.map(([categoryKey, category]) => {
-            const isSelected = selectedCategories.includes(categoryKey);
-            const currentAircraft = getCurrentAircraft(categoryKey);
-
-            // Calculate flight duration for this category
-            const calculateFlightDuration = () => {
-              if (!flightDistance || flightDistance === 0) {
-                return "Calculating...";
-              }
-              const durationMinutes = estimateFlightDuration(
-                flightDistance,
-                category.cruiseSpeed,
-              );
-              return formatDuration(durationMinutes);
-            };
-
-            // Calculate price for this category
-            const calculateEstimatedPrice = () => {
-              if (!flightDistance || flightDistance === 0) {
-                return 0;
-              }
-              const durationMinutes = estimateFlightDuration(
-                flightDistance,
-                category.cruiseSpeed,
-              );
-              const hours = durationMinutes / 60;
-              const rawPrice = category.pricePerHour * hours;
-              return Math.ceil(rawPrice / 100) * 100; // Always round up to nearest 100
-            };
+        {categories.length > 0 ? (
+          categories.map((category) => {
+            const isSelected = selectedCategories.some(
+              (c) => c.categoryId === category.categoryId,
+            );
+            const currentJet = getCurrentJet(category);
 
             return (
               <div
-                key={categoryKey}
+                key={category.categoryId}
                 className={`relative ${
                   isSelected
                     ? "ring-2 ring-[#D4AF37] bg-[#D4AF37]/5"
@@ -450,10 +304,10 @@ export function AircraftSelection({
               >
                 {/* Top Half - Image with Overlay Text */}
                 <div className="relative h-48 bg-gray-100">
-                  {currentAircraft?.exteriorImages?.[0] ? (
+                  {currentJet?.image ? (
                     <img
-                      src={currentAircraft.exteriorImages[0]}
-                      alt={currentAircraft.name}
+                      src={currentJet.image}
+                      alt={currentJet.name}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -464,13 +318,13 @@ export function AircraftSelection({
 
                   {/* Category Type - Top Left */}
                   <div className="absolute top-3 left-3 bg-black/70 text-white px-3 py-1 rounded text-sm font-semibold">
-                    {category.name}
+                    {category.category}
                   </div>
 
                   {/* Aircraft Name - Bottom Left */}
                   <div className="absolute bottom-3 left-3 bg-black/70 text-white px-3 py-1 rounded">
                     <div className="font-semibold">
-                      {currentAircraft?.name || category.name}
+                      {currentJet?.name || category.category}
                     </div>
                   </div>
                 </div>
@@ -501,10 +355,12 @@ export function AircraftSelection({
                       </div>
                       <div className="flex flex-col">
                         <span className="text-xs text-gray-500 uppercase tracking-wide">
-                          Flight
+                          Flight Duration
                         </span>
                         <span className="text-sm font-semibold text-gray-900">
-                          {calculateFlightDuration()}
+                          {category.flightTimeFormatted ||
+                            category.flightTime ||
+                            "N/A"}
                         </span>
                       </div>
                     </div>
@@ -515,9 +371,7 @@ export function AircraftSelection({
                     <div>
                       <div className="text-xs text-gray-500">Starting from</div>
                       <div className="text-xl font-bold text-[#D4AF37]">
-                        {calculateEstimatedPrice() > 0
-                          ? `USD ${calculateEstimatedPrice().toLocaleString()}`
-                          : "Calculating..."}
+                        {category.priceFormatted}
                       </div>
                       <div className="text-xs text-gray-500">
                         Estimated price excluding taxes and fees
@@ -528,7 +382,7 @@ export function AircraftSelection({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        handleSelectCategory(categoryKey);
+                        handleSelectCategory(category);
                       }}
                       type="button"
                       className={`w-full py-2 px-4 text-sm font-medium ${
@@ -546,9 +400,7 @@ export function AircraftSelection({
           })
         ) : (
           <div className="p-8 text-center text-gray-500">
-            {formData?.passengers
-              ? `No aircraft categories available for ${formData.passengers} passengers`
-              : "No aircraft categories available"}
+            No aircraft categories available for this route
           </div>
         )}
       </div>
@@ -560,28 +412,32 @@ export function AircraftSelection({
             SELECTED CATEGORIES:
           </h4>
           <div className="space-y-2">
-            {selectedCategories.map((categoryKey, index) => {
-              const category = CATEGORIES[categoryKey];
-              return (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-2 px-3 py-2 border border-[#D4AF37] bg-white"
-                >
-                  <span className="text-sm font-medium">{category.name}</span>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleSelectCategory(categoryKey);
-                    }}
-                    type="button"
-                    className="text-gray-400 hover:text-red-500 text-lg"
-                  >
-                    ×
-                  </button>
+            {selectedCategories.map((category, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-2 px-3 py-2 border border-[#D4AF37] bg-white"
+              >
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">
+                    {category.category}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {category.priceFormatted}
+                  </span>
                 </div>
-              );
-            })}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSelectCategory(category);
+                  }}
+                  type="button"
+                  className="text-gray-400 hover:text-red-500 text-lg"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
         </Card>
       )}

@@ -42,6 +42,7 @@ export * from "./components/table";
 export * from "./components/data-table";
 export * from "./components/calendar";
 export * from "./components/calendar-20";
+export * from "./components/date-range-picker";
 
 // Custom Components
 export * from "./components/form-generator";

@@ -11,7 +11,8 @@ import {
   Search,
   Loader2,
 } from "lucide-react";
-import { Button, Card, Input, Calendar20 } from "@pexjet/ui";
+import { Button, Card, Input, DateRangePicker } from "@pexjet/ui";
+import { type DateRange } from "react-day-picker";
 
 interface Airport {
   id: string;
@@ -38,16 +39,14 @@ interface CompactSearchFormProps {
 export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [passengers, setPassengers] = useState(1);
-  const [date, setDate] = useState<string | null>(null);
-  const [time, setTime] = useState<string | null>(null);
   const [openFrom, setOpenFrom] = useState(false);
   const [openTo, setOpenTo] = useState(false);
-  const [fromAirports, setFromAirports] = useState<Airport[]>([]);
-  const [toAirports, setToAirports] = useState<Airport[]>([]);
-  const [loadingFrom, setLoadingFrom] = useState(false);
-  const [loadingTo, setLoadingTo] = useState(false);
+  const [airports, setAirports] = useState<Airport[]>([]);
+  const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(false);
 
   // Load search data from sessionStorage on mount (from home page)
@@ -62,8 +61,12 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
         if (data.from) setFrom(data.from);
         if (data.to) setTo(data.to);
         if (data.passengers) setPassengers(data.passengers);
-        if (data.date?.date) setDate(data.date.date);
-        if (data.date?.time) setTime(data.date.time);
+        if (data.startDate) {
+          setDateRange({
+            from: new Date(data.startDate),
+            to: data.endDate ? new Date(data.endDate) : undefined,
+          });
+        }
 
         // Clear the sessionStorage after reading
         sessionStorage.removeItem("emptyLegSearchData");
@@ -71,21 +74,12 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
         // Auto-trigger search if data was present
         if (data.from || data.to) {
           setTimeout(() => {
-            const searchData = {
-              type: "emptyLeg",
-              from: data.from || "",
-              to: data.to || "",
-              passengers: data.passengers || 1,
-              date: data.date?.date || null,
-              time: data.date?.time || null,
-            };
-
             const formattedData = {
-              departureAirport: searchData.from,
-              destinationAirport: searchData.to,
-              departureDate: searchData.date || "",
-              departureTime: searchData.time || "",
-              passengers: searchData.passengers,
+              departureAirport: data.from || "",
+              destinationAirport: data.to || "",
+              startDate: data.startDate || "",
+              endDate: data.endDate || "",
+              passengers: data.passengers || 1,
             };
 
             onSearch(formattedData);
@@ -97,50 +91,38 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
     }
   }, [onSearch]);
 
-  // Debounced airport search
-  const searchAirports = useCallback(
-    async (query: string, type: "from" | "to") => {
-      if (query.length < 2) {
-        if (type === "from") setFromAirports([]);
-        else setToAirports([]);
-        return;
-      }
-
-      if (type === "from") setLoadingFrom(true);
-      else setLoadingTo(true);
-
-      try {
-        const response = await fetch(
-          `/api/airports?q=${encodeURIComponent(query)}&limit=10`,
-        );
+  const fetchAirports = useCallback(async (query: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/airports?q=${encodeURIComponent(query)}&limit=15`,
+      );
+      if (response.ok) {
         const data = await response.json();
-        if (type === "from") setFromAirports(data.airports || []);
-        else setToAirports(data.airports || []);
-      } catch (error) {
-        console.error("Error fetching airports:", error);
-      } finally {
-        if (type === "from") setLoadingFrom(false);
-        else setLoadingTo(false);
+        setAirports(data.airports || []);
       }
+    } catch (error) {
+      console.error("Failed to fetch airports:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleSearchChange = useCallback(
+    (query: string) => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = setTimeout(() => {
+        fetchAirports(query);
+      }, 300);
     },
-    [],
+    [fetchAirports],
   );
 
-  // Debounce effect for from input
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (from && openFrom) searchAirports(from, "from");
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [from, openFrom, searchAirports]);
-
-  // Debounce effect for to input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (to && openTo) searchAirports(to, "to");
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [to, openTo, searchAirports]);
+    fetchAirports("");
+  }, [fetchAirports]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -156,16 +138,20 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
   }, []);
 
   const swapLocations = () => {
+    const temp = from;
     setFrom(to);
-    setTo(from);
+    setTo(temp);
   };
 
-  const handleDateChange = (value: {
-    date?: string | null;
-    time?: string | null;
-  }) => {
-    setDate(value.date || null);
-    setTime(value.time || null);
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getAirportDisplay = (airport: Airport) => {
+    return `${airport.iataCode} - ${airport.region.name} - ${airport.name}, ${airport.country.name}`;
   };
 
   // Form is always valid - search shows all results if no filters applied
@@ -178,22 +164,11 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
 
     if (!isFormValid()) return;
 
-    const searchData = {
-      type: "emptyLeg",
-      from,
-      to,
-      passengers,
-      date,
-      time,
-    };
-
-    sessionStorage.setItem("emptyLegSearchData", JSON.stringify(searchData));
-
     const formattedData = {
       departureAirport: from,
       destinationAirport: to,
-      departureDate: date || "",
-      departureTime: time || "",
+      startDate: dateRange?.from ? formatDate(dateRange.from) : "",
+      endDate: dateRange?.to ? formatDate(dateRange.to) : "",
       passengers,
     };
 
@@ -211,7 +186,7 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
         </p>
 
         <form onSubmit={handleSubmit}>
-          <div className="space-y-0" ref={containerRef}>
+          <div className="space-y-2" ref={containerRef}>
             <div className="flex flex-col lg:flex-row lg:items-start">
               {/* FROM */}
               <div className="flex w-full lg:flex-1">
@@ -219,46 +194,49 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
                   <Input
                     placeholder="From"
                     value={from}
-                    onChange={(e) => setFrom(e.target.value)}
-                    onFocus={() => setOpenFrom(true)}
-                    className="bg-white text-black border-gray-300 w-full pl-10"
+                    onChange={(e) => {
+                      setFrom(e.target.value);
+                      handleSearchChange(e.target.value);
+                    }}
+                    onFocus={() => {
+                      setOpenFrom(true);
+                      setOpenTo(false);
+                      handleSearchChange(from);
+                    }}
+                    className="bg-white text-black border-gray-300 w-full pl-9"
                   />
-                  <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                  {openFrom &&
-                    (from.length >= 2 || fromAirports.length > 0) && (
-                      <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
-                        {loadingFrom ? (
-                          <div className="flex items-center justify-center p-4">
-                            <Loader2 className="w-5 h-5 animate-spin text-[#D4AF37]" />
-                          </div>
-                        ) : fromAirports.length > 0 ? (
-                          fromAirports.map((airport) => (
-                            <button
-                              key={airport.id}
-                              type="button"
-                              onMouseDown={() => {
-                                setFrom(
-                                  `${airport.iataCode} - ${airport.region.name} - ${airport.name}, ${airport.country.name}`,
-                                );
-                                setOpenFrom(false);
-                              }}
-                              className="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center gap-3"
-                            >
-                              <div className="text-sm text-black">
-                                <div className="font-medium text-black">
-                                  {airport.iataCode} - {airport.region.name} -{" "}
-                                  {airport.name}, {airport.country.name}
-                                </div>
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  {openFrom && (
+                    <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
+                      {loading ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                        </div>
+                      ) : airports.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500">
+                          No airports found
+                        </div>
+                      ) : (
+                        airports.map((airport) => (
+                          <button
+                            key={airport.id}
+                            type="button"
+                            onMouseDown={() => {
+                              setFrom(getAirportDisplay(airport));
+                              setOpenFrom(false);
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
+                          >
+                            <div className="text-sm text-black">
+                              <div className="font-medium text-black">
+                                {getAirportDisplay(airport)}
                               </div>
-                            </button>
-                          ))
-                        ) : from.length >= 2 ? (
-                          <div className="p-4 text-sm text-gray-500 text-center">
-                            No airports found
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Swap Button */}
@@ -277,60 +255,57 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
                 <Input
                   placeholder="To"
                   value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  onFocus={() => setOpenTo(true)}
-                  className="bg-white text-black border-gray-300 w-full pl-10"
+                  onChange={(e) => {
+                    setTo(e.target.value);
+                    handleSearchChange(e.target.value);
+                  }}
+                  onFocus={() => {
+                    setOpenTo(true);
+                    setOpenFrom(false);
+                    handleSearchChange(to);
+                  }}
+                  className="bg-white text-black border-gray-300 w-full pl-9"
                 />
-                <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                {openTo && (to.length >= 2 || toAirports.length > 0) && (
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                {openTo && (
                   <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
-                    {loadingTo ? (
-                      <div className="flex items-center justify-center p-4">
-                        <Loader2 className="w-5 h-5 animate-spin text-[#D4AF37]" />
+                    {loading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                       </div>
-                    ) : toAirports.length > 0 ? (
-                      toAirports.map((airport) => (
+                    ) : airports.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-500">
+                        No airports found
+                      </div>
+                    ) : (
+                      airports.map((airport) => (
                         <button
                           key={airport.id}
                           type="button"
                           onMouseDown={() => {
-                            setTo(
-                              `${airport.iataCode} - ${airport.region.name} - ${airport.name}, ${airport.country.name}`,
-                            );
+                            setTo(getAirportDisplay(airport));
                             setOpenTo(false);
                           }}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center gap-3"
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
                         >
                           <div className="text-sm text-black">
                             <div className="font-medium text-black">
-                              {airport.iataCode} - {airport.region.name} -{" "}
-                              {airport.name}, {airport.country.name}
+                              {getAirportDisplay(airport)}
                             </div>
                           </div>
                         </button>
                       ))
-                    ) : to.length >= 2 ? (
-                      <div className="p-4 text-sm text-gray-500 text-center">
-                        No airports found
-                      </div>
-                    ) : null}
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Date input */}
+              {/* Date Range Picker */}
               <div className="w-full lg:flex-1 lg:min-w-0">
-                <Calendar20
-                  placeholder="Departure Date & Time"
-                  value={
-                    date
-                      ? {
-                          date: date,
-                          time: time || undefined,
-                        }
-                      : undefined
-                  }
-                  onChange={handleDateChange}
+                <DateRangePicker
+                  value={dateRange}
+                  onChange={setDateRange}
+                  placeholder="Select date range"
                 />
               </div>
 

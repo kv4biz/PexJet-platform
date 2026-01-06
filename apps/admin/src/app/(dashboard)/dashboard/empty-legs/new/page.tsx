@@ -715,15 +715,26 @@ export default function NewEmptyLegPage() {
                   <p className="text-sm text-muted-foreground">Departure</p>
                   {departureDate.date && departureDate.time ? (
                     <p className="font-medium">
-                      {new Date(
-                        `${departureDate.date}T${departureDate.time}`,
-                      ).toLocaleString(undefined, {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {(() => {
+                        // Display date/time directly without timezone conversion
+                        const [year, month, day] =
+                          departureDate.date!.split("-");
+                        const months = [
+                          "Jan",
+                          "Feb",
+                          "Mar",
+                          "Apr",
+                          "May",
+                          "Jun",
+                          "Jul",
+                          "Aug",
+                          "Sep",
+                          "Oct",
+                          "Nov",
+                          "Dec",
+                        ];
+                        return `${months[parseInt(month) - 1]} ${parseInt(day)}, ${year} ${departureDate.time} LT`;
+                      })()}
                     </p>
                   ) : (
                     <p className="text-muted-foreground">Not set</p>

@@ -53,27 +53,45 @@ interface EmptyLegDeal {
   ownerType: string;
 }
 
-// Helper to format time
+// Helper to format time as LT (24-hour format, no timezone conversion)
 function formatTime(dateString: string): string {
   if (!dateString) return "--";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "--";
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  try {
+    const match = dateString.match(/T?(\d{2}):(\d{2})/);
+    if (!match) return "--";
+    const [, hours, minutes] = match;
+    return `${hours}:${minutes}`; // 24-hour format, no AM/PM
+  } catch {
+    return "--";
+  }
 }
 
-// Helper to format date
+// Helper to format date as LT (no timezone conversion)
 function formatDate(dateString: string): string {
   if (!dateString) return "--";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "--";
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
+  try {
+    const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return "--";
+    const [, , month, day] = match;
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const monthName = months[parseInt(month) - 1];
+    return `${monthName} ${parseInt(day)}`;
+  } catch {
+    return "--";
+  }
 }
 
 export default function EmptyLegDeals() {
@@ -84,11 +102,14 @@ export default function EmptyLegDeals() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { formatPrice } = useCurrency();
 
-  // Fetch empty legs from database
+  // Fetch empty legs from database - optimized for homepage
+  // Only loads deals within 3 days that have prices, limited to 20
   useEffect(() => {
     async function fetchDeals() {
       try {
-        const response = await fetch("/api/empty-legs?status=PUBLISHED");
+        const response = await fetch(
+          "/api/empty-legs?status=PUBLISHED&homepage=true",
+        );
         if (response.ok) {
           const data = await response.json();
           setDeals(data.emptyLegs || []);
@@ -287,7 +308,9 @@ export default function EmptyLegDeals() {
                     <div className="pt-2 mt-auto border-t border-gray-200 flex items-center justify-between">
                       <div>
                         <div className="text-lg lg:text-xl font-semibold capitalize text-[#D4AF37]">
-                          {deal.priceText}
+                          {deal.priceUsd
+                            ? formatPrice(deal.priceUsd)
+                            : deal.priceText}
                         </div>
                       </div>
                       <Link
@@ -373,7 +396,7 @@ export default function EmptyLegDeals() {
                           <Clock className="w-4 h-4" />
                           <span>
                             {formatDate(deal.departureDate)}{" "}
-                            {formatTime(deal.departureDate)}
+                            {formatTime(deal.departureDate)} LT
                           </span>
                         </div>
                         <div className="h-4 w-px bg-gray-300"></div>
@@ -388,7 +411,9 @@ export default function EmptyLegDeals() {
                     <div className="pt-2 mt-auto border-t border-gray-200 flex items-center justify-between">
                       <div>
                         <div className="text-xl font-semibold capitalize text-[#D4AF37]">
-                          {deal.priceText}
+                          {deal.priceUsd
+                            ? formatPrice(deal.priceUsd)
+                            : deal.priceText}
                         </div>
                       </div>
                       <Link

@@ -213,6 +213,7 @@ model CharterQuote {
   paymentConfirmedById String?
   receiptUploadedAt    DateTime?
   receiptUploadedUrl   String?
+  selectedCategories   Json?                  // InstaCharter selected categories with prices
   legs                 CharterLeg[]
   approvedBy           Admin?                 @relation("ApprovedBy", fields: [approvedById], references: [id])
   client               Client                 @relation(fields: [clientId], references: [id])

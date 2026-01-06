@@ -283,6 +283,22 @@ export function FinalReview({
   const isMultiLeg = searchData?.tripType === "multiLeg" && flights.length > 1;
   const isRoundTrip = searchData?.tripType === "roundTrip";
 
+  // Helper function to format location as "IATA - City/State" (remove airport name)
+  const formatLocation = (location: string) => {
+    if (!location) return "N/A";
+    // Format is "CODE - Region - Airport Name, Country"
+    const parts = location.split(" - ");
+    if (parts.length >= 2) {
+      const code = parts[0]?.trim();
+      const region = parts[1]?.trim();
+      return `${code} - ${region}`;
+    }
+    return location;
+  };
+
+  // Get selected categories from formData (InstaCharter format)
+  const selectedCategories = formData?.selectedCategories || [];
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -330,11 +346,15 @@ export function FinalReview({
                     <div className="text-sm space-y-1">
                       <div className="flex justify-between">
                         <span className="text-gray-600">From:</span>
-                        <span className="font-medium">{flight.from}</span>
+                        <span className="font-medium">
+                          {formatLocation(flight.from)}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">To:</span>
-                        <span className="font-medium">{flight.to}</span>
+                        <span className="font-medium">
+                          {formatLocation(flight.to)}
+                        </span>
                       </div>
                       {flight.date && (
                         <div className="flex justify-between">
@@ -376,11 +396,15 @@ export function FinalReview({
                   <div className="text-sm space-y-1">
                     <div className="flex justify-between">
                       <span className="text-gray-600">From:</span>
-                      <span className="font-medium">{flights[0]?.from}</span>
+                      <span className="font-medium">
+                        {formatLocation(flights[0]?.from)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">To:</span>
-                      <span className="font-medium">{flights[0]?.to}</span>
+                      <span className="font-medium">
+                        {formatLocation(flights[0]?.to)}
+                      </span>
                     </div>
                     {flights[0]?.date && (
                       <div className="flex justify-between">
@@ -402,11 +426,15 @@ export function FinalReview({
                   <div className="text-sm space-y-1">
                     <div className="flex justify-between">
                       <span className="text-gray-600">From:</span>
-                      <span className="font-medium">{flights[0]?.to}</span>
+                      <span className="font-medium">
+                        {formatLocation(flights[0]?.to)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">To:</span>
-                      <span className="font-medium">{flights[0]?.from}</span>
+                      <span className="font-medium">
+                        {formatLocation(flights[0]?.from)}
+                      </span>
                     </div>
                     {flights[0]?.returnDate && (
                       <div className="flex justify-between">
@@ -431,11 +459,15 @@ export function FinalReview({
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">From:</span>
-                <span className="font-medium">{flights[0]?.from}</span>
+                <span className="font-medium">
+                  {formatLocation(flights[0]?.from)}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">To:</span>
-                <span className="font-medium">{flights[0]?.to}</span>
+                <span className="font-medium">
+                  {formatLocation(flights[0]?.to)}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Passengers:</span>
@@ -463,14 +495,42 @@ export function FinalReview({
             <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
               Selected Aircraft Categories
             </h3>
-            {selectedAircraft && selectedAircraft.length > 0 ? (
+            {selectedCategories && selectedCategories.length > 0 ? (
+              <div className="space-y-2">
+                {selectedCategories.map((category: any) => (
+                  <div
+                    key={category.categoryId}
+                    className="flex items-center justify-between p-3 border border-[#D4AF37] bg-[#D4AF37]/5"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-gray-900">
+                        {category.category}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Up to {category.maxPassengers} passengers
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-[#D4AF37]">
+                        {category.priceFormatted}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {category.flightTimeFormatted || category.flightTime}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : selectedAircraft && selectedAircraft.length > 0 ? (
               <div className="space-y-2">
                 {selectedAircraft.map((aircraft: any) => (
                   <div
                     key={aircraft.id}
                     className="flex items-center justify-between p-2 border border-[#D4AF37] bg-[#D4AF37]/5"
                   >
-                    <span className="font-medium">{aircraft.type}</span>
+                    <span className="font-medium">
+                      {aircraft.type || aircraft.category}
+                    </span>
                   </div>
                 ))}
               </div>

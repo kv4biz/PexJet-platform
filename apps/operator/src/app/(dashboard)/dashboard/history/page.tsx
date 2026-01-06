@@ -87,12 +87,27 @@ export default function HistoryPage() {
     }
   };
 
+  // Format date as local time (LT) - uses UTC methods since we store local time as UTC
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    const d = new Date(dateString);
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const month = months[d.getUTCMonth()];
+    const day = d.getUTCDate();
+    const year = d.getUTCFullYear();
+    return `${month} ${day}, ${year}`;
   };
 
   const getStatusBadge = (status: string) => {

@@ -6,19 +6,13 @@ import {
   ArrowLeftRight,
   Search,
   Loader2,
-  Calendar as CalendarIcon,
+  Users,
+  Plus,
+  Minus,
 } from "lucide-react";
-import {
-  Input,
-  Button,
-  Card,
-  Calendar,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  cn,
-} from "@pexjet/ui";
+import { Input, Button, Card, DateRangePicker } from "@pexjet/ui";
 import { useRouter } from "next/navigation";
+import { type DateRange } from "react-day-picker";
 
 interface Airport {
   id: string;
@@ -42,8 +36,8 @@ export default function EmptyLegSearch() {
   const router = useRouter();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [startDate, setStartDate] = useState<string | null>(null);
-  const [endDate, setEndDate] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [passengers, setPassengers] = useState(1);
   const [openFrom, setOpenFrom] = useState(false);
   const [openTo, setOpenTo] = useState(false);
   const [airports, setAirports] = useState<Airport[]>([]);
@@ -102,13 +96,21 @@ export default function EmptyLegSearch() {
     setTo(temp);
   };
 
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const handleSubmit = () => {
     const payload = {
       type: "emptyLeg",
       from,
       to,
-      startDate,
-      endDate,
+      startDate: dateRange?.from ? formatDate(dateRange.from) : null,
+      endDate: dateRange?.to ? formatDate(dateRange.to) : null,
+      passengers,
     };
 
     sessionStorage.setItem("emptyLegSearchData", JSON.stringify(payload));
@@ -116,25 +118,23 @@ export default function EmptyLegSearch() {
   };
 
   const getAirportDisplay = (airport: Airport) => {
-    const code = airport.iataCode || airport.icaoCode || "";
-    const city = airport.municipality || airport.name;
-    return `${code} - ${city}`;
+    return `${airport.iataCode} - ${airport.region.name} - ${airport.name}, ${airport.country.name}`;
   };
 
   return (
     <Card className="border border-[#D4AF37]/20 p-2 md:p-2 lg:p-4 lg:shadow-xl lg:bg-black/50 h-full ">
-      <div className="p-2 md:p-6 bg-white h-full" ref={containerRef}>
+      <section className="p-2 md:p-6 bg-white h-full" ref={containerRef}>
         <p className="text-xl font-bold mb-4 md:mb-8 text-black uppercase tracking-wide font-serif">
           Empty Leg Deals
         </p>
 
-        <div className="space-y-2">
+        <section className="space-y-2">
           {/* From + Swap + To */}
-          <div className="flex flex-col gap-2">
+          <section className="flex flex-col gap-2">
             {/* From + Swap on same line */}
-            <div className="flex gap-0">
+            <section className="flex gap-0">
               {/* FROM */}
-              <div className="relative flex-1">
+              <article className="relative flex-1">
                 <Input
                   placeholder="From"
                   value={from}
@@ -151,39 +151,35 @@ export default function EmptyLegSearch() {
                 />
                 <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 {openFrom && (
-                  <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
+                  <section className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
                     {loading ? (
-                      <div className="flex items-center justify-center py-4">
+                      <section className="flex items-center justify-center py-4">
                         <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                      </div>
+                      </section>
                     ) : airports.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-gray-500">
+                      <section className="px-4 py-3 text-sm text-gray-500">
                         No airports found
-                      </div>
+                      </section>
                     ) : (
                       airports.map((airport) => (
                         <button
                           key={airport.id}
                           onMouseDown={() => {
-                            setFrom(
-                              `${airport.iataCode} - ${airport.region.name} - ${airport.name}, ${airport.country.name}`,
-                            );
+                            setFrom(getAirportDisplay(airport));
                             setOpenFrom(false);
                           }}
                           className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
                         >
-                          <div className="text-sm text-black">
-                            <div className="font-medium text-black">
-                              {airport.iataCode} - {airport.region.name} -{" "}
-                              {airport.name}, {airport.country.name}
-                            </div>
-                          </div>
+                          <span className="text-sm font-medium text-black">
+                            {airport.iataCode} - {airport.region.name} -{" "}
+                            {airport.name}, {airport.country.name}
+                          </span>
                         </button>
                       ))
                     )}
-                  </div>
+                  </section>
                 )}
-              </div>
+              </article>
 
               {/* Swap Button */}
               <Button
@@ -193,10 +189,10 @@ export default function EmptyLegSearch() {
               >
                 <ArrowLeftRight className="w-5 h-5" />
               </Button>
-            </div>
+            </section>
 
             {/* TO - on its own line */}
-            <div className="relative w-full">
+            <article className="relative w-full">
               <Input
                 placeholder="To"
                 value={to}
@@ -213,128 +209,73 @@ export default function EmptyLegSearch() {
               />
               <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
               {openTo && (
-                <div className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
+                <section className="absolute z-40 left-0 right-0 mt-2 bg-white border border-gray-200 shadow-sm max-h-56 overflow-y-auto">
                   {loading ? (
-                    <div className="flex items-center justify-center py-4">
+                    <section className="flex items-center justify-center py-4">
                       <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                    </div>
+                    </section>
                   ) : airports.length === 0 ? (
-                    <div className="px-4 py-3 text-sm text-gray-500">
+                    <section className="px-4 py-3 text-sm text-gray-500">
                       No airports found
-                    </div>
+                    </section>
                   ) : (
                     airports.map((airport) => (
                       <button
                         key={airport.id}
                         onMouseDown={() => {
-                          setTo(
-                            `${airport.iataCode} - ${airport.region.name} - ${airport.name}, ${airport.country.name}`,
-                          );
+                          setTo(getAirportDisplay(airport));
                           setOpenTo(false);
                         }}
                         className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
                       >
-                        <div className="text-sm text-black">
-                          <div className="font-medium text-black">
-                            {airport.iataCode} - {airport.region.name} -{" "}
-                            {airport.name}, {airport.country.name}
-                          </div>
-                        </div>
+                        <span className="text-sm font-medium text-black">
+                          {airport.iataCode} - {airport.region.name} -{" "}
+                          {airport.name}, {airport.country.name}
+                        </span>
                       </button>
                     ))
                   )}
-                </div>
+                </section>
               )}
-            </div>
-          </div>
+            </article>
+          </section>
 
-          {/* Start Date */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !startDate && "text-muted-foreground",
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {startDate ? startDate : "Start Date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={startDate ? new Date(startDate) : undefined}
-                onSelect={(date) => {
-                  if (date) {
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, "0");
-                    const day = String(date.getDate()).padStart(2, "0");
-                    const dateStr = `${year}-${month}-${day}`;
-                    setStartDate(dateStr);
-                    // Auto-set end date to 90 days from start date if not already set
-                    if (!endDate) {
-                      const endDate = new Date(date);
-                      endDate.setDate(endDate.getDate() + 90);
-                      const endYear = endDate.getFullYear();
-                      const endMonth = String(endDate.getMonth() + 1).padStart(
-                        2,
-                        "0",
-                      );
-                      const endDay = String(endDate.getDate()).padStart(2, "0");
-                      setEndDate(`${endYear}-${endMonth}-${endDay}`);
-                    }
-                  }
-                }}
-                disabled={(date) =>
-                  date < new Date(new Date().setHours(0, 0, 0, 0))
-                }
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          {/* Date Range Picker */}
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+            placeholder="Select date range"
+          />
 
-          {/* End Date */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !endDate && "text-muted-foreground",
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {endDate ? endDate : "End Date (Optional)"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={endDate ? new Date(endDate) : undefined}
-                onSelect={(date) => {
-                  if (date) {
-                    // Format date as YYYY-MM-DD using local timezone to avoid timezone offset issues
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, "0");
-                    const day = String(date.getDate()).padStart(2, "0");
-                    setEndDate(`${year}-${month}-${day}`);
-                  }
-                }}
-                disabled={(date) => {
-                  const today = new Date(new Date().setHours(0, 0, 0, 0));
-                  const start = startDate ? new Date(startDate) : today;
-                  return (
-                    date < start ||
-                    date > new Date(start.getTime() + 90 * 24 * 60 * 60 * 1000)
-                  );
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
+          {/* Passengers */}
+          <section className="flex w-full items-center">
+            <section className="flex w-full justify-between items-center px-3 py-2 bg-white border border-gray-300">
+              <section className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-600">Passengers</span>
+              </section>
+              <section className="flex gap-2 items-center">
+                <button
+                  type="button"
+                  onClick={() => setPassengers(Math.max(1, passengers - 1))}
+                  className="w-7 h-7 inline-flex items-center justify-center border border-gray-300 text-black"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <span className="w-6 text-center text-black text-sm">
+                  {passengers}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPassengers(passengers + 1)}
+                  className="w-7 h-7 inline-flex items-center justify-center border border-gray-300 text-black"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </section>
+            </section>
+          </section>
+        </section>
 
         {/* Action button */}
         <Button
@@ -345,7 +286,7 @@ export default function EmptyLegSearch() {
           <Search className="w-4 h-4 mr-2" />
           Search Empty Legs
         </Button>
-      </div>
+      </section>
     </Card>
   );
 }

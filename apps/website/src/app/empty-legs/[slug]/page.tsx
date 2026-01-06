@@ -4,7 +4,45 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { format } from "date-fns";
+// Helper functions for LT (local time) formatting - no timezone conversion
+function formatDateLT(dateString: string): string {
+  if (!dateString) return "TBD";
+  try {
+    const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return "TBD";
+    const [, year, month, day] = match;
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const monthName = months[parseInt(month) - 1];
+    return `${monthName} ${parseInt(day)}, ${year}`;
+  } catch {
+    return "TBD";
+  }
+}
+
+function formatTimeLT(dateString: string): string {
+  if (!dateString) return "TBD";
+  try {
+    const match = dateString.match(/T?(\d{2}):(\d{2})/);
+    if (!match) return "TBD";
+    const [, hours, minutes] = match;
+    return `${hours}:${minutes}`; // 24-hour format, no AM/PM
+  } catch {
+    return "TBD";
+  }
+}
 import {
   Plane,
   Calendar,
@@ -424,7 +462,7 @@ export default function EmptyLegDetailPage() {
               </h1>
               <p className="text-gray-300 text-sm md:text-base">
                 {emptyLeg.aircraft.name} •{" "}
-                {format(new Date(emptyLeg.departureDate), "MMM d, yyyy")}
+                {formatDateLT(emptyLeg.departureDate)}
               </p>
             </div>
           </div>
@@ -516,17 +554,14 @@ export default function EmptyLegDetailPage() {
                       <Calendar className="w-5 h-5 mx-auto mb-1 text-[#D4AF37]" />
                       <div className="text-sm text-gray-500">Date</div>
                       <div className="font-semibold">
-                        {format(
-                          new Date(emptyLeg.departureDate),
-                          "MMM d, yyyy",
-                        )}
+                        {formatDateLT(emptyLeg.departureDate)}
                       </div>
                     </div>
                     <div className="text-center p-3 bg-gray-50">
                       <Clock className="w-5 h-5 mx-auto mb-1 text-[#D4AF37]" />
                       <div className="text-sm text-gray-500">Time</div>
                       <div className="font-semibold">
-                        {format(new Date(emptyLeg.departureDate), "h:mm a")}
+                        {formatTimeLT(emptyLeg.departureDate)} LT
                       </div>
                     </div>
                     <div className="text-center p-3 bg-gray-50">
@@ -570,18 +605,11 @@ export default function EmptyLegDetailPage() {
                       <div className="py-3 space-y-2 text-sm border-b">
                         <div className="flex justify-between">
                           <span className="text-gray-500">Date</span>
-                          <span>
-                            {format(
-                              new Date(emptyLeg.departureDate),
-                              "MMM d, yyyy",
-                            )}
-                          </span>
+                          <span>{formatDateLT(emptyLeg.departureDate)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Time</span>
-                          <span>
-                            {format(new Date(emptyLeg.departureDate), "h:mm a")}
-                          </span>
+                          <span>{formatTimeLT(emptyLeg.departureDate)} LT</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Aircraft</span>
@@ -779,31 +807,19 @@ export default function EmptyLegDetailPage() {
                             <div>
                               <span className="text-gray-500">Date:</span>
                               <span className="ml-2 font-medium">
-                                {format(
-                                  new Date(emptyLeg.departureDate),
-                                  "MMM d, yyyy",
-                                )}
+                                {formatDateLT(emptyLeg.departureDate)}
                               </span>
                             </div>
                             <div>
                               <span className="text-gray-500">Time:</span>
                               <span className="ml-2 font-medium">
-                                {format(
-                                  new Date(emptyLeg.departureDate),
-                                  "h:mm a",
-                                )}
+                                {formatTimeLT(emptyLeg.departureDate)} LT
                               </span>
                             </div>
                             <div>
                               <span className="text-gray-500">Aircraft:</span>
                               <span className="ml-2 font-medium">
                                 {emptyLeg.aircraft.name}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Seats:</span>
-                              <span className="ml-2 font-medium">
-                                {seatsRequested}
                               </span>
                             </div>
                           </div>
@@ -852,28 +868,6 @@ export default function EmptyLegDetailPage() {
                               </p>
                             </div>
                           )}
-                        </div>
-
-                        {/* Price Summary */}
-                        <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/20">
-                          <h4 className="font-semibold mb-3">Price Summary</h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>Seats requested:</span>
-                              <span>{seatsRequested}</span>
-                            </div>
-                            <div className="flex justify-between items-center pt-2 border-t">
-                              <span className="font-semibold">
-                                Total Price:
-                              </span>
-                              <span className="text-2xl font-bold text-[#D4AF37]">
-                                {formatPrice(
-                                  emptyLeg.priceUsd,
-                                  emptyLeg.priceText,
-                                )}
-                              </span>
-                            </div>
-                          </div>
                         </div>
 
                         <div className="flex justify-between pt-4">
@@ -930,18 +924,11 @@ export default function EmptyLegDetailPage() {
                     <div className="py-3 space-y-2 text-sm border-b">
                       <div className="flex justify-between">
                         <span className="text-gray-500">Date</span>
-                        <span>
-                          {format(
-                            new Date(emptyLeg.departureDate),
-                            "MMM d, yyyy",
-                          )}
-                        </span>
+                        <span>{formatDateLT(emptyLeg.departureDate)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Time</span>
-                        <span>
-                          {format(new Date(emptyLeg.departureDate), "h:mm a")}
-                        </span>
+                        <span>{formatTimeLT(emptyLeg.departureDate)} LT </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Aircraft</span>
@@ -954,7 +941,7 @@ export default function EmptyLegDetailPage() {
                         <span>{emptyLeg.aircraft.category}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Available</span>
+                        <span className="text-gray-500">Capacity</span>
                         <span>{emptyLeg.availableSeats}</span>
                       </div>
                     </div>

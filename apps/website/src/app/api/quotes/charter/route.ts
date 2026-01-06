@@ -126,12 +126,38 @@ function mapFlightType(
   return mapping[tripType] || "ONE_WAY";
 }
 
+// Build customer message with selected categories info
+function buildCustomerMessage(
+  contactInfo: any,
+  charterQuote: any,
+  selectedCategories: any[] | undefined,
+): string {
+  let message = contactInfo.notes || "";
+
+  // Add reference number
+  message += `\n\nCharter Quote Request - Ref: ${charterQuote.referenceNumber}`;
+
+  // Add selected categories with prices
+  if (selectedCategories && selectedCategories.length > 0) {
+    message += "\n\nSelected Aircraft Categories:";
+    selectedCategories.forEach((cat: any) => {
+      message += `\n- ${cat.category}: ${cat.priceFormatted || `$${cat.price?.toLocaleString()}`}`;
+      if (cat.flightTimeFormatted || cat.flightTime) {
+        message += ` (${cat.flightTimeFormatted || cat.flightTime})`;
+      }
+    });
+  }
+
+  return message.trim();
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Extract selectedAircraft and contactInfo, rest is search data (flat structure)
-    const { selectedAircraft, contactInfo, ...searchData } = body;
+    // Extract selectedCategories (InstaCharter format), selectedAircraft (legacy), and contactInfo
+    const { selectedCategories, selectedAircraft, contactInfo, ...searchData } =
+      body;
 
     console.log("[Charter API] Received body:", JSON.stringify(body, null, 2));
     console.log(
@@ -305,10 +331,23 @@ export async function POST(request: NextRequest) {
         passengerCount: searchData.passengers || 1,
         specialRequests: contactInfo.notes || null,
         status: "PENDING",
+        // Store InstaCharter selected categories as JSON
+        selectedCategories:
+          selectedCategories && selectedCategories.length > 0
+            ? selectedCategories.map((cat: any) => ({
+                categoryId: cat.categoryId,
+                category: cat.category,
+                price: cat.price,
+                priceFormatted: cat.priceFormatted,
+                maxPassengers: cat.maxPassengers,
+                flightTime: cat.flightTime,
+                flightTimeFormatted: cat.flightTimeFormatted,
+              }))
+            : null,
         legs: {
           create: flightLegs,
         },
-        // Add selected aircraft if provided
+        // Add selected aircraft if provided (legacy support)
         ...(selectedAircraft &&
           selectedAircraft.length > 0 && {
             selectedAircraft: {
@@ -379,22 +418,36 @@ export async function POST(request: NextRequest) {
         };
       });
 
-      // Build choices array from selected aircraft
-      const choices =
-        selectedAircraft?.map((aircraft: any) => ({
+      // Build choices array from selected categories (InstaCharter format) or legacy selectedAircraft
+      let choices: Array<{ price: string; category: string; tailId: number }> =
+        [];
+
+      if (selectedCategories && selectedCategories.length > 0) {
+        // New InstaCharter format - use the price with 5% markup already applied
+        choices = selectedCategories.map((category: any) => ({
+          price: category.price?.toString() || "0",
+          category: category.category || category.originalCategory || "Unknown",
+          tailId: category.jets?.[0]?.id || 0, // Use first jet's ID if available
+        }));
+      } else if (selectedAircraft && selectedAircraft.length > 0) {
+        // Legacy format
+        choices = selectedAircraft.map((aircraft: any) => ({
           price: aircraft.hourlyRateUsd?.toString() || "0",
           category: aircraft.type || aircraft.category || "Unknown",
-          tailId: 0, // Not applicable for category selection
-        })) || [];
+          tailId: 0,
+        }));
+      }
 
       // Build customer object
       const customer = {
         name: `${contactInfo.firstName} ${contactInfo.lastName}`,
         email: contactInfo.email,
         phone: contactInfo.phone,
-        message:
-          contactInfo.notes ||
-          `Charter quote request - Ref: ${charterQuote.referenceNumber}`,
+        message: buildCustomerMessage(
+          contactInfo,
+          charterQuote,
+          selectedCategories,
+        ),
       };
 
       // Send to InstaCharter
@@ -456,7 +509,19 @@ export async function POST(request: NextRequest) {
 
         itineraryText += `\n*Trip ${i + 1}:* ${depCity} → ${arrCity}`;
         itineraryText += `\n   ${depCode} → ${arrCode}`;
-        itineraryText += `\n   ${formatDateTime(leg.departureDateTime)}`;
+        itineraryText += `\n   ${formatDateTime(leg.departureDateTime)} (LT)`;
+      }
+
+      // Build selected categories text
+      let categoriesText = "";
+      if (selectedCategories && selectedCategories.length > 0) {
+        categoriesText = "\n\n*Selected Aircraft:*";
+        selectedCategories.forEach((cat: any) => {
+          categoriesText += `\n• ${cat.category}: ${cat.priceFormatted || `$${cat.price?.toLocaleString()}`}`;
+          if (cat.flightTimeFormatted || cat.flightTime) {
+            categoriesText += ` (${cat.flightTimeFormatted || cat.flightTime})`;
+          }
+        });
       }
 
       const message =
@@ -464,9 +529,11 @@ export async function POST(request: NextRequest) {
         `*Reference:* ${charterQuote.referenceNumber}\n` +
         `*Client:* ${charterQuote.clientName}\n` +
         `*Phone:* ${charterQuote.clientPhone}\n` +
+        `*Email:* ${charterQuote.clientEmail}\n` +
         `*Type:* ${charterQuote.flightType.replace("_", " ")}\n` +
         `*Passengers:* ${charterQuote.passengerCount}\n\n` +
-        `*Flight Itinerary:*${itineraryText}\n\n` +
+        `*Flight Itinerary:*${itineraryText}` +
+        `${categoriesText}\n\n` +
         `Please review in the admin dashboard.`;
 
       // Check Twilio credentials

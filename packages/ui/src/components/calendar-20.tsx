@@ -56,15 +56,36 @@ export function Calendar20({
       .padStart(2, "0")}`;
   });
 
+  // Format date for display without timezone conversion
+  const formatDisplayDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return "";
+    const [year, month, day] = dateStr.split("-");
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    return `${months[parseInt(month) - 1]} ${parseInt(day)}, ${year}`;
+  };
+
   // Different display logic for return dates (no time)
   const displayValue = isReturnDate
-    ? date
-      ? date.toLocaleDateString()
+    ? value?.date
+      ? formatDisplayDate(value.date)
       : placeholder
-    : date && selectedTime
-      ? `${date.toLocaleDateString()} • ${selectedTime}`
-      : date
-        ? `${date.toLocaleDateString()} • Select time`
+    : value?.date && selectedTime
+      ? `${formatDisplayDate(value.date)} • ${selectedTime}`
+      : value?.date
+        ? `${formatDisplayDate(value.date)} • Select time`
         : placeholder;
 
   // Define today and extend to December 2026

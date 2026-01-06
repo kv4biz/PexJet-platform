@@ -182,22 +182,33 @@ export async function POST(
         const arr = leg.arrivalAirport.municipality || leg.arrivalAirport.name;
         const arrCode =
           leg.arrivalAirport.iataCode || leg.arrivalAirport.icaoCode || "";
-        const date = new Date(leg.departureDateTime).toLocaleDateString(
-          "en-US",
-          {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          },
-        );
-        const time = new Date(leg.departureDateTime).toLocaleTimeString(
-          "en-US",
-          {
-            hour: "2-digit",
-            minute: "2-digit",
-          },
-        );
+        // Format date/time using UTC methods (stored as UTC representing local time)
+        const d = new Date(leg.departureDateTime);
+        const days = [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ];
+        const months = [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ];
+        const date = `${days[d.getUTCDay()]}, ${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+        const time = `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} LT`;
         const aircraft = leg.aircraft?.name || "TBA";
 
         return `

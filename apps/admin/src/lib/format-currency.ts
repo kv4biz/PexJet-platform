@@ -49,30 +49,47 @@ export function formatDuration(minutes: number): string {
 }
 
 /**
- * Format date to locale string
+ * Format date as local time (LT).
+ * Since we store local time as UTC in the database, we use UTC methods
+ * to extract the values without timezone conversion.
  */
 export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  const d = new Date(date);
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const month = months[d.getUTCMonth()];
+  const day = d.getUTCDate();
+  const year = d.getUTCFullYear();
+  return `${month} ${day}, ${year}`;
 }
 
 /**
- * Format time to locale string (24-hour format)
+ * Format time as local time (LT) in 24-hour format.
+ * Since we store local time as UTC in the database, we use UTC methods
+ * to extract the values without timezone conversion.
  */
 export function formatTime(date: string | Date): string {
-  return new Date(date).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const d = new Date(date);
+  const hours = String(d.getUTCHours()).padStart(2, "0");
+  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }
 
 /**
- * Format date and time together
+ * Format date and time together as local time (LT)
  */
 export function formatDateTime(date: string | Date): string {
-  return `${formatDate(date)} at ${formatTime(date)}`;
+  return `${formatDate(date)} at ${formatTime(date)} LT`;
 }

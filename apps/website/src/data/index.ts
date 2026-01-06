@@ -134,57 +134,17 @@ export const homePageData = {
   },
 
   partnerLogos: {
-    title: "Trusted Partners",
+    title: "Program Memberships",
     logos: [
       {
-        name: "Partner 1",
+        name: "NBAA",
         image:
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1767715840/nbaa_cdvkq2.jpg",
       },
       {
-        name: "Partner 2",
+        name: "Wyvern",
         image:
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
-      },
-      {
-        name: "Partner 3",
-        image:
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
-      },
-      {
-        name: "Partner 4",
-        image:
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
-      },
-      {
-        name: "Partner 5",
-        image:
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
-      },
-      {
-        name: "Partner 6",
-        image:
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
-      },
-      {
-        name: "Partner 7",
-        image:
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
-      },
-      {
-        name: "Partner 8",
-        image:
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
-      },
-      {
-        name: "Partner 9",
-        image:
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
-      },
-      {
-        name: "Partner 10",
-        image:
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765962187/grayscale_nobuffer_1_o0430u.png",
+          "http://api.wyvern.systems/api/company/status/verify/ea25adfde8cd18f34ea8ae08afd8/12060/d6680f44e3bac/1/1431351db88618",
       },
     ],
   },

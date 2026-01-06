@@ -71,12 +71,26 @@ export async function generateMetadata({
       priceText = "Contact for price";
     }
 
+    // Format date without timezone conversion (stored as UTC representing local time)
     const dateStr = emptyLeg.departureDateTime
-      ? new Date(emptyLeg.departureDateTime).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
+      ? (() => {
+          const d = new Date(emptyLeg.departureDateTime);
+          const months = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
+          return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+        })()
       : "";
 
     // SEO-optimized title with searchable keywords

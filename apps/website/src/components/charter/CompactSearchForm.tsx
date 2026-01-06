@@ -181,6 +181,35 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
     }
   }, []);
 
+  // Listen for clear event from successful submission
+  useEffect(() => {
+    const handleClearSearch = () => {
+      // Reset to initial state
+      setTripType("one-way");
+      setFlights([
+        {
+          id: "1",
+          from: "",
+          to: "",
+          date: null,
+          returnDate: null,
+          time: null,
+          returnTime: null,
+          passengers: 1,
+        },
+      ]);
+      setPassengers(1);
+      setOpenFrom(null);
+      setOpenTo(null);
+      sessionStorage.removeItem("charterSearchData");
+    };
+
+    window.addEventListener("clearCharterSearch", handleClearSearch);
+    return () => {
+      window.removeEventListener("clearCharterSearch", handleClearSearch);
+    };
+  }, []);
+
   const addFlight = () => {
     setFlights((prev) => [
       ...prev,

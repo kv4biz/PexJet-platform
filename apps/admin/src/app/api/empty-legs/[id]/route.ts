@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
 import { verifyAccessToken, extractTokenFromHeader } from "@pexjet/lib";
 
+/**
+ * Parse a datetime string and return a Date object that preserves the local time.
+ * Treats the input as local time and stores as UTC to prevent timezone conversion.
+ */
+function parseLocalTimeAsUTC(dateString: string): Date {
+  const match = dateString.match(
+    /(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/,
+  );
+  if (!match) {
+    return new Date();
+  }
+  const [, year, month, day, hours = "00", minutes = "00", seconds = "00"] =
+    match;
+  return new Date(
+    Date.UTC(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      parseInt(hours),
+      parseInt(minutes),
+      parseInt(seconds),
+    ),
+  );
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },
@@ -136,7 +161,7 @@ export async function PUT(
 
     if (aircraftId) updateData.aircraftId = aircraftId;
     if (departureDateTime)
-      updateData.departureDateTime = new Date(departureDateTime);
+      updateData.departureDateTime = parseLocalTimeAsUTC(departureDateTime);
     if (totalSeats !== undefined) {
       updateData.totalSeats = parseInt(totalSeats);
       // Update availableSeats to match new total if it was equal to old total

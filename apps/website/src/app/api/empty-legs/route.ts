@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
 
+/**
+ * Format a Date object as a local time string (YYYY-MM-DDTHH:MM:SS).
+ * Since we store dates as UTC but they represent local time at the departure airport,
+ * we use getUTC* methods to extract the values without timezone conversion.
+ */
+function formatLocalDateTime(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
 // Helper function to get airport by ICAO code with full database info
 async function getAirportByIcao(icao: string | null | undefined) {
   if (!icao) {
@@ -98,6 +113,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "PUBLISHED";
 
+    // Homepage optimization: only load deals within 3 days with prices, limit 20
+    const forHomepage = searchParams.get("homepage") === "true";
+
     // Search filters
     const fromQuery = searchParams.get("from");
     const toQuery = searchParams.get("to");
@@ -126,6 +144,21 @@ export async function GET(request: NextRequest) {
       },
     };
 
+    // Homepage optimization: only deals with prices and within 3 days
+    if (forHomepage) {
+      const threeDaysFromNow = new Date();
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      threeDaysFromNow.setHours(23, 59, 59, 999);
+
+      where.departureDateTime = {
+        gte: new Date(),
+        lte: threeDaysFromNow,
+      };
+      // Only show deals with actual prices (not "Contact for price")
+      where.priceType = "FIXED";
+      where.priceUsd = { gt: 0 };
+    }
+
     // Filter by date range if provided
     if (startDate) {
       const start = new Date(startDate);
@@ -152,6 +185,9 @@ export async function GET(request: NextRequest) {
 
     const emptyLegs = await prisma.emptyLeg.findMany({
       where,
+      // Limit results for homepage to improve performance
+      ...(forHomepage && { take: 20 }),
+      orderBy: { departureDateTime: "asc" },
       include: {
         departureAirport: {
           select: {
@@ -335,7 +371,8 @@ export async function GET(request: NextRequest) {
                   ? [leg.aircraft.image]
                   : [],
             },
-            departureDate: leg.departureDateTime.toISOString(),
+            // Format as local time string (stored as UTC but represents local time)
+            departureDate: formatLocalDateTime(leg.departureDateTime),
             availableSeats: leg.availableSeats || 0,
             totalSeats: leg.totalSeats || 0,
             // Pricing - simplified based on schema
@@ -390,13 +427,15 @@ export async function GET(request: NextRequest) {
       } else {
         // Exact or partial match on airport code, city, or country
         departureFilteredLegs = departureFilteredLegs.filter((leg: any) => {
-          const legCode = leg.departureAirport.code?.toUpperCase() || "";
+          const legIata = leg.departureAirport.iataCode?.toUpperCase() || "";
+          const legIcao = leg.departureAirport.icaoCode?.toUpperCase() || "";
           const legCity = leg.departureAirport.city?.toLowerCase() || "";
           const legCountry = leg.departureAirport.country?.toLowerCase() || "";
           const legName = leg.departureAirport.name?.toLowerCase() || "";
 
           return (
-            legCode === fromCode ||
+            legIata === fromCode ||
+            legIcao === fromCode ||
             legCity.includes(fromCity || fromCode.toLowerCase()) ||
             legCountry.includes(fromCity || fromCode.toLowerCase()) ||
             legName.includes(fromCity || fromCode.toLowerCase())
@@ -432,13 +471,15 @@ export async function GET(request: NextRequest) {
       } else {
         // Exact or partial match on airport code, city, or country
         arrivalFilteredLegs = arrivalFilteredLegs.filter((leg: any) => {
-          const legCode = leg.arrivalAirport.code?.toUpperCase() || "";
+          const legIata = leg.arrivalAirport.iataCode?.toUpperCase() || "";
+          const legIcao = leg.arrivalAirport.icaoCode?.toUpperCase() || "";
           const legCity = leg.arrivalAirport.city?.toLowerCase() || "";
           const legCountry = leg.arrivalAirport.country?.toLowerCase() || "";
           const legName = leg.arrivalAirport.name?.toLowerCase() || "";
 
           return (
-            legCode === toCode ||
+            legIata === toCode ||
+            legIcao === toCode ||
             legCity.includes(toCity || toCode.toLowerCase()) ||
             legCountry.includes(toCity || toCode.toLowerCase()) ||
             legName.includes(toCity || toCode.toLowerCase())
@@ -447,16 +488,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Combine results using OR logic
+    // Combine results - always use AND logic
+    // Radius only expands the geographic area for that field, but both conditions must be met
     if (fromQuery && toQuery) {
-      // Both filters applied - use OR logic
+      // Both filters applied - use AND logic (departure matches AND arrival matches)
       const departureIds = new Set(
         departureFilteredLegs.map((leg: any) => leg.id),
       );
       const arrivalIds = new Set(arrivalFilteredLegs.map((leg: any) => leg.id));
 
+      // AND logic: flight must match both departure AND arrival criteria
       transformedLegs = transformedLegs.filter(
-        (leg: any) => departureIds.has(leg.id) || arrivalIds.has(leg.id),
+        (leg: any) => departureIds.has(leg.id) && arrivalIds.has(leg.id),
       );
     } else if (fromQuery) {
       // Only departure filter applied

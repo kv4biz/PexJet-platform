@@ -2,8 +2,44 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
 import { verifyAuth, unauthorizedResponse } from "@/lib/auth";
 
+/**
+ * Parse a datetime string and return a Date object that preserves the local time.
+ * Treats the input as local time and stores as UTC to prevent timezone conversion.
+ */
+function parseLocalTimeAsUTC(dateString: string): Date {
+  const match = dateString.match(
+    /(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/,
+  );
+  if (!match) {
+    return new Date();
+  }
+  const [, year, month, day, hours = "00", minutes = "00", seconds = "00"] =
+    match;
+  return new Date(
+    Date.UTC(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      parseInt(hours),
+      parseInt(minutes),
+      parseInt(seconds),
+    ),
+  );
+}
+
+/**
+ * Format a Date object as a local time string for slug generation.
+ * Uses UTC methods since we store local time as UTC.
+ */
+function formatDateForSlug(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function generateSlug(departure: string, arrival: string, date: Date): string {
-  const dateStr = date.toISOString().split("T")[0];
+  const dateStr = formatDateForSlug(date);
   const slug = `${departure}-to-${arrival}-${dateStr}`
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "-")
@@ -201,10 +237,13 @@ export async function POST(request: NextRequest) {
       arrivalAirport.iataCode ||
       arrivalAirport.icaoCode ||
       arrivalAirport.municipality;
+    // Parse datetime as local time (stored as UTC to preserve the exact time)
+    const departureDate = parseLocalTimeAsUTC(departureDateTime);
+
     const baseSlug = generateSlug(
       depCode || "dep",
       arrCode || "arr",
-      new Date(departureDateTime),
+      departureDate,
     );
 
     // Ensure unique slug
@@ -214,10 +253,6 @@ export async function POST(request: NextRequest) {
       slug = `${baseSlug}-${counter}`;
       counter++;
     }
-
-    // Create empty leg - normalize datetime to only include date, hour, and minute
-    const departureDate = new Date(departureDateTime);
-    departureDate.setSeconds(0, 0); // Set seconds and milliseconds to 0
 
     const emptyLeg = await prisma.emptyLeg.create({
       data: {

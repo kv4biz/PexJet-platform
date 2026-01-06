@@ -91,13 +91,6 @@ export function LoadingAnimation({ onComplete }: LoadingAnimationProps) {
           </div>
         ))}
       </div>
-
-      <div className="mt-6 text-center">
-        <div className="inline-flex items-center gap-2 text-sm text-gray-500">
-          <Loader2 className="w-4 h-4 animate-spin text-[#D4AF37]" />
-          Preparing your options...
-        </div>
-      </div>
     </div>
   );
 }

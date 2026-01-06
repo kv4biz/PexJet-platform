@@ -13,6 +13,35 @@ import {
 import { SyncResult } from "./instacharter-types";
 
 // =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Find airport by ICAO code and return its ID
+ * Returns null if not found
+ */
+async function findAirportByIcao(
+  prisma: PrismaClient,
+  icaoCode: string | null | undefined,
+): Promise<string | null> {
+  if (!icaoCode) return null;
+
+  try {
+    const airport = await prisma.airport.findFirst({
+      where: { icaoCode: icaoCode.toUpperCase() },
+      select: { id: true },
+    });
+    return airport?.id || null;
+  } catch (error) {
+    console.error(
+      `[InstaCharter Sync] Error finding airport by ICAO ${icaoCode}:`,
+      error,
+    );
+    return null;
+  }
+}
+
+// =============================================================================
 // Sync Service
 // =============================================================================
 
@@ -22,6 +51,7 @@ import { SyncResult } from "./instacharter-types";
  * - Creates new deals that don't exist in our database
  * - Updates existing deals with latest info
  * - Marks deals as UNAVAILABLE if no longer in InstaCharter API
+ * - Links ICAO codes to airport records for IATA codes and coordinates
  */
 export async function syncInstaCharterDeals(
   prisma: PrismaClient,
@@ -86,12 +116,36 @@ export async function syncInstaCharterDeals(
         const externalId = apiDeal.id.toString();
         const existingDeal = existingDealMap.get(externalId);
 
+        // Look up airport IDs by ICAO code to link to our airport database
+        const departureAirportId = await findAirportByIcao(
+          prisma,
+          mappedData.departureIcao,
+        );
+        const arrivalAirportId = await findAirportByIcao(
+          prisma,
+          mappedData.arrivalIcao,
+        );
+
+        if (departureAirportId) {
+          console.log(
+            `[InstaCharter Sync] Linked departure ${mappedData.departureIcao} to airport ID ${departureAirportId}`,
+          );
+        }
+        if (arrivalAirportId) {
+          console.log(
+            `[InstaCharter Sync] Linked arrival ${mappedData.arrivalIcao} to airport ID ${arrivalAirportId}`,
+          );
+        }
+
         if (existingDeal) {
           // Update existing deal
           await prisma.emptyLeg.update({
             where: { id: existingDeal.id },
             data: {
               ...mappedData,
+              // Link to airport records if found
+              departureAirportId: departureAirportId || undefined,
+              arrivalAirportId: arrivalAirportId || undefined,
               // Don't override these fields
               slug: undefined,
               externalId: undefined,
@@ -115,6 +169,9 @@ export async function syncInstaCharterDeals(
             data: {
               ...mappedData,
               slug,
+              // Link to airport records if found
+              departureAirportId: departureAirportId || undefined,
+              arrivalAirportId: arrivalAirportId || undefined,
             },
           });
           result.dealsCreated++;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -81,7 +81,7 @@ interface Booking {
   };
 }
 
-export default function EmptyLegsPage() {
+function EmptyLegsContent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState(
@@ -197,14 +197,29 @@ export default function EmptyLegsPage() {
     return variants[status] || "outline";
   };
 
+  // Format date/time as local time (LT) - uses UTC methods since we store local time as UTC
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const d = new Date(dateString);
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const month = months[d.getUTCMonth()];
+    const day = d.getUTCDate();
+    const year = d.getUTCFullYear();
+    const hours = String(d.getUTCHours()).padStart(2, "0");
+    const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+    return `${month} ${day}, ${year} ${hours}:${minutes}`;
   };
 
   const pendingBookings = bookings.filter((b) => b.status === "PENDING");
@@ -470,5 +485,19 @@ export default function EmptyLegsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function EmptyLegsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[200px]">
+          <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+        </div>
+      }
+    >
+      <EmptyLegsContent />
+    </Suspense>
   );
 }
