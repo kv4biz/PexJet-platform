@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         phone: true,
-        subscriptionType: true,
+        type: true,
         cities: true,
       },
     });
@@ -165,12 +165,13 @@ export async function POST(request: NextRequest) {
       // Check if subscriber matches any deal (by city preference)
       if (
         !sendToAll &&
-        subscriber.subscriptionType === "CITIES" &&
-        subscriber.cities
+        subscriber.type === "CITY" &&
+        subscriber.cities &&
+        subscriber.cities.length > 0
       ) {
-        const subscriberCities = subscriber.cities
-          .split(",")
-          .map((c: string) => c.trim().toLowerCase());
+        const subscriberCities = subscriber.cities.map((c: string) =>
+          c.trim().toLowerCase(),
+        );
         const matchesAnyDeal = emptyLegs.some((leg) => {
           const depCity = (
             leg.departureAirport?.municipality ||
