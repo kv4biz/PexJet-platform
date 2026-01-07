@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { prisma } from "@pexjet/database";
 import { seoData } from "@/data";
+import StructuredData from "@/components/seo/StructuredData";
 
 interface Props {
   params: { slug: string };
@@ -52,7 +53,10 @@ export async function generateMetadata({
     const arrivalCity = emptyLeg.arrivalAirport.municipality || "Unknown";
     const departureCountry = emptyLeg.departureAirport.country?.name || "";
     const arrivalCountry = emptyLeg.arrivalAirport.country?.name || "";
-    const aircraftName = emptyLeg.aircraft.name;
+    const aircraftName =
+      emptyLeg.aircraft?.name || emptyLeg.aircraftName || "Private Jet";
+    const source = emptyLeg.source;
+    const operatorName = emptyLeg.operatorName;
 
     // Handle pricing based on priceType and priceUsd
     let priceText = "";
@@ -93,13 +97,29 @@ export async function generateMetadata({
         })()
       : "";
 
-    // SEO-optimized title with searchable keywords
-    const title = `Private Jet ${departureCity} to ${arrivalCity} | Empty Leg Flight`;
+    // SEO-optimized title with source-specific keywords
+    let title = `Private Jet ${departureCity} to ${arrivalCity} | Empty Leg Flight`;
 
-    // Rich description with keywords people search for
-    const description = `Book a private jet from ${departureCity} to ${arrivalCity}. Empty leg flight on ${aircraftName}${dateStr ? ` departing ${dateStr}` : ""}. Fly private for less with PexJet Nigeria.`;
+    if (source === "INSTACHARTER") {
+      title = `Verified Empty Leg ${departureCity} to ${arrivalCity} | Partner Deal`;
+    } else if (source === "ADMIN") {
+      title = `PexJet Exclusive Empty Leg ${departureCity} to ${arrivalCity}`;
+    } else if (source === "OPERATOR") {
+      title = `Operator Empty Leg ${departureCity} to ${arrivalCity} | ${operatorName || "Certified"}`;
+    }
 
-    // Additional keywords for this route
+    // Rich description with source-specific messaging
+    let description = `Book a private jet from ${departureCity} to ${arrivalCity}. Empty leg flight on ${aircraftName}${dateStr ? ` departing ${dateStr}` : ""}. Fly private for less with PexJet Nigeria.`;
+
+    if (source === "INSTACHARTER") {
+      description = `Verified partner empty leg from ${departureCity} to ${arrivalCity}. ${aircraftName}${dateStr ? ` departing ${dateStr}` : ""}. Trusted deal with quality assurance.`;
+    } else if (source === "ADMIN") {
+      description = `PexJet exclusive empty leg from ${departureCity} to ${arrivalCity}. ${aircraftName}${dateStr ? ` departing ${dateStr}` : ""}. Premium service guaranteed.`;
+    } else if (source === "OPERATOR") {
+      description = `Operator direct empty leg from ${departureCity} to ${arrivalCity}. ${aircraftName}${dateStr ? ` departing ${dateStr}` : ""}. Great value from ${operatorName || "certified operator"}.`;
+    }
+
+    // Additional keywords for this route and source
     const keywords = [
       `${departureCity} to ${arrivalCity} private jet`,
       `flight from ${departureCity} to ${arrivalCity}`,
@@ -111,14 +131,31 @@ export async function generateMetadata({
       "discounted private jet",
     ];
 
-    const ogImage = emptyLeg.aircraft.image || seoData.openGraph.image;
+    // Add source-specific keywords
+    if (source === "INSTACHARTER") {
+      keywords.push("verified empty leg", "partner deal", "trusted charter");
+    } else if (source === "ADMIN") {
+      keywords.push(
+        "PexJet exclusive",
+        "premium empty leg",
+        "guaranteed service",
+      );
+    } else if (source === "OPERATOR") {
+      keywords.push(
+        "operator direct",
+        "certified operator",
+        `${operatorName} charter`,
+      );
+    }
+
+    const ogImage = `${seoData.siteUrl}/opengraph-image?type=empty-leg&slug=${slug}&title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&aircraft=${encodeURIComponent(aircraftName)}&price=${encodeURIComponent(priceText)}`;
 
     return {
       title,
       description,
       keywords,
       openGraph: {
-        title: `${departureCity} to ${arrivalCity} | PexJet Empty Leg`,
+        title,
         description,
         url: `${seoData.siteUrl}/empty-legs/${slug}`,
         siteName: seoData.siteName,
@@ -127,16 +164,18 @@ export async function generateMetadata({
             url: ogImage,
             width: 1200,
             height: 630,
-            alt: `Private jet flight from ${departureCity} to ${arrivalCity}`,
+            alt: `Private jet flight from ${departureCity} to ${arrivalCity} on ${aircraftName}`,
           },
         ],
         type: "website",
       },
       twitter: {
         card: "summary_large_image",
-        title: `${departureCity} → ${arrivalCity} | Private Jet Empty Leg`,
+        title: `${departureCity} → ${arrivalCity} | ${source === "INSTACHARTER" ? "Verified" : source === "ADMIN" ? "PexJet Exclusive" : "Operator"} Empty Leg`,
         description,
-        images: [ogImage],
+        images: [
+          `${seoData.siteUrl}/twitter-image?type=empty-leg&slug=${slug}&title=${encodeURIComponent(`${departureCity} to ${arrivalCity} | Empty Leg`)}&description=${encodeURIComponent(`${source === "INSTACHARTER" ? "Verified partner" : source === "ADMIN" ? "PexJet exclusive" : "Operator"} deal from ${departureCity} to ${arrivalCity}. ${aircraftName}${dateStr ? ` - ${dateStr}` : ""}.`)}&aircraft=${encodeURIComponent(aircraftName)}&price=${encodeURIComponent(priceText)}`,
+        ],
       },
       alternates: {
         canonical: `${seoData.siteUrl}/empty-legs/${slug}`,
@@ -151,6 +190,22 @@ export async function generateMetadata({
   }
 }
 
-export default function EmptyLegDetailLayout({ children }: Props) {
-  return <>{children}</>;
+export default function EmptyLegDetailLayout({ children, params }: Props) {
+  return (
+    <>
+      <StructuredData
+        type="empty-leg"
+        data={{
+          emptyLeg: {
+            departureCity: "Unknown",
+            arrivalCity: "Unknown",
+            departureDateTime: new Date(),
+            aircraft: { name: "Private Jet" },
+          },
+          pageUrl: `${seoData.siteUrl}/empty-legs/${params.slug}`,
+        }}
+      />
+      {children}
+    </>
+  );
 }

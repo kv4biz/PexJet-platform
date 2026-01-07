@@ -7,8 +7,17 @@ import { Toaster } from "@pexjet/ui";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PexJet Admin",
-  description: "PexJet Aviation Admin Dashboard",
+  title: "PexJet Admin Dashboard",
+  description:
+    "PexJet Aviation Admin Dashboard - Manage private jet charters, empty legs, aircraft, and client bookings.",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
   icons: {
     icon: "/X.png",
     shortcut: "/X.png",

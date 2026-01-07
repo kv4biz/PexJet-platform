@@ -11,10 +11,10 @@ export const metadata: Metadata = {
     siteName: seoData.siteName,
     images: [
       {
-        url: seoData.openGraph.image,
-        width: seoData.openGraph.imageWidth,
-        height: seoData.openGraph.imageHeight,
-        alt: "PexJet Aircraft Fleet",
+        url: `${seoData.siteUrl}/opengraph-image?type=aircraft&title=${encodeURIComponent("Our Aircraft Fleet")}&description=${encodeURIComponent("Browse our diverse fleet of private jets – from light jets to heavy long-range aircraft. Find the perfect aircraft for your journey.")}`,
+        width: 1200,
+        height: 630,
+        alt: "PexJet Aircraft Fleet - Private Jets for Every Journey",
       },
     ],
     type: "website",
@@ -23,7 +23,12 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: seoData.pages.aircraft.title,
     description: seoData.pages.aircraft.description,
-    images: [seoData.openGraph.image],
+    images: [
+      `${seoData.siteUrl}/twitter-image?type=aircraft&title=${encodeURIComponent("Our Aircraft Fleet")}&description=${encodeURIComponent("Browse our diverse fleet of private jets – from light jets to heavy long-range aircraft.")}`,
+    ],
+  },
+  alternates: {
+    canonical: `${seoData.siteUrl}/aircraft`,
   },
 };
 

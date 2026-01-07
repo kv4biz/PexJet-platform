@@ -5,6 +5,7 @@ import { CurrencyProvider } from "@/context/CurrencyContext";
 import { Toaster } from "@pexjet/ui";
 import WhatsAppWidget from "@/components/WhatsAppWidget";
 import { seoData } from "@/data";
+import StructuredData from "@/components/seo/StructuredData";
 import "./globals.css";
 
 const inter = Inter({
@@ -43,7 +44,7 @@ export const metadata: Metadata = {
     description: seoData.defaultDescription,
     images: [
       {
-        url: seoData.openGraph.image,
+        url: `${seoData.siteUrl}/opengraph-image?type=home&title=${encodeURIComponent(seoData.defaultTitle)}&description=${encodeURIComponent(seoData.defaultDescription)}`,
         width: seoData.openGraph.imageWidth,
         height: seoData.openGraph.imageHeight,
         alt: seoData.siteName,
@@ -56,7 +57,9 @@ export const metadata: Metadata = {
     creator: seoData.twitter.creator,
     title: seoData.defaultTitle,
     description: seoData.defaultDescription,
-    images: [seoData.openGraph.image],
+    images: [
+      `${seoData.siteUrl}/twitter-image?type=home&title=${encodeURIComponent(seoData.defaultTitle)}&description=${encodeURIComponent(seoData.defaultDescription)}`,
+    ],
   },
   robots: {
     index: true,
@@ -84,6 +87,8 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${playfair.variable} font-sans antialiased`}
       >
+        <StructuredData type="organization" />
+        <StructuredData type="website" />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

@@ -11,10 +11,10 @@ export const metadata: Metadata = {
     siteName: seoData.siteName,
     images: [
       {
-        url: seoData.openGraph.image,
-        width: seoData.openGraph.imageWidth,
-        height: seoData.openGraph.imageHeight,
-        alt: "PexJet Private Jet Charter",
+        url: `${seoData.siteUrl}/opengraph-image?type=charter&title=${encodeURIComponent("Private Jet Charter Services")}&description=${encodeURIComponent("Fly anywhere in the world with luxury private jets. Flexible schedules, dedicated service, and access to 500+ aircraft.")}`,
+        width: 1200,
+        height: 630,
+        alt: "PexJet Private Jet Charter - Luxury Air Travel",
       },
     ],
     type: "website",
@@ -23,7 +23,12 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: seoData.pages.charter.title,
     description: seoData.pages.charter.description,
-    images: [seoData.openGraph.image],
+    images: [
+      `${seoData.siteUrl}/twitter-image?type=charter&title=${encodeURIComponent("Private Jet Charter Services")}&description=${encodeURIComponent("Fly anywhere in the world with luxury private jets. Flexible schedules, dedicated service, and access to 500+ aircraft.")}`,
+    ],
+  },
+  alternates: {
+    canonical: `${seoData.siteUrl}/charter`,
   },
 };
 
