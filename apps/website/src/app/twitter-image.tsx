@@ -1,6 +1,15 @@
 import { ImageResponse } from "next/og";
 import { prisma } from "@pexjet/database";
-import { homePageData, aboutCompanyPageData } from "@/data";
+import {
+  homePageData,
+  aboutCompanyPageData,
+  aboutAssetPageData,
+  servicesData,
+  aircraftManagementPageData,
+  contactPageData,
+  charterPageData,
+  emptyLegsPageData,
+} from "@/data";
 
 export const runtime = "edge";
 
@@ -111,6 +120,30 @@ export default async function Image({ params, searchParams }: Props) {
     } else if (pageType === "about") {
       // Use hero image from about page data
       backgroundImage = aboutCompanyPageData.hero.backgroundImage;
+      overlayOpacity = 0.4;
+    } else if (pageType === "about-asset") {
+      // Use hero image from about asset page data
+      backgroundImage = aboutAssetPageData.hero.backgroundImage;
+      overlayOpacity = 0.4;
+    } else if (pageType === "services") {
+      // Use hero image from services page data
+      backgroundImage = servicesData.hero.image;
+      overlayOpacity = 0.4;
+    } else if (pageType === "aircraft-management") {
+      // Use hero image from aircraft management page data
+      backgroundImage = aircraftManagementPageData.hero.image;
+      overlayOpacity = 0.4;
+    } else if (pageType === "contact") {
+      // Use hero image from contact page data
+      backgroundImage = contactPageData.hero.backgroundImage;
+      overlayOpacity = 0.4;
+    } else if (pageType === "charter") {
+      // Use hero image from charter page data
+      backgroundImage = charterPageData.hero.backgroundImage;
+      overlayOpacity = 0.4;
+    } else if (pageType === "empty-legs") {
+      // Use hero image from empty legs page data
+      backgroundImage = emptyLegsPageData.hero.backgroundImage;
       overlayOpacity = 0.4;
     } else {
       // Default fallback image
