@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { prisma } from "@pexjet/database";
+import { homePageData, aboutCompanyPageData } from "@/data";
 
 export const runtime = "edge";
 
@@ -27,6 +28,9 @@ export default async function Image({ params, searchParams }: Props) {
 
   // Fetch specific data if we have a slug
   let specificData = null;
+  let backgroundImage = null;
+  let overlayOpacity = 0.3;
+
   if (slug && pageType === "empty-leg") {
     try {
       specificData = await prisma.emptyLeg.findUnique({
@@ -52,6 +56,24 @@ export default async function Image({ params, searchParams }: Props) {
           },
         },
       });
+
+      // Set background image for empty leg
+      if (specificData) {
+        if (
+          specificData.source === "INSTACHARTER" &&
+          specificData.aircraftImage
+        ) {
+          backgroundImage = specificData.aircraftImage;
+        } else if (specificData.aircraft?.image) {
+          backgroundImage = specificData.aircraft.image;
+        } else if (specificData.aircraftImage) {
+          backgroundImage = specificData.aircraftImage;
+        } else {
+          backgroundImage =
+            "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png";
+        }
+        overlayOpacity = 0.2;
+      }
     } catch (error) {
       console.error("Error fetching empty leg data:", error);
     }
@@ -66,8 +88,35 @@ export default async function Image({ params, searchParams }: Props) {
           maxPax: true,
         },
       });
+
+      // Set background image for aircraft
+      if (specificData?.image) {
+        backgroundImage = specificData.image;
+        overlayOpacity = 0.2;
+      } else {
+        backgroundImage =
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png";
+      }
     } catch (error) {
       console.error("Error fetching aircraft data:", error);
+    }
+  }
+
+  // Determine which image to use for static pages
+  if (!backgroundImage) {
+    if (pageType === "home") {
+      // Use hero image from home page data
+      backgroundImage = homePageData.hero.imageURL;
+      overlayOpacity = 0.4;
+    } else if (pageType === "about") {
+      // Use hero image from about page data
+      backgroundImage = aboutCompanyPageData.hero.backgroundImage;
+      overlayOpacity = 0.4;
+    } else {
+      // Default fallback image
+      backgroundImage =
+        "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png";
+      overlayOpacity = 0.3;
     }
   }
 
@@ -75,7 +124,9 @@ export default async function Image({ params, searchParams }: Props) {
     <div
       style={{
         fontSize: 48,
-        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
         width: "100%",
         height: "100%",
         display: "flex",
@@ -88,7 +139,7 @@ export default async function Image({ params, searchParams }: Props) {
         overflow: "hidden",
       }}
     >
-      {/* Background pattern */}
+      {/* Dark overlay for text readability */}
       <div
         style={{
           position: "absolute",
@@ -96,8 +147,8 @@ export default async function Image({ params, searchParams }: Props) {
           left: 0,
           right: 0,
           bottom: 0,
-          opacity: 0.1,
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4AF37' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          background: `rgba(26, 26, 46, ${overlayOpacity})`,
+          zIndex: 1,
         }}
       />
 

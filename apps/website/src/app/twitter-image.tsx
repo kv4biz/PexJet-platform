@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { prisma } from "@pexjet/database";
+import { homePageData, aboutCompanyPageData } from "@/data";
 
 export const runtime = "edge";
 
@@ -27,6 +28,9 @@ export default async function Image({ params, searchParams }: Props) {
 
   // Fetch specific data if we have a slug
   let specificData = null;
+  let backgroundImage = null;
+  let overlayOpacity = 0.3;
+
   if (slug && pageType === "empty-leg") {
     try {
       specificData = await prisma.emptyLeg.findUnique({
@@ -52,6 +56,24 @@ export default async function Image({ params, searchParams }: Props) {
           },
         },
       });
+
+      // Set background image for empty leg
+      if (specificData) {
+        if (
+          specificData.source === "INSTACHARTER" &&
+          specificData.aircraftImage
+        ) {
+          backgroundImage = specificData.aircraftImage;
+        } else if (specificData.aircraft?.image) {
+          backgroundImage = specificData.aircraft.image;
+        } else if (specificData.aircraftImage) {
+          backgroundImage = specificData.aircraftImage;
+        } else {
+          backgroundImage =
+            "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png";
+        }
+        overlayOpacity = 0.2;
+      }
     } catch (error) {
       console.error("Error fetching empty leg data:", error);
     }
@@ -66,16 +88,45 @@ export default async function Image({ params, searchParams }: Props) {
           maxPax: true,
         },
       });
+
+      // Set background image for aircraft
+      if (specificData?.image) {
+        backgroundImage = specificData.image;
+        overlayOpacity = 0.2;
+      } else {
+        backgroundImage =
+          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png";
+      }
     } catch (error) {
       console.error("Error fetching aircraft data:", error);
+    }
+  }
+
+  // Determine which image to use for static pages
+  if (!backgroundImage) {
+    if (pageType === "home") {
+      // Use hero image from home page data
+      backgroundImage = homePageData.hero.imageURL;
+      overlayOpacity = 0.4;
+    } else if (pageType === "about") {
+      // Use hero image from about page data
+      backgroundImage = aboutCompanyPageData.hero.backgroundImage;
+      overlayOpacity = 0.4;
+    } else {
+      // Default fallback image
+      backgroundImage =
+        "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png";
+      overlayOpacity = 0.3;
     }
   }
 
   return new ImageResponse(
     <div
       style={{
-        fontSize: 42,
-        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+        fontSize: 48,
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
         width: "100%",
         height: "100%",
         display: "flex",
@@ -88,7 +139,7 @@ export default async function Image({ params, searchParams }: Props) {
         overflow: "hidden",
       }}
     >
-      {/* Background pattern */}
+      {/* Dark overlay for text readability */}
       <div
         style={{
           position: "absolute",
@@ -96,8 +147,8 @@ export default async function Image({ params, searchParams }: Props) {
           left: 0,
           right: 0,
           bottom: 0,
-          opacity: 0.08,
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23D4AF37' fill-opacity='0.6'%3E%3Cpath d='M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm0 0c0 5.5 4.5 10 10 10s10-4.5 10-10-4.5-10-10-10-10 4.5-10 10z'/%3E%3C/g%3E%3C/svg%3E")`,
+          background: `rgba(26, 26, 46, ${overlayOpacity})`,
+          zIndex: 1,
         }}
       />
 
