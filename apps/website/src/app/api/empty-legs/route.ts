@@ -17,6 +17,8 @@ function formatLocalDateTime(date: Date): string {
 }
 
 // Helper function to get airport by ICAO code with full database info
+// Searches both icaoCode and gpsCode fields (they contain the same type of codes)
+// Returns iataCode with localCode as fallback (they contain the same type of codes)
 async function getAirportByIcao(icao: string | null | undefined) {
   if (!icao) {
     return {
@@ -32,9 +34,14 @@ async function getAirportByIcao(icao: string | null | undefined) {
     };
   }
 
+  const code = icao.toUpperCase();
+
   try {
+    // Search both icaoCode and gpsCode fields
     const airport = await prisma.airport.findFirst({
-      where: { icaoCode: icao },
+      where: {
+        OR: [{ icaoCode: code }, { gpsCode: code }],
+      },
       select: {
         id: true,
         name: true,
@@ -42,6 +49,7 @@ async function getAirportByIcao(icao: string | null | undefined) {
         countryCode: true,
         iataCode: true,
         icaoCode: true,
+        localCode: true,
         latitude: true,
         longitude: true,
         region: {
@@ -58,20 +66,22 @@ async function getAirportByIcao(icao: string | null | undefined) {
     });
 
     if (airport) {
+      // Use iataCode, fallback to localCode (both contain IATA-style codes)
+      const displayCode = airport.iataCode || airport.localCode || "";
       return {
         id: airport.id,
         name: airport.name,
         city: airport.municipality || "",
         region: airport.region?.name || "",
         country: airport.country?.name || airport.countryCode || "",
-        iataCode: airport.iataCode || "",
+        iataCode: displayCode,
         icaoCode: airport.icaoCode || "",
         latitude: airport.latitude,
         longitude: airport.longitude,
       };
     }
   } catch (error) {
-    console.error(`Error finding airport by ICAO ${icao}:`, error);
+    console.error(`Error finding airport by ICAO/GPS ${code}:`, error);
   }
 
   // Fallback if not found
@@ -196,6 +206,7 @@ export async function GET(request: NextRequest) {
             municipality: true,
             iataCode: true,
             icaoCode: true,
+            localCode: true,
             latitude: true,
             longitude: true,
             region: {
@@ -217,6 +228,7 @@ export async function GET(request: NextRequest) {
             municipality: true,
             iataCode: true,
             icaoCode: true,
+            localCode: true,
             latitude: true,
             longitude: true,
             region: {
@@ -274,15 +286,18 @@ export async function GET(request: NextRequest) {
             displayText = "Contact for price";
           }
 
-          // Get airport data - prioritize IATA codes and include region
-          // If no IATA code, lookup by ICAO to get complete airport info
+          // Get airport data - prioritize IATA codes (with localCode fallback)
+          // If no IATA code or localCode, lookup by ICAO/GPS to get complete airport info
           let departureAirport;
           if (leg.departureAirport) {
+            // Use iataCode, fallback to localCode (both contain IATA-style codes)
+            const depIataCode =
+              leg.departureAirport.iataCode ||
+              leg.departureAirport.localCode ||
+              "";
+
             // Check if we need to lookup for IATA code
-            if (
-              !leg.departureAirport.iataCode &&
-              leg.departureAirport.icaoCode
-            ) {
+            if (!depIataCode && leg.departureAirport.icaoCode) {
               const fullAirportData = await getAirportByIcao(
                 leg.departureAirport.icaoCode,
               );
@@ -306,7 +321,7 @@ export async function GET(request: NextRequest) {
                 city: leg.departureAirport.municipality || "",
                 region: leg.departureAirport.region?.name || "",
                 country: leg.departureAirport.country?.name || "",
-                iataCode: leg.departureAirport.iataCode || "",
+                iataCode: depIataCode,
                 icaoCode: leg.departureAirport.icaoCode || "",
                 latitude: leg.departureAirport.latitude,
                 longitude: leg.departureAirport.longitude,
@@ -318,8 +333,12 @@ export async function GET(request: NextRequest) {
 
           let arrivalAirport;
           if (leg.arrivalAirport) {
+            // Use iataCode, fallback to localCode (both contain IATA-style codes)
+            const arrIataCode =
+              leg.arrivalAirport.iataCode || leg.arrivalAirport.localCode || "";
+
             // Check if we need to lookup for IATA code
-            if (!leg.arrivalAirport.iataCode && leg.arrivalAirport.icaoCode) {
+            if (!arrIataCode && leg.arrivalAirport.icaoCode) {
               const fullAirportData = await getAirportByIcao(
                 leg.arrivalAirport.icaoCode,
               );
@@ -343,7 +362,7 @@ export async function GET(request: NextRequest) {
                 city: leg.arrivalAirport.municipality || "",
                 region: leg.arrivalAirport.region?.name || "",
                 country: leg.arrivalAirport.country?.name || "",
-                iataCode: leg.arrivalAirport.iataCode || "",
+                iataCode: arrIataCode,
                 icaoCode: leg.arrivalAirport.icaoCode || "",
                 latitude: leg.arrivalAirport.latitude,
                 longitude: leg.arrivalAirport.longitude,
@@ -384,6 +403,8 @@ export async function GET(request: NextRequest) {
             createdByAdminId: leg.createdByAdminId,
             createdByOperatorId: leg.createdByOperatorId,
             ownerType: leg.createdByOperatorId ? "operator" : "admin",
+            // Source for distinguishing InstaCharter deals
+            source: leg.source,
           };
         } catch (error) {
           console.error("Error transforming leg:", leg.id, error);

@@ -17,24 +17,72 @@ import { SyncResult } from "./instacharter-types";
 // =============================================================================
 
 /**
- * Find airport by ICAO code and return its ID
- * Returns null if not found
+ * Airport data returned from lookup
+ */
+interface AirportLookupResult {
+  id: string;
+  iataCode: string | null;
+  icaoCode: string | null;
+  city: string | null;
+  country: string | null;
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * Find airport by ICAO code (searches both icaoCode and gpsCode fields)
+ * Returns full airport data for populating EmptyLeg fields
  */
 async function findAirportByIcao(
   prisma: PrismaClient,
   icaoCode: string | null | undefined,
-): Promise<string | null> {
+): Promise<AirportLookupResult | null> {
   if (!icaoCode) return null;
 
+  const code = icaoCode.toUpperCase();
+
   try {
+    // Search both icaoCode and gpsCode fields
     const airport = await prisma.airport.findFirst({
-      where: { icaoCode: icaoCode.toUpperCase() },
-      select: { id: true },
+      where: {
+        OR: [{ icaoCode: code }, { gpsCode: code }],
+      },
+      select: {
+        id: true,
+        iataCode: true,
+        icaoCode: true,
+        municipality: true,
+        latitude: true,
+        longitude: true,
+        country: {
+          select: { name: true },
+        },
+      },
     });
-    return airport?.id || null;
+
+    if (!airport) {
+      console.log(
+        `[InstaCharter Sync] No airport found for ICAO/GPS code: ${code}`,
+      );
+      return null;
+    }
+
+    console.log(
+      `[InstaCharter Sync] Found airport: ${airport.iataCode || airport.icaoCode} (${airport.municipality}) for code ${code}`,
+    );
+
+    return {
+      id: airport.id,
+      iataCode: airport.iataCode,
+      icaoCode: airport.icaoCode,
+      city: airport.municipality,
+      country: airport.country?.name || null,
+      latitude: airport.latitude,
+      longitude: airport.longitude,
+    };
   } catch (error) {
     console.error(
-      `[InstaCharter Sync] Error finding airport by ICAO ${icaoCode}:`,
+      `[InstaCharter Sync] Error finding airport by ICAO/GPS ${code}:`,
       error,
     );
     return null;
@@ -116,36 +164,51 @@ export async function syncInstaCharterDeals(
         const externalId = apiDeal.id.toString();
         const existingDeal = existingDealMap.get(externalId);
 
-        // Look up airport IDs by ICAO code to link to our airport database
-        const departureAirportId = await findAirportByIcao(
+        // Look up airports by ICAO code (searches both icaoCode and gpsCode fields)
+        const departureAirport = await findAirportByIcao(
           prisma,
           mappedData.departureIcao,
         );
-        const arrivalAirportId = await findAirportByIcao(
+        const arrivalAirport = await findAirportByIcao(
           prisma,
           mappedData.arrivalIcao,
         );
 
-        if (departureAirportId) {
-          console.log(
-            `[InstaCharter Sync] Linked departure ${mappedData.departureIcao} to airport ID ${departureAirportId}`,
-          );
-        }
-        if (arrivalAirportId) {
-          console.log(
-            `[InstaCharter Sync] Linked arrival ${mappedData.arrivalIcao} to airport ID ${arrivalAirportId}`,
-          );
-        }
+        // Generate slug using city names (not ICAO codes)
+        // Use resolved city names from our database, fallback to InstaCharter city names
+        const departureCity =
+          departureAirport?.city || mappedData.departureCity || "unknown";
+        const arrivalCity =
+          arrivalAirport?.city || mappedData.arrivalCity || "unknown";
+        const dateStr = mappedData.departureDateTime
+          .toISOString()
+          .split("T")[0];
+        const baseSlug =
+          `${departureCity}-to-${arrivalCity}-${dateStr}-ic-${mappedData.externalId}`
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, "-")
+            .replace(/-+/g, "-");
+
+        // Prepare data with resolved airport info
+        const enrichedData = {
+          ...mappedData,
+          // Override with resolved city/country from our database
+          departureCity: departureAirport?.city || mappedData.departureCity,
+          departureCountry:
+            departureAirport?.country || mappedData.departureCountry,
+          arrivalCity: arrivalAirport?.city || mappedData.arrivalCity,
+          arrivalCountry: arrivalAirport?.country || mappedData.arrivalCountry,
+          // Link to airport records if found
+          departureAirportId: departureAirport?.id || undefined,
+          arrivalAirportId: arrivalAirport?.id || undefined,
+        };
 
         if (existingDeal) {
           // Update existing deal
           await prisma.emptyLeg.update({
             where: { id: existingDeal.id },
             data: {
-              ...mappedData,
-              // Link to airport records if found
-              departureAirportId: departureAirportId || undefined,
-              arrivalAirportId: arrivalAirportId || undefined,
+              ...enrichedData,
               // Don't override these fields
               slug: undefined,
               externalId: undefined,
@@ -158,20 +221,17 @@ export async function syncInstaCharterDeals(
           result.dealsUpdated++;
         } else {
           // Create new deal - ensure unique slug
-          let slug = mappedData.slug;
+          let slug = baseSlug;
           let counter = 1;
           while (await prisma.emptyLeg.findUnique({ where: { slug } })) {
-            slug = `${mappedData.slug}-${counter}`;
+            slug = `${baseSlug}-${counter}`;
             counter++;
           }
 
           await prisma.emptyLeg.create({
             data: {
-              ...mappedData,
+              ...enrichedData,
               slug,
-              // Link to airport records if found
-              departureAirportId: departureAirportId || undefined,
-              arrivalAirportId: arrivalAirportId || undefined,
             },
           });
           result.dealsCreated++;

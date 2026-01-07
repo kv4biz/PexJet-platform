@@ -134,7 +134,7 @@ export const homePageData = {
   },
 
   partnerLogos: {
-    title: "Program Memberships",
+    title: "members of",
     logos: [
       {
         name: "NBAA",

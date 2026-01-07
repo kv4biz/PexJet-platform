@@ -280,7 +280,10 @@ export function EmptyLegDealsSection() {
   };
 
   // Format time as LT (local time) - extract raw time without timezone conversion (24-hour format)
-  const formatTime = (dateString: string) => {
+  // For InstaCharter deals, return TBA since they don't provide actual times
+  const formatTime = (dateString: string, source?: string) => {
+    // InstaCharter deals don't have actual departure times
+    if (source === "INSTACHARTER") return "TBA";
     if (!dateString) return "TBD";
     try {
       // Parse the ISO string and extract time parts directly
@@ -328,10 +331,14 @@ export function EmptyLegDealsSection() {
   };
 
   // Calculate estimated arrival time as LT (24-hour format)
+  // For InstaCharter deals, return TBA since they don't provide actual times
   const calculateArrivalTime = (
     departureDateTime: string,
     distanceNm: number,
+    source?: string,
   ): string => {
+    // InstaCharter deals don't have actual departure times
+    if (source === "INSTACHARTER") return "TBA";
     if (!departureDateTime) return "TBD";
     try {
       const CRUISE_SPEED_KNOTS = 350;
@@ -368,7 +375,11 @@ export function EmptyLegDealsSection() {
     );
 
     // Calculate estimated arrival
-    const estArrivalTime = calculateArrivalTime(deal.departureDate, distanceNm);
+    const estArrivalTime = calculateArrivalTime(
+      deal.departureDate,
+      distanceNm,
+      deal.source,
+    );
 
     return (
       <Card
@@ -382,7 +393,8 @@ export function EmptyLegDealsSection() {
               {/* Departure */}
               <div className="w-[30%] lg:w-[25%] text-left">
                 <div className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight">
-                  {deal.departureAirport.iataCode}
+                  {deal.departureAirport.iataCode ||
+                    deal.departureAirport.icaoCode}
                 </div>
                 <div className="text-sm font-medium text-gray-600 hidden lg:block mt-1">
                   {deal.departureAirport.name}
@@ -413,7 +425,7 @@ export function EmptyLegDealsSection() {
               {/* Arrival */}
               <div className="w-[30%] lg:w-[25%]  text-right">
                 <div className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight">
-                  {deal.arrivalAirport.iataCode}
+                  {deal.arrivalAirport.iataCode || deal.arrivalAirport.icaoCode}
                 </div>
                 <div className="text-sm font-medium text-gray-600 hidden lg:block mt-1">
                   {deal.arrivalAirport.name}

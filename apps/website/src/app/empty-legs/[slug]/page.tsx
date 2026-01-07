@@ -32,7 +32,10 @@ function formatDateLT(dateString: string): string {
   }
 }
 
-function formatTimeLT(dateString: string): string {
+// For InstaCharter deals, return TBA since they don't provide actual times
+function formatTimeLT(dateString: string, source?: string): string {
+  // InstaCharter deals don't have actual departure times
+  if (source === "INSTACHARTER") return "TBA";
   if (!dateString) return "TBD";
   try {
     const match = dateString.match(/T?(\d{2}):(\d{2})/);
@@ -561,7 +564,8 @@ export default function EmptyLegDetailPage() {
                       <Clock className="w-5 h-5 mx-auto mb-1 text-[#D4AF37]" />
                       <div className="text-sm text-gray-500">Time</div>
                       <div className="font-semibold">
-                        {formatTimeLT(emptyLeg.departureDate)} LT
+                        {formatTimeLT(emptyLeg.departureDate, emptyLeg.source)}
+                        {emptyLeg.source !== "INSTACHARTER" ? " LT" : ""}
                       </div>
                     </div>
                     <div className="text-center p-3 bg-gray-50">
@@ -609,7 +613,13 @@ export default function EmptyLegDetailPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Time</span>
-                          <span>{formatTimeLT(emptyLeg.departureDate)} LT</span>
+                          <span>
+                            {formatTimeLT(
+                              emptyLeg.departureDate,
+                              emptyLeg.source,
+                            )}
+                            {emptyLeg.source !== "INSTACHARTER" ? " LT" : ""}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Aircraft</span>
@@ -813,7 +823,13 @@ export default function EmptyLegDetailPage() {
                             <div>
                               <span className="text-gray-500">Time:</span>
                               <span className="ml-2 font-medium">
-                                {formatTimeLT(emptyLeg.departureDate)} LT
+                                {formatTimeLT(
+                                  emptyLeg.departureDate,
+                                  emptyLeg.source,
+                                )}
+                                {emptyLeg.source !== "INSTACHARTER"
+                                  ? " LT"
+                                  : ""}
                               </span>
                             </div>
                             <div>
@@ -928,7 +944,13 @@ export default function EmptyLegDetailPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Time</span>
-                        <span>{formatTimeLT(emptyLeg.departureDate)} LT </span>
+                        <span>
+                          {formatTimeLT(
+                            emptyLeg.departureDate,
+                            emptyLeg.source,
+                          )}
+                          {emptyLeg.source !== "INSTACHARTER" ? " LT" : ""}{" "}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Aircraft</span>

@@ -48,13 +48,17 @@ interface EmptyLegDeal {
   priceText: string;
   priceType: string;
   status: string;
+  source?: string;
   createdByAdminId?: string;
   createdByOperatorId?: string;
   ownerType: string;
 }
 
 // Helper to format time as LT (24-hour format, no timezone conversion)
-function formatTime(dateString: string): string {
+// For InstaCharter deals, return TBA since they don't provide actual times
+function formatTime(dateString: string, source?: string): string {
+  // InstaCharter deals don't have actual departure times
+  if (source === "INSTACHARTER") return "TBA";
   if (!dateString) return "--";
   try {
     const match = dateString.match(/T?(\d{2}):(\d{2})/);
@@ -293,7 +297,7 @@ export default function EmptyLegDeals() {
                           <Clock className="w-4 h-4" />
                           <span>
                             {formatDate(deal.departureDate)}{" "}
-                            {formatTime(deal.departureDate)}
+                            {formatTime(deal.departureDate, deal.source)}
                           </span>
                         </div>
                         <div className="h-4 w-px bg-gray-300"></div>
@@ -396,7 +400,8 @@ export default function EmptyLegDeals() {
                           <Clock className="w-4 h-4" />
                           <span>
                             {formatDate(deal.departureDate)}{" "}
-                            {formatTime(deal.departureDate)} LT
+                            {formatTime(deal.departureDate, deal.source)}
+                            {deal.source !== "INSTACHARTER" ? " LT" : ""}
                           </span>
                         </div>
                         <div className="h-4 w-px bg-gray-300"></div>
