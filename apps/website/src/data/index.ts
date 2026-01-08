@@ -1119,6 +1119,11 @@ export const seoData = {
       description:
         "Browse our diverse fleet of private jets – from light jets to heavy long-range aircraft. Find the perfect aircraft for your journey.",
     },
+    aircraftManagement: {
+      title: "Aircraft Management Services",
+      description:
+        "Professional aircraft management services. We handle operations, maintenance, crew, and compliance—so you can focus on flying.",
+    },
     services: {
       title: "Private Aviation Services",
       description:

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     siteName: seoData.siteName,
     images: [
       {
-        url: seoData.openGraph.image,
+        url: `${seoData.siteUrl}/opengraph-image?type=about-asset`,
         width: seoData.openGraph.imageWidth,
         height: seoData.openGraph.imageHeight,
         alt: "PexJet Asset Acquisition",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: seoData.pages.aboutAsset.title,
     description: seoData.pages.aboutAsset.description,
-    images: [seoData.openGraph.image],
+    images: [`${seoData.siteUrl}/twitter-image?type=about-asset`],
   },
 };
 
