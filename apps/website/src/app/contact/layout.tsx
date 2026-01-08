@@ -12,8 +12,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: `${seoData.siteUrl}/opengraph-image?type=contact`,
-        width: seoData.openGraph.imageWidth,
-        height: seoData.openGraph.imageHeight,
+        width: 1200,
+        height: 630,
         alt: "Contact PexJet",
       },
     ],
@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     title: seoData.pages.contact.title,
     description: seoData.pages.contact.description,
     images: [`${seoData.siteUrl}/twitter-image?type=contact`],
+  },
+  other: {
+    "fb:app_id": "966242223397117", // Facebook App ID for debugging
   },
 };
 

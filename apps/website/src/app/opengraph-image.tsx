@@ -35,122 +35,125 @@ export default async function Image({ params, searchParams }: Props) {
   const price = searchParams?.price;
   const route = searchParams?.route;
 
+  // Default fallback image
+  const defaultImage =
+    "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png";
+
   // Fetch specific data if we have a slug
   let specificData = null;
-  let backgroundImage = null;
+  let backgroundImage = defaultImage;
   let overlayOpacity = 0.3;
 
-  if (slug && pageType === "empty-leg") {
-    try {
-      specificData = await prisma.emptyLeg.findUnique({
-        where: { slug },
-        include: {
-          aircraft: {
-            select: {
-              name: true,
-              image: true,
+  try {
+    if (slug && pageType === "empty-leg") {
+      try {
+        specificData = await prisma.emptyLeg.findUnique({
+          where: { slug },
+          include: {
+            aircraft: {
+              select: {
+                name: true,
+                image: true,
+              },
+            },
+            departureAirport: {
+              select: {
+                name: true,
+                municipality: true,
+              },
+            },
+            arrivalAirport: {
+              select: {
+                name: true,
+                municipality: true,
+              },
             },
           },
-          departureAirport: {
-            select: {
-              name: true,
-              municipality: true,
-            },
-          },
-          arrivalAirport: {
-            select: {
-              name: true,
-              municipality: true,
-            },
-          },
-        },
-      });
+        });
 
-      // Set background image for empty leg
-      if (specificData) {
-        if (
-          specificData.source === "INSTACHARTER" &&
-          specificData.aircraftImage
-        ) {
-          backgroundImage = specificData.aircraftImage;
-        } else if (specificData.aircraft?.image) {
-          backgroundImage = specificData.aircraft.image;
-        } else if (specificData.aircraftImage) {
-          backgroundImage = specificData.aircraftImage;
-        } else {
-          backgroundImage =
-            "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png";
+        // Set background image for empty leg
+        if (specificData) {
+          if (
+            specificData.source === "INSTACHARTER" &&
+            specificData.aircraftImage
+          ) {
+            backgroundImage = specificData.aircraftImage;
+          } else if (specificData.aircraft?.image) {
+            backgroundImage = specificData.aircraft.image;
+          } else if (specificData.aircraftImage) {
+            backgroundImage = specificData.aircraftImage;
+          } else {
+            backgroundImage = defaultImage;
+          }
+          overlayOpacity = 0.2;
         }
-        overlayOpacity = 0.2;
+      } catch (error) {
+        console.error("Error fetching empty leg data:", error);
       }
-    } catch (error) {
-      console.error("Error fetching empty leg data:", error);
-    }
-  } else if (slug && pageType === "aircraft") {
-    try {
-      specificData = await prisma.aircraft.findUnique({
-        where: { id: slug },
-        select: {
-          name: true,
-          category: true,
-          image: true,
-          maxPax: true,
-        },
-      });
+    } else if (slug && pageType === "aircraft") {
+      try {
+        specificData = await prisma.aircraft.findUnique({
+          where: { id: slug },
+          select: {
+            name: true,
+            category: true,
+            image: true,
+            maxPax: true,
+          },
+        });
 
-      // Set background image for aircraft
-      if (specificData?.image) {
-        backgroundImage = specificData.image;
-        overlayOpacity = 0.2;
-      } else {
-        backgroundImage =
-          "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png";
+        // Set background image for aircraft
+        if (specificData?.image) {
+          backgroundImage = specificData.image;
+          overlayOpacity = 0.2;
+        } else {
+          backgroundImage = defaultImage;
+        }
+      } catch (error) {
+        console.error("Error fetching aircraft data:", error);
       }
-    } catch (error) {
-      console.error("Error fetching aircraft data:", error);
     }
-  }
 
-  // Determine which image to use for static pages
-  if (!backgroundImage) {
-    if (pageType === "home") {
-      // Use hero image from home page data
-      backgroundImage = homePageData.hero.imageURL;
-      overlayOpacity = 0.4;
-    } else if (pageType === "about") {
-      // Use hero image from about page data
-      backgroundImage = aboutCompanyPageData.hero.backgroundImage;
-      overlayOpacity = 0.4;
-    } else if (pageType === "about-asset") {
-      // Use hero image from about asset page data
-      backgroundImage = aboutAssetPageData.hero.backgroundImage;
-      overlayOpacity = 0.4;
-    } else if (pageType === "services") {
-      // Use hero image from services page data
-      backgroundImage = servicesData.hero.image;
-      overlayOpacity = 0.4;
-    } else if (pageType === "aircraft-management") {
-      // Use hero image from aircraft management page data
-      backgroundImage = aircraftManagementPageData.hero.image;
-      overlayOpacity = 0.4;
-    } else if (pageType === "contact") {
-      // Use hero image from contact page data
-      backgroundImage = contactPageData.hero.backgroundImage;
-      overlayOpacity = 0.4;
-    } else if (pageType === "charter") {
-      // Use hero image from charter page data
-      backgroundImage = charterPageData.hero.backgroundImage;
-      overlayOpacity = 0.4;
-    } else if (pageType === "empty-legs") {
-      // Use hero image from empty legs page data
-      backgroundImage = emptyLegsPageData.hero.backgroundImage;
-      overlayOpacity = 0.4;
-    } else {
-      // Default fallback image
-      backgroundImage =
-        "https://res.cloudinary.com/dikzx4eyh/image/upload/v1764998923/pixverse-i2i-ori-9076e189-b32b-46cc-8701-506838512428_lkeyv0.png";
-      overlayOpacity = 0.3;
+    // Determine which image to use for static pages
+    if (backgroundImage === defaultImage) {
+      if (pageType === "home") {
+        // Use hero image from home page data
+        backgroundImage = homePageData.hero.imageURL;
+        overlayOpacity = 0.4;
+      } else if (pageType === "about") {
+        // Use hero image from about page data
+        backgroundImage = aboutCompanyPageData.hero.backgroundImage;
+        overlayOpacity = 0.4;
+      } else if (pageType === "about-asset") {
+        // Use hero image from about asset page data
+        backgroundImage = aboutAssetPageData.hero.backgroundImage;
+        overlayOpacity = 0.4;
+      } else if (pageType === "services") {
+        // Use hero image from services page data
+        backgroundImage = servicesData.hero.image;
+        overlayOpacity = 0.4;
+      } else if (pageType === "aircraft-management") {
+        // Use hero image from aircraft management page data
+        backgroundImage = aircraftManagementPageData.hero.image;
+        overlayOpacity = 0.4;
+      } else if (pageType === "contact") {
+        // Use hero image from contact page data
+        backgroundImage = contactPageData.hero.backgroundImage;
+        overlayOpacity = 0.4;
+      } else if (pageType === "charter") {
+        // Use hero image from charter page data
+        backgroundImage = charterPageData.hero.backgroundImage;
+        overlayOpacity = 0.4;
+      } else if (pageType === "empty-legs") {
+        // Use hero image from empty legs page data
+        backgroundImage = emptyLegsPageData.hero.backgroundImage;
+        overlayOpacity = 0.4;
+      }
     }
+  } catch (error) {
+    console.error("Error generating image:", error);
+    backgroundImage = defaultImage;
+    overlayOpacity = 0.3;
   }
 
   return new ImageResponse(

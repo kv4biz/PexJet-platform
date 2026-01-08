@@ -12,8 +12,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: `${seoData.siteUrl}/opengraph-image?type=aircraft-management`,
-        width: seoData.openGraph.imageWidth,
-        height: seoData.openGraph.imageHeight,
+        width: 1200,
+        height: 630,
         alt: "PexJet Aircraft Management",
       },
     ],
@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     title: seoData.pages.aircraftManagement.title,
     description: seoData.pages.aircraftManagement.description,
     images: [`${seoData.siteUrl}/twitter-image?type=aircraft-management`],
+  },
+  other: {
+    "fb:app_id": "966242223397117", // Facebook App ID for debugging
   },
   alternates: {
     canonical: `${seoData.siteUrl}/aircraft-management`,
