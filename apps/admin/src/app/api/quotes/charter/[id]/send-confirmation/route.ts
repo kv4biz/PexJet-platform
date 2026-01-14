@@ -50,9 +50,7 @@ export async function POST(
             aircraft: {
               select: {
                 name: true,
-                model: true,
                 manufacturer: true,
-                passengerCapacityMax: true,
               },
             },
           },
@@ -144,7 +142,7 @@ export async function POST(
                 },
               },
               aircraft: {
-                select: { name: true, model: true, manufacturer: true },
+                select: { name: true, manufacturer: true },
               },
             },
             orderBy: { legNumber: "asc" },

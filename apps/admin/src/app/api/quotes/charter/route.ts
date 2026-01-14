@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         selectedAircraft: {
           include: {
             aircraft: {
-              select: { id: true, name: true, model: true },
+              select: { id: true, name: true, manufacturer: true },
             },
           },
         },

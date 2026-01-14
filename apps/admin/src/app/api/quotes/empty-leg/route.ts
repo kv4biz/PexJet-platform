@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
               select: { id: true, name: true, icaoCode: true, iataCode: true },
             },
             aircraft: {
-              select: { id: true, name: true, model: true },
+              select: { id: true, name: true, manufacturer: true },
             },
           },
         },

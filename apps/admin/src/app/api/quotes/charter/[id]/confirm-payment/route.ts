@@ -33,7 +33,7 @@ export async function POST(
             arrivalAirport: {
               select: { name: true, municipality: true, iataCode: true },
             },
-            aircraft: { select: { name: true, model: true } },
+            aircraft: { select: { name: true, manufacturer: true } },
           },
           orderBy: { legNumber: "asc" },
         },
@@ -84,7 +84,7 @@ export async function POST(
               arrivalAirport: {
                 select: { name: true, municipality: true, iataCode: true },
               },
-              aircraft: { select: { name: true, model: true } },
+              aircraft: { select: { name: true, manufacturer: true } },
             },
             orderBy: { legNumber: "asc" },
           },
