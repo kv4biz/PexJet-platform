@@ -107,7 +107,7 @@ export default function EmptyLegDeals() {
   const { formatPrice } = useCurrency();
 
   // Fetch empty legs from database - optimized for homepage
-  // Only loads deals within 3 days that have prices, limited to 20
+  // Loads deals within 14 days, limited to 20
   useEffect(() => {
     async function fetchDeals() {
       try {

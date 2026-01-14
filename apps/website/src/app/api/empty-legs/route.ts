@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "PUBLISHED";
 
-    // Homepage optimization: only load deals within 3 days with prices, limit 20
+    // Homepage optimization: load deals within 14 days, limit 20
     const forHomepage = searchParams.get("homepage") === "true";
 
     // Search filters
@@ -154,19 +154,17 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    // Homepage optimization: only deals with prices and within 3 days
+    // Homepage optimization: show deals within 14 days, prioritize those with prices
     if (forHomepage) {
-      const threeDaysFromNow = new Date();
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-      threeDaysFromNow.setHours(23, 59, 59, 999);
+      const fourteenDaysFromNow = new Date();
+      fourteenDaysFromNow.setDate(fourteenDaysFromNow.getDate() + 14);
+      fourteenDaysFromNow.setHours(23, 59, 59, 999);
 
       where.departureDateTime = {
         gte: new Date(),
-        lte: threeDaysFromNow,
+        lte: fourteenDaysFromNow,
       };
-      // Only show deals with actual prices (not "Contact for price")
-      where.priceType = "FIXED";
-      where.priceUsd = { gt: 0 };
+      // Show all deals (FIXED and CONTACT types) for homepage
     }
 
     // Filter by date range if provided
