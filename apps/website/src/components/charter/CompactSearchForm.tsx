@@ -587,7 +587,7 @@ export function CompactSearchForm({ onSearch }: CompactSearchFormProps) {
               className={`w-full py-2 ${isFormValid() ? "bg-[#D4AF37] text-[#0C0C0C] hover:bg-[#D4AF37]/90" : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
             >
               <Search className="w-4 h-4 mr-2" />
-              Search Flights
+              Search
             </Button>
           </div>
         </form>

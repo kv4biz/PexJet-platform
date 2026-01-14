@@ -321,7 +321,7 @@ export default function EmptyLegDeals() {
                         href={`/empty-legs/${deal.slug}`}
                         className="bg-[#D4AF37] text-white px-4 py-1 font-medium hover:bg-[#B8962E] transition-colors"
                       >
-                        Request Quote
+                        View Deal
                       </Link>
                     </div>
                   </div>
@@ -425,7 +425,7 @@ export default function EmptyLegDeals() {
                         href={`/empty-legs/${deal.slug}`}
                         className="bg-[#D4AF37] text-white px-4 py-1 font-semibold hover:bg-[#B8962E] transition-colors"
                       >
-                        Request Quote
+                        View Deal
                       </Link>
                     </div>
                   </div>

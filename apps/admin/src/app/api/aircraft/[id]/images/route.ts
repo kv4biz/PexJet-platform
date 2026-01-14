@@ -10,6 +10,26 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Helper function to delete image from Cloudinary
+const deleteCloudinaryImage = async (imageUrl: string) => {
+  try {
+    // Extract public_id from Cloudinary URL
+    // URL format: https://res.cloudinary.com/cloud_name/image/upload/v123/folder/public_id.ext
+    const urlParts = imageUrl.split("/");
+    const uploadIndex = urlParts.indexOf("upload");
+    if (uploadIndex === -1) return;
+
+    // Get everything after 'upload/vXXX/' and remove extension
+    const pathAfterUpload = urlParts.slice(uploadIndex + 2).join("/");
+    const publicId = pathAfterUpload.replace(/\.[^/.]+$/, "");
+
+    console.log("Deleting previous Cloudinary image with publicId:", publicId);
+    await cloudinary.uploader.destroy(publicId);
+  } catch (error) {
+    console.error("Failed to delete previous Cloudinary image:", error);
+  }
+};
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } },
@@ -23,6 +43,22 @@ export async function POST(
     const payload = verifyAccessToken(token);
     if (!payload) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
+    // Validate Cloudinary configuration
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      console.error("Cloudinary credentials not configured");
+      return NextResponse.json(
+        {
+          error:
+            "Image upload service not configured. Please contact administrator.",
+        },
+        { status: 503 },
+      );
     }
 
     // Check if aircraft exists
@@ -59,6 +95,11 @@ export async function POST(
         { error: "Image too large. Maximum size is 5MB." },
         { status: 400 },
       );
+    }
+
+    // Delete previous image from Cloudinary if exists
+    if (aircraft.image) {
+      await deleteCloudinaryImage(aircraft.image);
     }
 
     // Convert file to buffer

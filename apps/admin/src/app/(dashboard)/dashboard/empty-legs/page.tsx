@@ -48,14 +48,12 @@ import {
   RefreshCw,
   Plane,
   Filter,
-  Bell,
   Loader2,
   Cloud,
   ExternalLink,
   X,
   MapPin,
   DollarSign,
-  Users,
   Clock,
   Globe,
   Mail,
@@ -141,7 +139,6 @@ export default function EmptyLegsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [notifying, setNotifying] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -383,61 +380,6 @@ export default function EmptyLegsPage() {
     });
   };
 
-  const notifySubscribers = async () => {
-    try {
-      setNotifying(true);
-      const response = await fetch("/api/empty-legs/notify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-        body: JSON.stringify({ sendToAll: true }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        const { sent, totalSubscribers, failed, skipped, failedNumbers } =
-          data.delivery;
-        let description = `Sent to ${sent}/${totalSubscribers} subscribers`;
-        if (skipped > 0) {
-          description += ` | ${skipped} skipped (no match)`;
-        }
-        if (failed > 0) {
-          description += ` | ${failed} failed`;
-        }
-        description += ` | ${data.dealsIncluded} deals`;
-
-        toast({
-          title: sent > 0 ? "Notifications Sent" : "No Notifications Sent",
-          description,
-          variant: sent > 0 ? "default" : "destructive",
-        });
-
-        // Log details for debugging
-        console.log("Notification result:", data);
-        if (failedNumbers && failedNumbers.length > 0) {
-          console.log("Failed numbers:", failedNumbers);
-        }
-      } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to send notifications",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send notifications",
-        variant: "destructive",
-      });
-    } finally {
-      setNotifying(false);
-    }
-  };
-
   return (
     <section className="space-y-6">
       {/* Header */}
@@ -467,18 +409,6 @@ export default function EmptyLegsPage() {
               <Cloud className="h-4 w-4 mr-2" />
             )}
             Sync InstaCharter
-          </Button>
-          <Button
-            variant="outline"
-            onClick={notifySubscribers}
-            disabled={notifying}
-          >
-            {notifying ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Bell className="h-4 w-4 mr-2" />
-            )}
-            Notify
           </Button>
           <Button variant="gold" asChild>
             <Link href="/dashboard/empty-legs/new">
@@ -627,9 +557,7 @@ export default function EmptyLegsPage() {
                             </p>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">
-                              {leg.availableSeats}/{leg.totalSeats}
-                            </Badge>
+                            <Badge variant="outline">{leg.totalSeats}</Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant={getStatusColor(leg.status) as any}>
@@ -973,35 +901,8 @@ export default function EmptyLegsPage() {
                     </Badge>
                   </section>
 
-                  {/* Bookings */}
-                  {selectedEmptyLeg._count?.bookings > 0 && (
-                    <section className="space-y-3">
-                      <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                        Bookings
-                      </h3>
-                      <p className="text-sm">
-                        {selectedEmptyLeg._count.bookings} booking
-                        {selectedEmptyLeg._count.bookings > 1 ? "s" : ""}
-                      </p>
-                    </section>
-                  )}
-
                   {/* Actions */}
                   <section className="pt-4 space-y-2">
-                    {selectedEmptyLeg.createdByAdmin && (
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          router.push(
-                            `/dashboard/empty-legs/${selectedEmptyLeg.id}/bookings`,
-                          )
-                        }
-                        className="w-full bg-white text-black border-gray-300 hover:bg-gray-50"
-                      >
-                        <Users className="h-4 w-4 mr-2" />
-                        Check Bookings
-                      </Button>
-                    )}
                     {selectedEmptyLeg.source !== "INSTACHARTER" && (
                       <Button onClick={startEdit} className="w-full">
                         <Pencil className="h-4 w-4 mr-2" />

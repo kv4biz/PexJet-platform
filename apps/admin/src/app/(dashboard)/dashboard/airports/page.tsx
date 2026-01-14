@@ -34,6 +34,8 @@ interface Airport {
   ident: string;
   icaoCode: string | null;
   iataCode: string | null;
+  localCode: string | null;
+  gpsCode: string | null;
   name: string;
   municipality: string | null;
   countryCode: string;
@@ -52,6 +54,7 @@ const airportTypes = [
   { value: "", label: "All Types" },
   { value: "large_airport", label: "Large Airport" },
   { value: "medium_airport", label: "Medium Airport" },
+  { value: "small_airport", label: "Small Airport" },
 ];
 
 export default function AirportsPage() {
@@ -143,7 +146,7 @@ export default function AirportsPage() {
             <section className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, ICAO, IATA, city, country, or region..."
+                placeholder="Search by ICAO, GPS, IATA, or local code..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -236,6 +239,7 @@ export default function AirportsPage() {
                       <TableHead>IATA</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>City</TableHead>
+                      <TableHead>Region</TableHead>
                       <TableHead>Country</TableHead>
                       <TableHead>Type</TableHead>
                     </TableRow>
@@ -248,15 +252,18 @@ export default function AirportsPage() {
                         onClick={() => setSelectedAirport(airport)}
                       >
                         <TableCell className="font-mono font-medium">
-                          {airport.icaoCode || "-"}
+                          {airport.icaoCode || airport.gpsCode || "-"}
                         </TableCell>
                         <TableCell className="font-mono">
-                          {airport.iataCode || "-"}
+                          {airport.iataCode || airport.localCode || "-"}
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate">
                           {airport.name}
                         </TableCell>
                         <TableCell>{airport.municipality || "-"}</TableCell>
+                        <TableCell>
+                          {airport.region?.name || airport.regionCode || "-"}
+                        </TableCell>
                         <TableCell>
                           {airport.country?.name || airport.countryCode}
                         </TableCell>
@@ -339,7 +346,7 @@ export default function AirportsPage() {
                     ICAO Code
                   </p>
                   <p className="font-mono font-bold text-lg">
-                    {selectedAirport.icaoCode || "-"}
+                    {selectedAirport.icaoCode || selectedAirport.gpsCode || "-"}
                   </p>
                 </article>
                 <article>
@@ -347,7 +354,9 @@ export default function AirportsPage() {
                     IATA Code
                   </p>
                   <p className="font-mono font-bold text-lg">
-                    {selectedAirport.iataCode || "-"}
+                    {selectedAirport.iataCode ||
+                      selectedAirport.localCode ||
+                      "-"}
                   </p>
                 </article>
               </section>

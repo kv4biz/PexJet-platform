@@ -74,7 +74,10 @@ interface EmptyLeg {
     municipality: string | null;
     iataCode: string | null;
     icaoCode: string | null;
+    localCode: string | null;
+    gpsCode: string | null;
     countryCode: string;
+    region?: { name: string } | null;
   } | null;
   arrivalAirport: {
     id: string;
@@ -82,11 +85,25 @@ interface EmptyLeg {
     municipality: string | null;
     iataCode: string | null;
     icaoCode: string | null;
+    localCode: string | null;
+    gpsCode: string | null;
     countryCode: string;
+    region?: { name: string } | null;
   } | null;
   createdByAdmin: { id: string; fullName: string } | null;
   createdByOperator: { id: string; fullName: string } | null;
 }
+
+// Helper function to get display codes
+const get3LetterCode = (airport: EmptyLeg["departureAirport"]): string => {
+  if (!airport) return "N/A";
+  return airport.iataCode || airport.localCode || "N/A";
+};
+
+const get4LetterCode = (airport: EmptyLeg["departureAirport"]): string => {
+  if (!airport) return "N/A";
+  return airport.icaoCode || airport.gpsCode || "N/A";
+};
 
 export default function EditEmptyLegPage({
   params,
@@ -413,66 +430,37 @@ export default function EditEmptyLegPage({
               </div>
             </div>
 
-            {/* Route Information */}
+            {/* Route Information - Read Only Display */}
             <Separator />
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                 Route Information
               </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="departureAirport">Departure Airport</Label>
-                  <Select
-                    value={formData.departureAirportId}
-                    onValueChange={(value) =>
-                      isEditable &&
-                      !isReadOnlyField("departureAirportId") &&
-                      setFormData({ ...formData, departureAirportId: value })
-                    }
-                    disabled={
-                      !isEditable || isReadOnlyField("departureAirportId")
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select departure airport" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {airports.map((airport) => (
-                        <SelectItem key={airport.id} value={airport.id}>
-                          {airport.name} ({airport.iataCode || airport.icaoCode}
-                          )
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="arrivalAirport">Arrival Airport</Label>
-                  <Select
-                    value={formData.arrivalAirportId}
-                    onValueChange={(value) =>
-                      isEditable &&
-                      !isReadOnlyField("arrivalAirportId") &&
-                      setFormData({ ...formData, arrivalAirportId: value })
-                    }
-                    disabled={
-                      !isEditable || isReadOnlyField("arrivalAirportId")
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select arrival airport" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {airports.map((airport) => (
-                        <SelectItem key={airport.id} value={airport.id}>
-                          {airport.name} ({airport.iataCode || airport.icaoCode}
-                          )
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <article className="p-4 bg-muted/50 flex items-center justify-center gap-6">
+                <section className="text-center">
+                  <p className="text-2xl font-bold">
+                    {get3LetterCode(emptyLeg.departureAirport)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {emptyLeg.departureAirport?.region?.name ||
+                      emptyLeg.departureAirport?.municipality ||
+                      emptyLeg.departureAirport?.name ||
+                      "Unknown"}
+                  </p>
+                </section>
+                <Plane className="h-6 w-6 text-[#D4AF37]" />
+                <section className="text-center">
+                  <p className="text-2xl font-bold">
+                    {get3LetterCode(emptyLeg.arrivalAirport)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {emptyLeg.arrivalAirport?.region?.name ||
+                      emptyLeg.arrivalAirport?.municipality ||
+                      emptyLeg.arrivalAirport?.name ||
+                      "Unknown"}
+                  </p>
+                </section>
+              </article>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="departureDate">Departure Date</Label>

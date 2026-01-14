@@ -556,64 +556,6 @@ By submitting this request, you acknowledge and accept these empty leg specific 
 };
 
 // ============================================================================
-// AIRCRAFT PAGE DATA
-// ============================================================================
-export const aircraftPageData = {
-  hero: {
-    title: "Our Aircraft",
-    subtitle:
-      "Access a wide range of premium aircraft, from light jets for short trips to long-range jets for global travel.",
-    backgroundImage:
-      "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765008843/aircraft_hanger_ucod7i.jpg",
-  },
-
-  loading: {
-    text: "Loading aircraft...",
-  },
-
-  specifications: {
-    title: "Technical Specifications",
-    labels: {
-      aircraftName: "Aircraft Name",
-      aircraftType: "Aircraft Type",
-      passengerCapacity: "Passenger Capacity",
-      interiorHeight: "Interior Height",
-      interiorWidth: "Interior Width",
-      cabinLength: "Cabin Length",
-      luggageCapacity: "Luggage Capacity",
-      range: "Range",
-      cruiseSpeed: "Cruise Speed",
-    },
-  },
-
-  gallery: {
-    title: "Aircraft Gallery",
-    exteriorLabel: "Exterior Images",
-    interiorLabel: "Interior Images",
-  },
-
-  badges: {
-    local: "Local Flights",
-    international: "International Flights",
-  },
-
-  cta: {
-    text: "Request a Quote",
-    href: "/charter",
-  },
-
-  emptyState: {
-    title: "No Aircraft Found",
-    description: "Our fleet information is being updated.",
-    categoryDescription: "No aircraft in this category. Try another category.",
-    cta: {
-      text: "Request a Custom Quote",
-      href: "/quote",
-    },
-  },
-};
-
-// ============================================================================
 // ABOUT - OUR COMPANY PAGE DATA
 // ============================================================================
 export const aboutCompanyPageData = {
@@ -992,8 +934,8 @@ export const aircraftManagementPageData = {
     headline: "You Own the Jet.",
     subheadline: "PEXJET Manages Everything Else.",
     description:
-      "As a jet owner, your time and peace of mind are invaluable. With PEXJET Aircraft Management, you enjoy all the advantages of ownership—without the operational complexity. We handle every detail with precision and discretion, from daily operations to long-term asset protection. From flight operations and crew management to maintenance, regulatory compliance, and financial reporting, PEXJET ensures your aircraft is operated safely, efficiently, and cost-effectively. Whether your jet flies frequently or occasionally, our management solutions are tailored to your lifestyle—maximizing value while eliminating hassle.",
-    cta: "Speak With Advisor",
+      "As a jet owner, your time and peace of mind are invaluable. With PEXJET Aircraft Management, you enjoy all the advantages of ownership without the operational complexity. We handle every detail with precision and discretion, from daily operations to long-term asset protection. From flight operations and crew management to maintenance, regulatory compliance, and financial reporting, PEXJET ensures your aircraft is operated safely, efficiently, and cost effectively. Whether your jet flies frequently or occasionally, our management solutions are tailored to your lifestyle maximizing value while eliminating hassle.",
+    cta: "Contact Us Today",
     image:
       "https://res.cloudinary.com/dikzx4eyh/image/upload/v1767366534/jetnobg_n4o1hk.png",
   },
@@ -1001,7 +943,7 @@ export const aircraftManagementPageData = {
   about: {
     headline: "What Is Aircraft Management?",
     description:
-      "PEXJET Aircraft Management is a complete operational solution designed for private jet owners who want effortless ownership. We take full responsibility for the day-to-day management of your aircraft, ensuring it remains airworthy, compliant, and ready to fly at all times. You retain full ownership and unrestricted access to your jet, while PEXJET operates it to the highest international standards—behind the scenes and without disruption.",
+      "PEXJET Aircraft Management is a complete operational solution designed for private jet owners who want effortless ownership. We take full responsibility for the day to day management of your aircraft, ensuring it remains airworthy, compliant, and ready to fly at all times. You retain full ownership and unrestricted access to your jet, while PEXJET operates it to the highest international standards behind the scenes and without disruption.",
   },
 
   services: {

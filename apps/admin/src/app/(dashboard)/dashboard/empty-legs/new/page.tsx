@@ -49,6 +49,8 @@ interface Airport {
   municipality: string | null;
   iataCode: string | null;
   icaoCode: string | null;
+  localCode: string | null;
+  gpsCode: string | null;
   countryCode: string;
   regionCode: string;
   type: string;
@@ -56,6 +58,22 @@ interface Airport {
     name: string;
   };
 }
+
+// Helper function to get display codes
+const get3LetterCode = (airport: Airport): string => {
+  return airport.iataCode || airport.localCode || "N/A";
+};
+
+const get4LetterCode = (airport: Airport): string => {
+  return airport.icaoCode || airport.gpsCode || "N/A";
+};
+
+const getAirportDisplayText = (airport: Airport): string => {
+  const code3 = get3LetterCode(airport);
+  const code4 = get4LetterCode(airport);
+  const regionName = airport.region?.name || airport.regionCode;
+  return `[${code3} / ${code4}] - ${regionName}`;
+};
 
 export default function NewEmptyLegPage() {
   const router = useRouter();
@@ -189,7 +207,7 @@ export default function NewEmptyLegPage() {
   };
 
   const selectAirport = (airport: Airport, type: "departure" | "arrival") => {
-    const displayText = `[${airport.iataCode || "N/A"}/${airport.icaoCode || "N/A"}] - ${airport.region?.name || airport.regionCode}`;
+    const displayText = getAirportDisplayText(airport);
     if (type === "departure") {
       setSelectedDeparture(airport);
       setFormData((prev) => ({ ...prev, departureAirportId: airport.id }));
@@ -431,7 +449,7 @@ export default function NewEmptyLegPage() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="departure"
-                        placeholder="Search by IATA, ICAO code, or region..."
+                        placeholder="Search by IATA or local code..."
                         value={departureSearch}
                         onChange={(e) => {
                           setDepartureSearch(e.target.value);
@@ -464,9 +482,7 @@ export default function NewEmptyLegPage() {
                             onClick={() => selectAirport(airport, "departure")}
                           >
                             <span className="font-medium">
-                              [{airport.iataCode || "N/A"}/
-                              {airport.icaoCode || "N/A"}] -{" "}
-                              {airport.region?.name || airport.regionCode}
+                              {getAirportDisplayText(airport)}
                             </span>
                           </button>
                         ))}
@@ -481,7 +497,7 @@ export default function NewEmptyLegPage() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="arrival"
-                        placeholder="Search by IATA, ICAO code, or region..."
+                        placeholder="Search by IATA or local code..."
                         value={arrivalSearch}
                         onChange={(e) => {
                           setArrivalSearch(e.target.value);
@@ -514,9 +530,7 @@ export default function NewEmptyLegPage() {
                             onClick={() => selectAirport(airport, "arrival")}
                           >
                             <span className="font-medium">
-                              [{airport.iataCode || "N/A"}/
-                              {airport.icaoCode || "N/A"}] -{" "}
-                              {airport.region?.name || airport.regionCode}
+                              {getAirportDisplayText(airport)}
                             </span>
                           </button>
                         ))}
@@ -539,21 +553,21 @@ export default function NewEmptyLegPage() {
                   <article className="mt-4 p-4 bg-muted/50 flex items-center justify-center gap-4">
                     <section className="text-center">
                       <p className="text-2xl font-bold">
-                        {selectedDeparture.iataCode ||
-                          selectedDeparture.icaoCode}
+                        {get3LetterCode(selectedDeparture)}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {selectedDeparture.municipality ||
-                          selectedDeparture.name}
+                        {selectedDeparture.region?.name ||
+                          selectedDeparture.regionCode}
                       </p>
                     </section>
                     <Plane className="h-6 w-6 text-[#D4AF37]" />
                     <section className="text-center">
                       <p className="text-2xl font-bold">
-                        {selectedArrival.iataCode || selectedArrival.icaoCode}
+                        {get3LetterCode(selectedArrival)}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {selectedArrival.municipality || selectedArrival.name}
+                        {selectedArrival.region?.name ||
+                          selectedArrival.regionCode}
                       </p>
                     </section>
                   </article>
@@ -688,8 +702,8 @@ export default function NewEmptyLegPage() {
                   <p className="text-sm text-muted-foreground">Route</p>
                   {selectedDeparture && selectedArrival ? (
                     <p className="font-medium">
-                      {selectedDeparture.municipality || selectedDeparture.name}{" "}
-                      → {selectedArrival.municipality || selectedArrival.name}
+                      {get3LetterCode(selectedDeparture)} →{" "}
+                      {get3LetterCode(selectedArrival)}
                     </p>
                   ) : (
                     <p className="text-muted-foreground">Not selected</p>

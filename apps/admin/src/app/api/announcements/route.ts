@@ -140,12 +140,28 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send to subscribers if sendNow is true
+    // Send to subscribers AND clients if sendNow is true
     if (sendNow) {
+      // Fetch active subscribers
       const activeSubscribers = await prisma.emptyLegSubscription.findMany({
         where: { isActive: true },
         select: { phone: true },
       });
+
+      // Fetch all clients with phone numbers
+      const clients = await prisma.client.findMany({
+        select: { phone: true },
+      });
+
+      // Combine and deduplicate phone numbers
+      const allPhones = new Set<string>();
+      for (const subscriber of activeSubscribers) {
+        if (subscriber.phone) allPhones.add(subscriber.phone);
+      }
+      for (const client of clients) {
+        if (client.phone) allPhones.add(client.phone);
+      }
+      const uniqueRecipients = Array.from(allPhones);
 
       // Check Twilio credentials
       const hasTwilioCredentials =
@@ -153,7 +169,7 @@ export async function POST(request: NextRequest) {
         process.env.TWILIO_AUTH_TOKEN &&
         process.env.TWILIO_WHATSAPP_NUMBER;
 
-      if (hasTwilioCredentials && activeSubscribers.length > 0) {
+      if (hasTwilioCredentials && uniqueRecipients.length > 0) {
         const twilio = require("twilio")(
           process.env.TWILIO_ACCOUNT_SID,
           process.env.TWILIO_AUTH_TOKEN,
@@ -178,7 +194,7 @@ export async function POST(request: NextRequest) {
         };
 
         console.log(
-          `Sending announcement to ${activeSubscribers.length} subscribers...`,
+          `Sending announcement to ${uniqueRecipients.length} recipients (${activeSubscribers.length} subscribers + ${clients.length} clients, deduplicated)...`,
         );
 
         const announcementMessage =
@@ -187,8 +203,8 @@ export async function POST(request: NextRequest) {
         let sentCount = 0;
         let failedCount = 0;
 
-        for (const subscriber of activeSubscribers) {
-          const formattedPhone = formatPhone(subscriber.phone);
+        for (const phone of uniqueRecipients) {
+          const formattedPhone = formatPhone(phone);
 
           try {
             if (imageUrl) {
@@ -208,7 +224,7 @@ export async function POST(request: NextRequest) {
             sentCount++;
           } catch (twilioError: any) {
             console.error(
-              `Failed to send to ${subscriber.phone} (formatted: +${formattedPhone}):`,
+              `Failed to send to ${phone} (formatted: +${formattedPhone}):`,
               twilioError.message,
               twilioError.code ? `Code: ${twilioError.code}` : "",
             );
@@ -219,7 +235,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           announcement,
           delivery: {
-            total: activeSubscribers.length,
+            total: uniqueRecipients.length,
+            subscribers: activeSubscribers.length,
+            clients: clients.length,
             sent: sentCount,
             failed: failedCount,
           },

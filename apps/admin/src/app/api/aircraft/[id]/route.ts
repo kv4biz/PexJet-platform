@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
 import { verifyAccessToken, extractTokenFromHeader } from "@pexjet/lib";
+import { v2 as cloudinary } from "cloudinary";
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Helper function to delete image from Cloudinary
+const deleteCloudinaryImage = async (imageUrl: string) => {
+  try {
+    // Extract public_id from Cloudinary URL
+    // URL format: https://res.cloudinary.com/cloud_name/image/upload/v123/folder/public_id.ext
+    const urlParts = imageUrl.split("/");
+    const uploadIndex = urlParts.indexOf("upload");
+    if (uploadIndex === -1) return;
+
+    // Get everything after 'upload/vXXX/' and remove extension
+    const pathAfterUpload = urlParts.slice(uploadIndex + 2).join("/");
+    const publicId = pathAfterUpload.replace(/\.[^/.]+$/, "");
+
+    console.log("Deleting Cloudinary image with publicId:", publicId);
+    await cloudinary.uploader.destroy(publicId);
+  } catch (error) {
+    console.error("Failed to delete Cloudinary image:", error);
+  }
+};
 
 export async function GET(
   request: NextRequest,
@@ -238,6 +266,11 @@ export async function DELETE(
         { error: "Aircraft not found" },
         { status: 404 },
       );
+    }
+
+    // Delete image from Cloudinary if exists
+    if (existing.image) {
+      await deleteCloudinaryImage(existing.image);
     }
 
     // Delete aircraft

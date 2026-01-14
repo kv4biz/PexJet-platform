@@ -2,6 +2,74 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
 import { verifyAccessToken, extractTokenFromHeader } from "@pexjet/lib";
 
+export async function POST(request: NextRequest) {
+  try {
+    // Verify authentication
+    const token = extractTokenFromHeader(request.headers.get("authorization"));
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = verifyAccessToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { phone, fullName, email } = body;
+
+    // Validate required fields
+    if (!phone) {
+      return NextResponse.json(
+        { error: "Phone number is required" },
+        { status: 400 },
+      );
+    }
+
+    // Check if client already exists
+    const existingClient = await prisma.client.findUnique({
+      where: { phone },
+    });
+
+    if (existingClient) {
+      return NextResponse.json(
+        { error: "A client with this phone number already exists" },
+        { status: 400 },
+      );
+    }
+
+    // Create new client
+    const client = await prisma.client.create({
+      data: {
+        phone,
+        fullName: fullName || null,
+        email: email || null,
+      },
+    });
+
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        action: "CLIENT_CREATE",
+        targetType: "Client",
+        targetId: client.id,
+        adminId: payload.sub,
+        description: `Created client: ${fullName || phone}`,
+        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+        metadata: { phone, fullName, email },
+      },
+    });
+
+    return NextResponse.json({ client }, { status: 201 });
+  } catch (error: any) {
+    console.error("Client create error:", error);
+    return NextResponse.json(
+      { error: "Failed to create client" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Verify authentication

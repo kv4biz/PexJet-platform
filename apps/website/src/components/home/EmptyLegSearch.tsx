@@ -284,7 +284,7 @@ export default function EmptyLegSearch() {
           className="w-full mt-2 bg-[#D4AF37] text-[#0C0C0C] hover:bg-[#D4AF37]/90"
         >
           <Search className="w-4 h-4 mr-2" />
-          Search Empty Legs
+          Search
         </Button>
       </section>
     </Card>

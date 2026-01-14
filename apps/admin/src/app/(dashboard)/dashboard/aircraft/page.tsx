@@ -328,7 +328,7 @@ export default function AircraftPage() {
                         <TableCell>
                           {ac.minPax || "-"} - {ac.maxPax || "-"} pax
                         </TableCell>
-                        <TableCell className="font-mono text-black">
+                        <TableCell className="font-mono ">
                           {ac.basePricePerHour
                             ? `$${ac.basePricePerHour.toLocaleString()}`
                             : "-"}

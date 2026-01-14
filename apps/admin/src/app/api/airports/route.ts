@@ -33,18 +33,22 @@ export async function GET(request: NextRequest) {
       type: { in: ["small_airport", "medium_airport", "large_airport"] },
     });
 
-    // Search filter - only by IATA code, ICAO code, and region
+    // Only show airports with both 3-letter code (IATA or local) AND 4-letter code (ICAO or GPS)
+    whereConditions.push({
+      OR: [{ iataCode: { not: null } }, { localCode: { not: null } }],
+    });
+    whereConditions.push({
+      OR: [{ icaoCode: { not: null } }, { gpsCode: { not: null } }],
+    });
+
+    // Search filter - by ICAO/GPS code (4-letter) or IATA/local code (3-letter)
     if (search) {
       whereConditions.push({
         OR: [
           { icaoCode: { contains: search, mode: "insensitive" as const } },
+          { gpsCode: { contains: search, mode: "insensitive" as const } },
           { iataCode: { contains: search, mode: "insensitive" as const } },
-          {
-            region: {
-              name: { contains: search, mode: "insensitive" as const },
-            },
-          },
-          { regionCode: { contains: search, mode: "insensitive" as const } },
+          { localCode: { contains: search, mode: "insensitive" as const } },
         ],
       });
     }
@@ -68,6 +72,8 @@ export async function GET(request: NextRequest) {
           ident: true,
           icaoCode: true,
           iataCode: true,
+          localCode: true,
+          gpsCode: true,
           name: true,
           municipality: true,
           countryCode: true,

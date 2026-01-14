@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import {
   Card,
@@ -25,6 +26,15 @@ import {
   Textarea,
   Separator,
   ScrollArea,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
   useToast,
 } from "@pexjet/ui";
 import {
@@ -49,6 +59,7 @@ import {
   UserCheck,
   Filter,
   Plus,
+  Pencil,
 } from "lucide-react";
 
 interface Client {
@@ -143,6 +154,9 @@ export default function ClientsPage() {
   const [subscriberStats, setSubscriberStats] = useState<any>(null);
   const [selectedSubscriber, setSelectedSubscriber] =
     useState<Subscriber | null>(null);
+  const [updatingSubscriberStatus, setUpdatingSubscriberStatus] =
+    useState(false);
+  const [notifyingSubscribers, setNotifyingSubscribers] = useState(false);
 
   // Announcements state
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -266,6 +280,101 @@ export default function ClientsPage() {
       console.error("Failed to fetch subscribers:", error);
     } finally {
       setSubscribersLoading(false);
+    }
+  };
+
+  const updateSubscriberStatus = async (
+    subscriberId: string,
+    isActive: boolean,
+  ) => {
+    try {
+      setUpdatingSubscriberStatus(true);
+      const response = await fetch("/api/subscribers", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        body: JSON.stringify({ id: subscriberId, isActive }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: isActive ? "Subscriber Activated" : "Subscriber Deactivated",
+          description: `${data.subscription.phone} has been ${isActive ? "activated" : "deactivated"}`,
+        });
+        // Update local state
+        setSelectedSubscriber((prev) => (prev ? { ...prev, isActive } : null));
+        // Update subscribers list
+        setSubscribers((prev) =>
+          prev.map((s) => (s.id === subscriberId ? { ...s, isActive } : s)),
+        );
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to update subscriber status",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update subscriber status:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingSubscriberStatus(false);
+    }
+  };
+
+  const notifySubscribers = async () => {
+    try {
+      setNotifyingSubscribers(true);
+      const response = await fetch("/api/empty-legs/notify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        body: JSON.stringify({ sendToAll: false }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const { sent, totalSubscribers, failed, skipped } = data.delivery;
+        let description = `Sent to ${sent}/${totalSubscribers} subscribers`;
+        if (skipped > 0) {
+          description += ` | ${skipped} skipped (no match)`;
+        }
+        if (failed > 0) {
+          description += ` | ${failed} failed`;
+        }
+        description += ` | ${data.dealsIncluded} deals`;
+
+        toast({
+          title: sent > 0 ? "Notifications Sent" : "No Notifications Sent",
+          description,
+          variant: sent > 0 ? "default" : "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to send notifications",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send notifications",
+        variant: "destructive",
+      });
+    } finally {
+      setNotifyingSubscribers(false);
     }
   };
 
@@ -433,6 +542,36 @@ export default function ClientsPage() {
             />
             Refresh
           </Button>
+          {activeTab === "clients" && (
+            <Button variant="gold" asChild>
+              <Link href="/dashboard/clients/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Client
+              </Link>
+            </Button>
+          )}
+          {activeTab === "subscribers" && (
+            <>
+              <Button
+                variant="outline"
+                onClick={notifySubscribers}
+                disabled={notifyingSubscribers}
+              >
+                {notifyingSubscribers ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Bell className="h-4 w-4 mr-2" />
+                )}
+                Notify Subscribers
+              </Button>
+              <Button variant="gold" asChild>
+                <Link href="/dashboard/clients/subscribers/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Subscriber
+                </Link>
+              </Button>
+            </>
+          )}
           {activeTab === "announcements" && (
             <Button
               variant="gold"
@@ -1229,6 +1368,93 @@ export default function ClientsPage() {
                               </p>
                             </article>
                           )}
+
+                          <Separator className="my-4" />
+
+                          {/* Actions */}
+                          <article>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
+                              Actions
+                            </p>
+                            <section className="space-y-2">
+                              {/* Edit Button */}
+                              <Button
+                                variant="outline"
+                                className="w-full"
+                                asChild
+                              >
+                                <Link
+                                  href={`/dashboard/clients/subscribers/${selectedSubscriber.id}/edit`}
+                                >
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Edit Preferences
+                                </Link>
+                              </Button>
+
+                              {/* Activate/Deactivate Button */}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant={
+                                      selectedSubscriber.isActive
+                                        ? "destructive"
+                                        : "gold"
+                                    }
+                                    className="w-full"
+                                    disabled={updatingSubscriberStatus}
+                                  >
+                                    {updatingSubscriberStatus ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Updating...
+                                      </>
+                                    ) : selectedSubscriber.isActive ? (
+                                      <>
+                                        <XCircle className="h-4 w-4 mr-2" />
+                                        Deactivate Subscriber
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Activate Subscriber
+                                      </>
+                                    )}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      {selectedSubscriber.isActive
+                                        ? "Deactivate Subscriber"
+                                        : "Activate Subscriber"}
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {selectedSubscriber.isActive
+                                        ? `Are you sure you want to deactivate ${selectedSubscriber.phone}? They will no longer receive empty leg notifications.`
+                                        : `Are you sure you want to activate ${selectedSubscriber.phone}? They will start receiving empty leg notifications again.`}
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                      Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() =>
+                                        updateSubscriberStatus(
+                                          selectedSubscriber.id,
+                                          !selectedSubscriber.isActive,
+                                        )
+                                      }
+                                    >
+                                      {selectedSubscriber.isActive
+                                        ? "Deactivate"
+                                        : "Activate"}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </section>
+                          </article>
                         </section>
                       </ScrollArea>
                     </TabsContent>

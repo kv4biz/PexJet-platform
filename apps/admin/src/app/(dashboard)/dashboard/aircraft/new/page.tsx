@@ -89,16 +89,45 @@ export default function NewAircraftPage() {
 
       if (response.ok) {
         const savedAircraft = await response.json();
+        console.log("Aircraft created:", savedAircraft);
 
         // Upload pending image if any
+        let imageUploadFailed = false;
         if (pendingImageFile && savedAircraft.id) {
-          await uploadImage(savedAircraft.id, pendingImageFile);
+          console.log("Uploading image for aircraft:", savedAircraft.id);
+          try {
+            const uploadResult = await uploadImage(
+              savedAircraft.id,
+              pendingImageFile,
+            );
+            console.log("Image upload result:", uploadResult);
+          } catch (uploadError: any) {
+            console.error("Image upload error:", uploadError);
+            imageUploadFailed = true;
+            toast({
+              title: "Image Upload Failed",
+              description:
+                uploadError.message ||
+                "Failed to upload image. Aircraft saved without image.",
+              variant: "destructive",
+            });
+          }
         }
 
-        toast({
-          title: "Aircraft Added",
-          description: "New aircraft added to fleet successfully.",
-        });
+        if (!imageUploadFailed) {
+          toast({
+            title: "Aircraft Added",
+            description: pendingImageFile
+              ? "New aircraft with image added to fleet successfully."
+              : "New aircraft added to fleet successfully.",
+          });
+        } else {
+          toast({
+            title: "Aircraft Added (Without Image)",
+            description: "Aircraft was created but the image failed to upload.",
+            variant: "default",
+          });
+        }
 
         router.push("/dashboard/aircraft");
       } else {
@@ -121,16 +150,35 @@ export default function NewAircraftPage() {
   };
 
   const uploadImage = async (aircraftId: string, file: File) => {
-    const formData = new FormData();
-    formData.append("image", file);
+    console.log("uploadImage called with:", {
+      aircraftId,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+    });
 
-    await fetch(`/api/aircraft/${aircraftId}/images`, {
+    const uploadFormData = new FormData();
+    uploadFormData.append("image", file);
+
+    console.log("Sending POST to:", `/api/aircraft/${aircraftId}/images`);
+
+    const response = await fetch(`/api/aircraft/${aircraftId}/images`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
       },
-      body: formData,
+      body: uploadFormData,
     });
+
+    console.log("Upload response status:", response.status);
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error("Upload error response:", error);
+      throw new Error(error.error || "Failed to upload image");
+    }
+
+    return response.json();
   };
 
   const handleImageUpload = async (files: FileList | null) => {

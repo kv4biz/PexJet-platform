@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { sendToAll = false } = body;
 
-    // Get active empty legs
+    // Get ALL active empty legs (no limit - needed for proper subscriber matching)
     const emptyLegs = await prisma.emptyLeg.findMany({
       where: {
         status: "PUBLISHED",
@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
         },
       },
       orderBy: { departureDateTime: "asc" },
-      take: 10,
     });
 
     if (emptyLegs.length === 0) {
@@ -70,6 +69,8 @@ export async function POST(request: NextRequest) {
         phone: true,
         type: true,
         cities: true,
+        routeFrom: true,
+        routeTo: true,
       },
     });
 
@@ -117,89 +118,157 @@ export async function POST(request: NextRequest) {
       return formatted;
     };
 
-    // Build deals message
     const websiteUrl =
       process.env.NEXT_PUBLIC_WEBSITE_URL || "https://pexjet.com";
-    let dealsMessage = "✨ *Latest Empty Leg Deals - PexJet*\n\n";
-
-    for (const leg of emptyLegs.slice(0, 5)) {
-      const depCode =
-        leg.departureAirport?.iataCode ||
-        leg.departureAirport?.icaoCode ||
-        leg.departureIcao ||
-        "N/A";
-      const arrCode =
-        leg.arrivalAirport?.iataCode ||
-        leg.arrivalAirport?.icaoCode ||
-        leg.arrivalIcao ||
-        "N/A";
-      const depCity =
-        leg.departureAirport?.municipality || leg.departureCity || "";
-      const arrCity = leg.arrivalAirport?.municipality || leg.arrivalCity || "";
-      const date = new Date(leg.departureDateTime);
-      const dateStr = date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-      const price =
-        leg.priceType === "FIXED" && leg.priceUsd
-          ? `$${leg.priceUsd.toLocaleString()}`
-          : "Contact for price";
-
-      dealsMessage += `🛫 *${depCode} → ${arrCode}*\n`;
-      dealsMessage += `   ${depCity} to ${arrCity}\n`;
-      dealsMessage += `📅 ${dateStr} | 💰 ${price}\n`;
-      dealsMessage += `🪑 ${leg.availableSeats} seats available\n\n`;
-    }
-
-    dealsMessage += `🔗 View all deals: ${websiteUrl}/empty-legs\n\n`;
-    dealsMessage += `Reply STOP to unsubscribe.`;
 
     let sentCount = 0;
     let failedCount = 0;
     let skippedCount = 0;
     const failedNumbers: string[] = [];
 
+    // Helper to check if a leg matches subscriber codes
+    const legMatchesCodes = (
+      leg: (typeof emptyLegs)[0],
+      codes: string[],
+    ): boolean => {
+      const depIata = (leg.departureAirport?.iataCode || "").toUpperCase();
+      const depIcao = (
+        leg.departureAirport?.icaoCode ||
+        leg.departureIcao ||
+        ""
+      ).toUpperCase();
+      const arrIata = (leg.arrivalAirport?.iataCode || "").toUpperCase();
+      const arrIcao = (
+        leg.arrivalAirport?.icaoCode ||
+        leg.arrivalIcao ||
+        ""
+      ).toUpperCase();
+
+      return codes.some(
+        (code) =>
+          code === depIata ||
+          code === depIcao ||
+          code === arrIata ||
+          code === arrIcao,
+      );
+    };
+
+    // Helper to generate SEO-friendly slug for empty leg URL
+    const generateEmptyLegSlug = (leg: (typeof emptyLegs)[0]): string => {
+      const depCity = (
+        leg.departureAirport?.municipality ||
+        leg.departureCity ||
+        "origin"
+      )
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+      const arrCity = (
+        leg.arrivalAirport?.municipality ||
+        leg.arrivalCity ||
+        "destination"
+      )
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+      const date = new Date(leg.departureDateTime);
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const shortId = leg.id.slice(-8);
+      return `${depCity}-to-${arrCity}-${dateStr}-${shortId}`;
+    };
+
+    // Helper to build message for specific deals
+    const buildDealsMessage = (deals: typeof emptyLegs): string => {
+      let message = "✨ *Latest Empty Leg Deals - PexJet*\n\n";
+
+      for (const leg of deals.slice(0, 5)) {
+        const depCode =
+          leg.departureAirport?.iataCode ||
+          leg.departureAirport?.icaoCode ||
+          leg.departureIcao ||
+          "N/A";
+        const arrCode =
+          leg.arrivalAirport?.iataCode ||
+          leg.arrivalAirport?.icaoCode ||
+          leg.arrivalIcao ||
+          "N/A";
+        const depCity =
+          leg.departureAirport?.municipality || leg.departureCity || "";
+        const arrCity =
+          leg.arrivalAirport?.municipality || leg.arrivalCity || "";
+        const date = new Date(leg.departureDateTime);
+        const dateStr = date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+        const price =
+          leg.priceType === "FIXED" && leg.priceUsd
+            ? `$${leg.priceUsd.toLocaleString()}`
+            : "Contact for price";
+        const dealUrl = `${websiteUrl}/empty-legs/${generateEmptyLegSlug(leg)}`;
+
+        message += `🛫 *${depCode} → ${arrCode}*\n`;
+        message += `   ${depCity} to ${arrCity}\n`;
+        message += `📅 ${dateStr} | 💰 ${price}\n`;
+        message += `🪑 ${leg.availableSeats} seats available\n`;
+        message += `🔗 ${dealUrl}\n\n`;
+      }
+
+      message += `Reply STOP to unsubscribe.`;
+      return message;
+    };
+
     for (const subscriber of subscribers) {
-      // Check if subscriber matches any deal (by city preference)
-      if (
-        !sendToAll &&
+      let matchingDeals: typeof emptyLegs = [];
+
+      if (sendToAll || subscriber.type === "ALL") {
+        // Send all deals to ALL type subscribers or when sendToAll is true
+        matchingDeals = emptyLegs;
+      } else if (
         subscriber.type === "CITY" &&
         subscriber.cities &&
         subscriber.cities.length > 0
       ) {
-        const subscriberCities = subscriber.cities.map((c: string) =>
-          c.trim().toLowerCase(),
+        // Get subscriber codes (stored as IATA/ICAO codes like "LOS", "ABV")
+        const subscriberCodes = subscriber.cities.map((c: string) =>
+          c.trim().toUpperCase(),
         );
-        const matchesAnyDeal = emptyLegs.some((leg) => {
-          const depCity = (
-            leg.departureAirport?.municipality ||
-            leg.departureCity ||
-            ""
-          ).toLowerCase();
-          const arrCity = (
-            leg.arrivalAirport?.municipality ||
-            leg.arrivalCity ||
-            ""
-          ).toLowerCase();
-          return (
-            subscriberCities.some((city: string) => depCity.includes(city)) ||
-            subscriberCities.some((city: string) => arrCity.includes(city))
-          );
-        });
 
-        if (!matchesAnyDeal) {
-          skippedCount++;
-          continue;
-        }
+        // Filter empty legs that match subscriber's city codes
+        matchingDeals = emptyLegs.filter((leg) =>
+          legMatchesCodes(leg, subscriberCodes),
+        );
+      } else if (
+        subscriber.type === "ROUTE" &&
+        (subscriber.routeFrom || subscriber.routeTo)
+      ) {
+        // Get route codes
+        const subscriberCodes: string[] = [];
+        if (subscriber.routeFrom)
+          subscriberCodes.push(subscriber.routeFrom.trim().toUpperCase());
+        if (subscriber.routeTo)
+          subscriberCodes.push(subscriber.routeTo.trim().toUpperCase());
+
+        // Filter empty legs that match subscriber's route codes
+        matchingDeals = emptyLegs.filter((leg) =>
+          legMatchesCodes(leg, subscriberCodes),
+        );
       }
 
+      // Skip if no matching deals
+      if (matchingDeals.length === 0) {
+        skippedCount++;
+        continue;
+      }
+
+      // Build personalized message with only matching deals
+      const personalizedMessage = buildDealsMessage(matchingDeals);
       const formattedPhone = formatPhone(subscriber.phone);
 
       try {
         await twilio.messages.create({
-          body: dealsMessage,
+          body: personalizedMessage,
           from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
           to: `whatsapp:+${formattedPhone}`,
         });

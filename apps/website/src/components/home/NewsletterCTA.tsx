@@ -232,12 +232,14 @@ export default function NewsletterCTA() {
       const subscriptionData = {
         type: subscriptionType,
         phone: subscriptionPhone,
-        cities: selectedCities.map((c) => c.municipality || c.name),
+        cities: selectedCities
+          .map((c) => c.iataCode || c.icaoCode || "")
+          .filter(Boolean),
         routeFrom: selectedRouteFrom
-          ? `${selectedRouteFrom.iataCode || selectedRouteFrom.icaoCode} - ${selectedRouteFrom.municipality || selectedRouteFrom.name}`
+          ? selectedRouteFrom.iataCode || selectedRouteFrom.icaoCode || null
           : null,
         routeTo: selectedRouteTo
-          ? `${selectedRouteTo.iataCode || selectedRouteTo.icaoCode} - ${selectedRouteTo.municipality || selectedRouteTo.name}`
+          ? selectedRouteTo.iataCode || selectedRouteTo.icaoCode || null
           : null,
       };
 
@@ -547,7 +549,7 @@ export default function NewsletterCTA() {
                     Subscribing...
                   </>
                 ) : (
-                  "Subscribe to Alerts"
+                  "Subscribe"
                 )}
               </Button>
 
