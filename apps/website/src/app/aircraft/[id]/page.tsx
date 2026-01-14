@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@pexjet/database";
 import AircraftDetail from "@/components/aircraft/AircraftDetail";
-import { aircraftPageData } from "@/data";
 
 interface Props {
   params: { id: string };

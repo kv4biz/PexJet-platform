@@ -927,6 +927,46 @@ export const servicesData = {
 };
 
 // ============================================================================
+// AIRCRAFT PAGE DATA
+// ============================================================================
+export const aircraftPageData = {
+  hero: {
+    title: "Our Fleet",
+    subtitle:
+      "Explore our diverse collection of premium aircraft available for charter",
+    backgroundImage:
+      "https://res.cloudinary.com/dikzx4eyh/image/upload/v1765007837/d25f5436662_r8tmqc.jpg",
+  },
+  loading: {
+    text: "Loading aircraft...",
+  },
+  emptyState: {
+    title: "No Aircraft Available",
+    description: "Please check back later for our fleet updates.",
+    cta: {
+      text: "Contact Us",
+      href: "/contact",
+    },
+  },
+  badges: {
+    local: "Local Flights",
+    international: "International",
+  },
+  specifications: {
+    title: "Technical Specifications",
+  },
+  gallery: {
+    title: "Aircraft Gallery",
+    exteriorLabel: "Exterior Images",
+    interiorLabel: "Interior Images",
+  },
+  cta: {
+    text: "Request a Quote",
+    href: "/charter",
+  },
+};
+
+// ============================================================================
 // AIRCRAFT MANAGEMENT PAGE DATA
 // ============================================================================
 export const aircraftManagementPageData = {
