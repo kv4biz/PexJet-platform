@@ -329,10 +329,12 @@ export default function EditSubscriberPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation based on type
+    // Validation based on type - use IATA/ICAO codes for matching
     const citiesToSubmit =
       selectedCities.length > 0
-        ? selectedCities.map((c) => c.municipality || c.name)
+        ? selectedCities
+            .map((c) => c.iataCode || c.icaoCode || "")
+            .filter(Boolean)
         : formData.cities;
 
     if (formData.type === "CITY" && citiesToSubmit.length === 0) {
