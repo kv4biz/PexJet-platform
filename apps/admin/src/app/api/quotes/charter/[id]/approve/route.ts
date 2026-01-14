@@ -61,7 +61,7 @@ export async function POST(
         },
         selectedAircraft: {
           include: {
-            aircraft: { select: { id: true, name: true, model: true } },
+            aircraft: { select: { id: true, name: true, manufacturer: true } },
           },
         },
       },
@@ -153,9 +153,7 @@ export async function POST(
                 select: {
                   id: true,
                   name: true,
-                  model: true,
                   manufacturer: true,
-                  passengerCapacityMax: true,
                 },
               },
             },
@@ -163,7 +161,9 @@ export async function POST(
           },
           selectedAircraft: {
             include: {
-              aircraft: { select: { id: true, name: true, model: true } },
+              aircraft: {
+                select: { id: true, name: true, manufacturer: true },
+              },
             },
           },
           approvedBy: { select: { id: true, fullName: true } },
