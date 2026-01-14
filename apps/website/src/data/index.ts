@@ -954,6 +954,17 @@ export const aircraftPageData = {
   },
   specifications: {
     title: "Technical Specifications",
+    labels: {
+      aircraftName: "Aircraft Name",
+      aircraftType: "Aircraft Type",
+      passengerCapacity: "Passenger Capacity",
+      interiorHeight: "Interior Height",
+      interiorWidth: "Interior Width",
+      cabinLength: "Cabin Length",
+      luggageCapacity: "Luggage Capacity",
+      range: "Range",
+      cruiseSpeed: "Cruise Speed",
+    },
   },
   gallery: {
     title: "Aircraft Gallery",
