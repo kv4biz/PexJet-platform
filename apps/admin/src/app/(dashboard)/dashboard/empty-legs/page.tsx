@@ -150,6 +150,8 @@ export default function EmptyLegsPage() {
   );
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [expiredCount, setExpiredCount] = useState(0);
+  const [cleaningUp, setCleaningUp] = useState(false);
   const [formData, setFormData] = useState({
     aircraftId: "",
     departureAirportId: "",
@@ -211,6 +213,57 @@ export default function EmptyLegsPage() {
     }
   };
 
+  const fetchExpiredCount = async () => {
+    try {
+      const response = await fetch("/api/empty-legs/cleanup", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setExpiredCount(data.expiredCount || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch expired count:", error);
+    }
+  };
+
+  const handleCleanup = async () => {
+    try {
+      setCleaningUp(true);
+      const response = await fetch("/api/empty-legs/cleanup", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast({
+          title: "Cleanup Complete",
+          description: data.message,
+        });
+        setExpiredCount(0);
+        fetchEmptyLegs();
+      } else {
+        toast({
+          title: "Cleanup Failed",
+          description: data.error || "Failed to cleanup expired deals",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to cleanup expired deals",
+        variant: "destructive",
+      });
+    } finally {
+      setCleaningUp(false);
+    }
+  };
+
   const fetchEmptyLegs = async () => {
     try {
       setLoading(true);
@@ -248,6 +301,7 @@ export default function EmptyLegsPage() {
   useEffect(() => {
     fetchEmptyLegs();
     fetchSyncStatus();
+    fetchExpiredCount();
   }, [page, searchQuery, sourceFilter]);
 
   const getStatusColor = (status: string) => {
@@ -259,6 +313,8 @@ export default function EmptyLegsPage() {
       case "CLOSED":
         return "secondary";
       case "UNAVAILABLE":
+        return "destructive";
+      case "EXPIRED":
         return "destructive";
       default:
         return "secondary";
@@ -410,6 +466,21 @@ export default function EmptyLegsPage() {
             )}
             Sync InstaCharter
           </Button>
+          {expiredCount > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleCleanup}
+              disabled={cleaningUp}
+              className="border-destructive text-destructive hover:bg-destructive/10"
+            >
+              {cleaningUp ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Clock className="h-4 w-4 mr-2" />
+              )}
+              Mark {expiredCount} Expired
+            </Button>
+          )}
           <Button variant="gold" asChild>
             <Link href="/dashboard/empty-legs/new">
               <Plus className="h-4 w-4 mr-2" />
