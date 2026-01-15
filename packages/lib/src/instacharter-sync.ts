@@ -98,7 +98,7 @@ async function findAirportByIcao(
  * - Fetches all one-way deals within 6 months from InstaCharter API
  * - Creates new deals that don't exist in our database
  * - Updates existing deals with latest info
- * - Marks deals as UNAVAILABLE if no longer in InstaCharter API
+ * - Deletes deals that are no longer in InstaCharter API
  * - Links ICAO codes to airport records for IATA codes and coordinates
  */
 export async function syncInstaCharterDeals(
@@ -213,9 +213,6 @@ export async function syncInstaCharterDeals(
               slug: undefined,
               externalId: undefined,
               source: undefined,
-              // Re-publish if it was marked unavailable but is now back
-              status:
-                existingDeal.status === "UNAVAILABLE" ? "PUBLISHED" : undefined,
             },
           });
           result.dealsUpdated++;
@@ -243,20 +240,19 @@ export async function syncInstaCharterDeals(
       }
     }
 
-    // 4. Mark deals as UNAVAILABLE if no longer in API
+    // 4. Delete deals that are no longer in InstaCharter API
     for (const [externalId, existingDeal] of Array.from(existingDealMap)) {
-      if (
-        !apiDealIds.has(externalId!) &&
-        existingDeal.status !== "UNAVAILABLE"
-      ) {
+      if (!apiDealIds.has(externalId!)) {
         try {
-          await prisma.emptyLeg.update({
+          await prisma.emptyLeg.delete({
             where: { id: existingDeal.id },
-            data: { status: "UNAVAILABLE" },
           });
           result.dealsRemoved++;
+          console.log(
+            `[InstaCharter Sync] Deleted deal ${externalId} (no longer in API)`,
+          );
         } catch (removeError) {
-          const errorMsg = `Error marking deal ${externalId} as unavailable: ${removeError instanceof Error ? removeError.message : "Unknown error"}`;
+          const errorMsg = `Error deleting deal ${externalId}: ${removeError instanceof Error ? removeError.message : "Unknown error"}`;
           console.error(`[InstaCharter Sync] ${errorMsg}`);
           result.errors.push(errorMsg);
         }
@@ -334,7 +330,6 @@ export async function getLastSyncStatus(prisma: PrismaClient): Promise<{
   const dealsCount = await prisma.emptyLeg.count({
     where: {
       source: "INSTACHARTER",
-      status: { not: "UNAVAILABLE" },
     },
   });
 
