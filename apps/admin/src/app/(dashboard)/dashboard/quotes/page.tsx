@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -17,10 +16,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -33,16 +28,24 @@ import {
 } from "@pexjet/ui";
 import {
   Search,
-  MoreHorizontal,
-  Eye,
-  Check,
-  X,
   FileText,
   RefreshCw,
   Filter,
   Plane,
   ArrowRight,
+  MoreHorizontal,
+  Eye,
+  Check,
+  X,
 } from "lucide-react";
+import Link from "next/link";
+import EmptyLegQuoteDetail from "@/components/quotes/EmptyLegQuoteDetail";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@pexjet/ui";
 
 interface CharterQuote {
   id: string;
@@ -66,16 +69,21 @@ interface EmptyLegQuote {
   referenceNumber: string;
   status: string;
   totalPriceUsd: number | null;
-  seatsBooked: number;
+  seatsRequested: number;
   createdAt: string;
   clientName: string;
   clientEmail: string;
   clientPhone: string;
+  receiptUrl?: string | null;
+  source: string;
   emptyLeg: {
-    departureAirport: { name: string; icaoCode: string };
-    arrivalAirport: { name: string; icaoCode: string };
+    id: string;
+    departureAirport: { name: string; icaoCode: string; municipality?: string };
+    arrivalAirport: { name: string; icaoCode: string; municipality?: string };
     departureDateTime: string;
-    aircraft: { name: string } | null;
+    aircraft: { name: string; manufacturer?: string } | null;
+    priceUsd?: number | null;
+    availableSeats?: number;
   };
 }
 
@@ -97,6 +105,8 @@ export default function QuotesPage() {
   const [emptyLegStatusFilter, setEmptyLegStatusFilter] = useState("all");
   const [emptyLegPage, setEmptyLegPage] = useState(1);
   const [emptyLegTotalPages, setEmptyLegTotalPages] = useState(1);
+  const [selectedEmptyLegQuote, setSelectedEmptyLegQuote] =
+    useState<EmptyLegQuote | null>(null);
 
   useEffect(() => {
     fetchCharterQuotes();
@@ -470,162 +480,152 @@ export default function QuotesPage() {
             </CardContent>
           </Card>
 
-          {/* Empty Leg Quotes Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Empty Leg Quote Requests</CardTitle>
-              <CardDescription>
-                {emptyLegQuotes.length > 0
-                  ? `Showing ${emptyLegQuotes.length} empty leg quotes`
-                  : "No empty leg quotes found"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {emptyLegLoading ? (
-                <section className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <section key={i} className="h-16 bg-muted animate-pulse" />
-                  ))}
-                </section>
-              ) : emptyLegQuotes.length > 0 ? (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Reference</TableHead>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Route</TableHead>
-                        <TableHead>Aircraft</TableHead>
-                        <TableHead>Seats</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="w-[70px]">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {emptyLegQuotes.map((quote) => (
-                        <TableRow key={quote.id}>
-                          <TableCell className="font-mono font-medium">
-                            {quote.referenceNumber}
-                          </TableCell>
-                          <TableCell>
-                            <article>
-                              <p className="font-medium">{quote.clientName}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {quote.clientEmail}
-                              </p>
-                            </article>
-                          </TableCell>
-                          <TableCell>
-                            <p className="text-sm">
-                              {quote.emptyLeg.departureAirport.icaoCode} →{" "}
-                              {quote.emptyLeg.arrivalAirport.icaoCode}
-                            </p>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {quote.emptyLeg.aircraft?.name || "N/A"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{quote.seatsBooked}</TableCell>
-                          <TableCell>
-                            {quote.totalPriceUsd
-                              ? `$${quote.totalPriceUsd.toLocaleString()}`
-                              : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={getStatusColor(quote.status) as any}
-                            >
-                              {quote.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {new Date(quote.createdAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                  <Link
-                                    href={`/dashboard/quotes/empty-leg/${quote.id}`}
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View Details
-                                  </Link>
-                                </DropdownMenuItem>
-                                {quote.status === "PENDING" && (
-                                  <>
-                                    <DropdownMenuItem className="text-green-600">
-                                      <Check className="h-4 w-4 mr-2" />
-                                      Approve
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="text-destructive">
-                                      <X className="h-4 w-4 mr-2" />
-                                      Reject
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-
-                  {/* Pagination */}
-                  <section className="flex items-center justify-between mt-4">
-                    <p className="text-sm text-muted-foreground">
-                      Page {emptyLegPage} of {emptyLegTotalPages}
-                    </p>
-                    <section className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setEmptyLegPage((p) => Math.max(1, p - 1))
-                        }
-                        disabled={emptyLegPage === 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setEmptyLegPage((p) =>
-                            Math.min(emptyLegTotalPages, p + 1),
-                          )
-                        }
-                        disabled={emptyLegPage === emptyLegTotalPages}
-                      >
-                        Next
-                      </Button>
-                    </section>
+          {/* Empty Leg Quotes Grid with Detail Panel */}
+          <section
+            className={`grid gap-6 ${selectedEmptyLegQuote ? "lg:grid-cols-3" : "lg:grid-cols-1"}`}
+          >
+            {/* Table Card */}
+            <Card
+              className={
+                selectedEmptyLegQuote ? "lg:col-span-2" : "lg:col-span-1"
+              }
+            >
+              <CardHeader>
+                <CardTitle>Empty Leg Quote Requests</CardTitle>
+                <CardDescription>
+                  {emptyLegQuotes.length > 0
+                    ? `Showing ${emptyLegQuotes.length} empty leg quotes${selectedEmptyLegQuote ? " - Click a row to view details" : ""}`
+                    : "No empty leg quotes found"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {emptyLegLoading ? (
+                  <section className="space-y-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <section
+                        key={i}
+                        className="h-16 bg-muted animate-pulse"
+                      />
+                    ))}
                   </section>
-                </>
-              ) : (
-                <section className="text-center py-12">
-                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">
-                    No empty leg quotes found
-                  </h3>
-                  <p className="text-muted-foreground">
-                    {emptyLegSearchQuery || emptyLegStatusFilter !== "all"
-                      ? "Try different filters"
-                      : "Empty leg quote requests will appear here"}
-                  </p>
-                </section>
-              )}
-            </CardContent>
-          </Card>
+                ) : emptyLegQuotes.length > 0 ? (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Reference</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Route</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {emptyLegQuotes.map((quote) => (
+                          <TableRow
+                            key={quote.id}
+                            className={`cursor-pointer hover:bg-muted/50 ${
+                              selectedEmptyLegQuote?.id === quote.id
+                                ? "bg-muted"
+                                : ""
+                            }`}
+                            onClick={() => setSelectedEmptyLegQuote(quote)}
+                          >
+                            <TableCell className="font-mono font-medium">
+                              {quote.referenceNumber}
+                            </TableCell>
+                            <TableCell>
+                              <article>
+                                <p className="font-medium">
+                                  {quote.clientName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {quote.clientPhone}
+                                </p>
+                              </article>
+                            </TableCell>
+                            <TableCell>
+                              <p className="text-sm">
+                                {quote.emptyLeg.departureAirport.icaoCode} →{" "}
+                                {quote.emptyLeg.arrivalAirport.icaoCode}
+                              </p>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={getStatusColor(quote.status) as any}
+                              >
+                                {quote.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {new Date(quote.createdAt).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    <section className="flex items-center justify-between mt-4">
+                      <p className="text-sm text-muted-foreground">
+                        Page {emptyLegPage} of {emptyLegTotalPages}
+                      </p>
+                      <section className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setEmptyLegPage((p) => Math.max(1, p - 1))
+                          }
+                          disabled={emptyLegPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setEmptyLegPage((p) =>
+                              Math.min(emptyLegTotalPages, p + 1),
+                            )
+                          }
+                          disabled={emptyLegPage === emptyLegTotalPages}
+                        >
+                          Next
+                        </Button>
+                      </section>
+                    </section>
+                  </>
+                ) : (
+                  <section className="text-center py-12">
+                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">
+                      No empty leg quotes found
+                    </h3>
+                    <p className="text-muted-foreground">
+                      {emptyLegSearchQuery || emptyLegStatusFilter !== "all"
+                        ? "Try different filters"
+                        : "Empty leg quote requests will appear here"}
+                    </p>
+                  </section>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Detail Panel */}
+            {selectedEmptyLegQuote && (
+              <section className="lg:col-span-1">
+                <EmptyLegQuoteDetail
+                  quote={selectedEmptyLegQuote}
+                  onClose={() => setSelectedEmptyLegQuote(null)}
+                  onRefresh={() => {
+                    fetchEmptyLegQuotes();
+                    setSelectedEmptyLegQuote(null);
+                  }}
+                />
+              </section>
+            )}
+          </section>
         </TabsContent>
       </Tabs>
     </section>
