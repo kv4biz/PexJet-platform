@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -20,6 +20,7 @@ import {
   Check,
   CheckCheck,
 } from "lucide-react";
+import { useBookingMessages } from "@/hooks/usePusher";
 
 interface Message {
   id: string;
@@ -52,6 +53,29 @@ export default function BookingChat({
   const [sending, setSending] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Real-time message updates via Pusher
+  const handleNewMessage = useCallback((data: any) => {
+    setMessages((prev) => {
+      // Avoid duplicates
+      if (prev.some((m) => m.id === data.id)) return prev;
+      return [
+        ...prev,
+        {
+          id: data.id,
+          direction: data.direction,
+          messageType: "FREEFORM",
+          content: data.content,
+          mediaUrl: data.mediaUrl,
+          mediaType: null,
+          status: "DELIVERED",
+          createdAt: data.sentAt,
+        },
+      ];
+    });
+  }, []);
+
+  useBookingMessages(bookingId, handleNewMessage);
 
   useEffect(() => {
     fetchMessages();

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@pexjet/database";
-import { uploadToCloudinary } from "@pexjet/lib";
+import {
+  uploadToCloudinary,
+  notifyNewMessage,
+  notifyReceiptUploaded,
+} from "@pexjet/lib";
 
 /**
  * Twilio Webhook for ALL incoming WhatsApp messages
@@ -124,8 +128,24 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // TODO: Notify admin group via WhatsApp
-    // TODO: Send Pusher event for real-time updates
+    // Send Pusher event for real-time updates
+    await notifyNewMessage(booking.id, {
+      id: message.id,
+      direction: message.direction,
+      content: message.content,
+      mediaUrl: message.mediaUrl,
+      sentAt: message.sentAt,
+    });
+
+    // If receipt uploaded, send receipt notification
+    if (isReceipt) {
+      await notifyReceiptUploaded({
+        id: booking.id,
+        referenceNumber: booking.referenceNumber,
+        clientName: booking.clientName || "Unknown",
+        receiptUrl: mediaUrl!,
+      });
+    }
 
     // Send TwiML response
     const responseMessage = isReceipt
@@ -157,6 +177,7 @@ interface ActiveBooking {
   status: string;
   referenceNumber: string;
   clientPhone: string;
+  clientName: string;
 }
 
 async function findActiveBooking(
@@ -177,6 +198,7 @@ async function findActiveBooking(
       status: true,
       referenceNumber: true,
       clientPhone: true,
+      clientName: true,
       createdAt: true,
     },
   });
@@ -193,6 +215,7 @@ async function findActiveBooking(
       status: true,
       referenceNumber: true,
       clientPhone: true,
+      clientName: true,
       createdAt: true,
     },
   });
