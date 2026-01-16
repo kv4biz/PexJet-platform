@@ -4,6 +4,8 @@ import {
   verifyAccessToken,
   extractTokenFromHeader,
   sendWhatsAppMessage,
+  generateEmptyLegQuotePDF,
+  uploadPDF,
 } from "@pexjet/lib";
 
 /**
@@ -117,7 +119,44 @@ export async function POST(
       hour12: true,
     });
 
-    // Send WhatsApp confirmation to client
+    // Generate Quote PDF
+    const pdfBuffer = await generateEmptyLegQuotePDF({
+      referenceNumber: booking.referenceNumber,
+      clientName: booking.clientName,
+      clientEmail: booking.clientEmail,
+      clientPhone: booking.clientPhone,
+      departure: depCity,
+      departureCode: booking.emptyLeg.departureAirport?.icaoCode || "",
+      arrival: arrCity,
+      arrivalCode: booking.emptyLeg.arrivalAirport?.icaoCode || "",
+      departureDateTime: `${flightDate} at ${flightTime}`,
+      aircraft: booking.emptyLeg.aircraft?.name || "TBA",
+      seatsRequested: booking.seatsRequested,
+      totalPrice: `$${parseFloat(totalPriceUsd).toLocaleString()} USD`,
+      paymentDeadline: paymentDeadline.toLocaleString("en-US", {
+        dateStyle: "full",
+        timeStyle: "short",
+      }),
+      bankName: settings?.bankName || "TBA",
+      bankAccountName: settings?.bankAccountName || "TBA",
+      bankAccountNumber: settings?.bankAccountNumber || "TBA",
+      bankSortCode: settings?.bankCode || "TBA",
+      proofOfPaymentWhatsApp: settings?.proofOfPaymentWhatsApp,
+    });
+
+    // Upload PDF to Cloudinary
+    const pdfUpload = await uploadPDF(pdfBuffer, {
+      folder: "pexjet/quotes",
+      publicId: `quote-${booking.referenceNumber}`,
+    });
+
+    // Update booking with quote document URL
+    await prisma.emptyLegBooking.update({
+      where: { id },
+      data: { quoteDocumentUrl: pdfUpload.url },
+    });
+
+    // Send WhatsApp confirmation with PDF to client
     const whatsappMessage = `✈️ *QUOTE APPROVED - ${booking.referenceNumber}*
 
 Dear ${booking.clientName},
@@ -133,13 +172,9 @@ Your empty leg booking has been approved!
 
 *Total Price: $${parseFloat(totalPriceUsd).toLocaleString()} USD*
 
-*Payment Details:*
-🏦 Bank: ${settings?.bankName || "TBA"}
-👤 Account Name: ${settings?.bankAccountName || "TBA"}
-🔢 Account Number: ${settings?.bankAccountNumber || "TBA"}
-📋 Sort Code: ${settings?.bankCode || "TBA"}
+Please find attached your Quote Confirmation document with bank transfer details.
 
-⏰ Please complete payment within 24 hours.
+⏰ Payment must be completed within 24 hours.
 
 After payment, please send your payment receipt to this number.
 
@@ -148,6 +183,7 @@ Thank you for choosing PexJet!`;
     await sendWhatsAppMessage({
       to: booking.clientPhone,
       message: whatsappMessage,
+      mediaUrl: pdfUpload.url,
     });
 
     // Store outbound message

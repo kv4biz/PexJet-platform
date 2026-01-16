@@ -4,6 +4,8 @@ import {
   verifyAccessToken,
   extractTokenFromHeader,
   sendWhatsAppMessage,
+  generateEmptyLegTicketPDF,
+  uploadPDF,
 } from "@pexjet/lib";
 
 /**
@@ -118,7 +120,38 @@ export async function POST(
       hour12: true,
     });
 
-    // Send flight confirmation via WhatsApp
+    // Generate Ticket PDF
+    const pdfBuffer = await generateEmptyLegTicketPDF({
+      ticketNumber,
+      referenceNumber: booking.referenceNumber,
+      clientName: booking.clientName,
+      clientEmail: booking.clientEmail,
+      clientPhone: booking.clientPhone,
+      departure: depCity,
+      departureCode: depCode,
+      arrival: arrCity,
+      arrivalCode: arrCode,
+      departureDateTime: `${flightDate} at ${flightTime}`,
+      checkInTime: checkInTimeStr,
+      aircraft: booking.emptyLeg.aircraft?.name || "TBA",
+      seatsBooked: booking.seatsRequested,
+      totalPaid: `$${booking.totalPriceUsd?.toLocaleString()} USD`,
+      paidAt: new Date().toLocaleDateString("en-US", { dateStyle: "full" }),
+    });
+
+    // Upload PDF to Cloudinary
+    const pdfUpload = await uploadPDF(pdfBuffer, {
+      folder: "pexjet/tickets",
+      publicId: `ticket-${ticketNumber}`,
+    });
+
+    // Update booking with flight document URL
+    await prisma.emptyLegBooking.update({
+      where: { id },
+      data: { flightDocumentUrl: pdfUpload.url },
+    });
+
+    // Send flight confirmation via WhatsApp with PDF
     const whatsappMessage = `✅ *BOOKING CONFIRMED - ${booking.referenceNumber}*
 
 Dear ${booking.clientName},
@@ -127,35 +160,12 @@ Your payment has been received and your flight is confirmed!
 
 *🎫 Ticket Number: ${ticketNumber}*
 
-━━━━━━━━━━━━━━━━━━━━━━
-*FLIGHT DETAILS*
-━━━━━━━━━━━━━━━━━━━━━━
-
 ✈️ *Route:* ${depCity} (${depCode}) → ${arrCity} (${arrCode})
 📅 *Date:* ${flightDate}
 🕐 *Departure:* ${flightTime}
-🛫 *Aircraft:* ${booking.emptyLeg.aircraft?.name || "TBA"}
-👥 *Passengers:* ${booking.seatsRequested}
+⏰ *Check-in:* ${checkInTimeStr}
 
-━━━━━━━━━━━━━━━━━━━━━━
-*CHECK-IN INFORMATION*
-━━━━━━━━━━━━━━━━━━━━━━
-
-⏰ *Check-in Time:* ${checkInTimeStr}
-📍 *Location:* Private Terminal / FBO
-📋 *Required:* Valid ID/Passport
-
-━━━━━━━━━━━━━━━━━━━━━━
-*PAYMENT RECEIPT*
-━━━━━━━━━━━━━━━━━━━━━━
-
-💰 *Amount Paid:* $${booking.totalPriceUsd?.toLocaleString()} USD
-🧾 *Reference:* ${booking.referenceNumber}
-📅 *Date:* ${new Date().toLocaleDateString("en-US")}
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-Please arrive at the terminal at least 2 hours before departure.
+Please find attached your E-Ticket. Present this at check-in along with a valid ID.
 
 For any questions, contact us at ${settings?.supportPhone || "our support line"}.
 
@@ -164,6 +174,7 @@ Thank you for flying with PexJet! ✈️`;
     await sendWhatsAppMessage({
       to: booking.clientPhone,
       message: whatsappMessage,
+      mediaUrl: pdfUpload.url,
     });
 
     // Store outbound message

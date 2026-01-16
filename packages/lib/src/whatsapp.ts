@@ -325,6 +325,39 @@ Thank you for choosing PexJet!`;
 }
 
 /**
+ * Notify admins of new empty leg booking request
+ */
+export async function notifyAdminsNewEmptyLegBooking(
+  adminPhones: string[],
+  details: {
+    referenceNumber: string;
+    clientName: string;
+    clientPhone: string;
+    departure: string;
+    arrival: string;
+    departureDate: string;
+    seatsRequested: number;
+    source: string;
+  },
+): Promise<void> {
+  const message = `🛩️ *New Empty Leg Booking Request*
+
+Reference: ${details.referenceNumber}
+Client: ${details.clientName}
+Phone: ${details.clientPhone}
+Route: ${details.departure} → ${details.arrival}
+Date: ${details.departureDate}
+Seats: ${details.seatsRequested}
+Source: ${details.source}
+
+Please review in the admin dashboard.`;
+
+  for (const phone of adminPhones) {
+    await sendWhatsAppMessage({ to: phone, message });
+  }
+}
+
+/**
  * Notify admins when client uploads receipt
  */
 export async function notifyAdminsReceiptUploaded(
