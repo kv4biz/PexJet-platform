@@ -220,6 +220,7 @@ model CharterQuote {
   paymentConfirmedBy   Admin?                 @relation("PaymentConfirmedBy", fields: [paymentConfirmedById], references: [id])
   selectedAircraft     CharterQuoteAircraft[]
   payment              Payment?
+  messages             BookingMessage[]
 
   @@index([clientId])
   @@index([status])
@@ -365,6 +366,32 @@ model EmptyLegBooking {
   @@index([clientId])
   @@index([status])
   @@index([source])
+  messages            BookingMessage[]
+}
+
+model BookingMessage {
+  id                  String            @id @default(cuid())
+  emptyLegBookingId   String?
+  charterQuoteId      String?
+  direction           MessageDirection
+  messageType         MessageType
+  content             String?
+  mediaUrl            String?
+  mediaType           String?
+  twilioMessageSid    String?           @unique
+  status              MessageStatus     @default(SENT)
+  sentAt              DateTime          @default(now())
+  deliveredAt         DateTime?
+  readAt              DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  emptyLegBooking     EmptyLegBooking?  @relation(fields: [emptyLegBookingId], references: [id], onDelete: Cascade)
+  charterQuote        CharterQuote?     @relation(fields: [charterQuoteId], references: [id], onDelete: Cascade)
+
+  @@index([emptyLegBookingId])
+  @@index([charterQuoteId])
+  @@index([direction])
+  @@index([createdAt])
 }
 
 model InstaCharterSyncLog {
@@ -597,6 +624,25 @@ enum RejectionReason {
   DEAL_NOT_AVAILABLE
   NO_PAYMENT_MADE
   OTHER
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  UTILITY
+  FREEFORM
+  SYSTEM
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
 }
 
 enum ActivityAction {

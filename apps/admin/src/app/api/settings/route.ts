@@ -60,19 +60,26 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const {
-      usdToNgnRate,
       paymentWindowHours,
       dealDeadlineMinutes,
       minimumBookingNoticeHours,
       defaultOperatorCommission,
       supportEmail,
       supportPhone,
+      bankName,
+      bankAccountName,
+      bankAccountNumber,
+      bankCode,
+      companyName,
+      companyEmail,
+      companyPhone,
+      companyAddress,
+      proofOfPaymentWhatsApp,
     } = body;
 
     const settings = await prisma.settings.upsert({
       where: { id: "default" },
       update: {
-        ...(usdToNgnRate !== undefined && { usdToNgnRate }),
         ...(paymentWindowHours !== undefined && { paymentWindowHours }),
         ...(dealDeadlineMinutes !== undefined && { dealDeadlineMinutes }),
         ...(minimumBookingNoticeHours !== undefined && {
@@ -83,16 +90,33 @@ export async function PUT(request: NextRequest) {
         }),
         ...(supportEmail !== undefined && { supportEmail }),
         ...(supportPhone !== undefined && { supportPhone }),
+        ...(bankName !== undefined && { bankName }),
+        ...(bankAccountName !== undefined && { bankAccountName }),
+        ...(bankAccountNumber !== undefined && { bankAccountNumber }),
+        ...(bankCode !== undefined && { bankCode }),
+        ...(companyName !== undefined && { companyName }),
+        ...(companyEmail !== undefined && { companyEmail }),
+        ...(companyPhone !== undefined && { companyPhone }),
+        ...(companyAddress !== undefined && { companyAddress }),
+        ...(proofOfPaymentWhatsApp !== undefined && { proofOfPaymentWhatsApp }),
       },
       create: {
         id: "default",
-        usdToNgnRate: usdToNgnRate || 1650,
         paymentWindowHours: paymentWindowHours || 3,
         dealDeadlineMinutes: dealDeadlineMinutes || 30,
         minimumBookingNoticeHours: minimumBookingNoticeHours || 24,
         defaultOperatorCommission: defaultOperatorCommission || 10,
         supportEmail: supportEmail || "support@pexjet.com",
         supportPhone: supportPhone || "+2348000000000",
+        bankName: bankName || null,
+        bankAccountName: bankAccountName || null,
+        bankAccountNumber: bankAccountNumber || null,
+        bankCode: bankCode || null,
+        companyName: companyName || "PexJet",
+        companyEmail: companyEmail || null,
+        companyPhone: companyPhone || null,
+        companyAddress: companyAddress || null,
+        proofOfPaymentWhatsApp: proofOfPaymentWhatsApp || null,
       },
     });
 
