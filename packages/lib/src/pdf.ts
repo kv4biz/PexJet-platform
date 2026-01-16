@@ -642,3 +642,433 @@ export async function generateEmptyLegConfirmationPDF(data: {
 
   return generatePDFBuffer(doc);
 }
+
+/**
+ * Generate Empty Leg Quote with Bank Transfer Details PDF
+ */
+export async function generateEmptyLegQuotePDF(data: {
+  referenceNumber: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  departure: string;
+  departureCode: string;
+  arrival: string;
+  arrivalCode: string;
+  departureDateTime: string;
+  aircraft: string;
+  seatsRequested: number;
+  totalPrice: string;
+  paymentDeadline: string;
+  bankName: string;
+  bankAccountName: string;
+  bankAccountNumber: string;
+  bankSortCode: string;
+  proofOfPaymentWhatsApp?: string;
+}): Promise<Buffer> {
+  const doc = await createPDFDocument({ margin: 50 });
+
+  addHeader(doc, "EMPTY LEG QUOTE CONFIRMATION");
+
+  doc.y = 100;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .fillColor("#000000")
+    .text(`Quote Reference: ${data.referenceNumber}`, 50);
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#666666")
+    .text(
+      `Date: ${new Date().toLocaleDateString("en-US", { dateStyle: "long" })}`,
+    );
+
+  doc.moveDown();
+
+  // Status Badge
+  doc.rect(50, doc.y, 100, 25).fill("#28A745");
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10)
+    .fillColor("#FFFFFF")
+    .text("APPROVED", 75, doc.y + 7);
+  doc.y += 35;
+
+  // Client Information
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor(COLORS.PRIMARY)
+    .text("CLIENT INFORMATION");
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
+  doc.moveDown(0.5);
+
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#000000")
+    .text(`Name: ${data.clientName}`)
+    .text(`Email: ${data.clientEmail}`)
+    .text(`Phone: ${data.clientPhone}`);
+
+  doc.moveDown();
+
+  // Flight Details
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor(COLORS.PRIMARY)
+    .text("FLIGHT DETAILS");
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
+  doc.moveDown(0.5);
+
+  // Flight card
+  doc.rect(50, doc.y, 495, 70).stroke("#CCCCCC");
+  const quoteCardY = doc.y + 10;
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(18)
+    .fillColor("#000000")
+    .text(data.departureCode, 70, quoteCardY);
+  doc
+    .font("Helvetica")
+    .fontSize(9)
+    .fillColor("#666666")
+    .text(data.departure, 70, quoteCardY + 22, { width: 140 });
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(20)
+    .fillColor(COLORS.PRIMARY)
+    .text("✈", 230, quoteCardY + 5);
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(18)
+    .fillColor("#000000")
+    .text(data.arrivalCode, 290, quoteCardY);
+  doc
+    .font("Helvetica")
+    .fontSize(9)
+    .fillColor("#666666")
+    .text(data.arrival, 290, quoteCardY + 22, { width: 140 });
+
+  doc
+    .font("Helvetica")
+    .fontSize(9)
+    .fillColor("#000000")
+    .text(`${data.departureDateTime}`, 440, quoteCardY + 5)
+    .text(`Aircraft: ${data.aircraft}`, 440, quoteCardY + 20)
+    .text(`Seats: ${data.seatsRequested}`, 440, quoteCardY + 35);
+
+  doc.y += 85;
+
+  // Pricing
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor(COLORS.PRIMARY)
+    .text("PRICING");
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
+  doc.moveDown(0.5);
+
+  doc.rect(350, doc.y, 195, 45).fill("#F5F5F5");
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#666666")
+    .text("Total Amount Due", 360, doc.y + 8);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(20)
+    .fillColor(COLORS.PRIMARY)
+    .text(data.totalPrice, 360, doc.y + 22);
+
+  doc.y += 60;
+
+  // Bank Details
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor(COLORS.PRIMARY)
+    .text("BANK TRANSFER DETAILS");
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
+  doc.moveDown(0.5);
+
+  doc.rect(50, doc.y, 495, 90).fill("#FFF9E6");
+  const bankY = doc.y + 10;
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10)
+    .fillColor("#000000")
+    .text("Bank Name:", 60, bankY)
+    .text("Account Name:", 60, bankY + 18)
+    .text("Account Number:", 60, bankY + 36)
+    .text("Sort Code:", 60, bankY + 54);
+
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#333333")
+    .text(data.bankName, 180, bankY)
+    .text(data.bankAccountName, 180, bankY + 18)
+    .text(data.bankAccountNumber, 180, bankY + 36)
+    .text(data.bankSortCode, 180, bankY + 54);
+
+  doc.y += 105;
+
+  // Payment Instructions
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor(COLORS.PRIMARY)
+    .text("PAYMENT INSTRUCTIONS");
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
+  doc.moveDown(0.5);
+
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#000000")
+    .text(
+      `1. Transfer the exact amount of ${data.totalPrice} to the bank account above`,
+    )
+    .text(`2. Use reference: ${data.referenceNumber}`)
+    .text("3. After payment, send your payment receipt/screenshot via WhatsApp")
+    .text(`4. Payment must be completed by: ${data.paymentDeadline}`);
+
+  if (data.proofOfPaymentWhatsApp) {
+    doc.moveDown();
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .fillColor(COLORS.PRIMARY)
+      .text("Send proof of payment to:")
+      .font("Helvetica")
+      .text(data.proofOfPaymentWhatsApp);
+  }
+
+  doc.moveDown();
+
+  // Warning
+  doc.rect(50, doc.y, 495, 30).fill("#FFEBEE");
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(9)
+    .fillColor("#C62828")
+    .text(
+      "⚠ IMPORTANT: Quote expires if payment is not received by the deadline.",
+      60,
+      doc.y + 10,
+    );
+
+  addFooter(doc);
+
+  return generatePDFBuffer(doc);
+}
+
+/**
+ * Generate Empty Leg Flight Ticket PDF
+ */
+export async function generateEmptyLegTicketPDF(data: {
+  ticketNumber: string;
+  referenceNumber: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  departure: string;
+  departureCode: string;
+  arrival: string;
+  arrivalCode: string;
+  departureDateTime: string;
+  checkInTime: string;
+  aircraft: string;
+  seatsBooked: number;
+  totalPaid: string;
+  paidAt: string;
+}): Promise<Buffer> {
+  const doc = await createPDFDocument({ margin: 50 });
+
+  addHeader(doc, "E-TICKET / BOARDING PASS");
+
+  doc.y = 100;
+
+  // Ticket Number prominent display
+  doc.rect(50, doc.y, 495, 40).fill("#000000");
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor("#FFFFFF")
+    .text("TICKET NUMBER", 60, doc.y + 8);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(16)
+    .fillColor(COLORS.PRIMARY)
+    .text(data.ticketNumber, 60, doc.y + 22);
+
+  doc.y += 55;
+
+  // Passenger Details
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor(COLORS.PRIMARY)
+    .text("PASSENGER");
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
+  doc.moveDown(0.5);
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .fillColor("#000000")
+    .text(data.clientName.toUpperCase());
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#666666")
+    .text(`Phone: ${data.clientPhone}`)
+    .text(`Email: ${data.clientEmail}`);
+
+  doc.moveDown();
+
+  // Flight Details Card
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor(COLORS.PRIMARY)
+    .text("FLIGHT DETAILS");
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
+  doc.moveDown(0.5);
+
+  // Large flight card
+  doc.rect(50, doc.y, 495, 100).stroke(COLORS.PRIMARY);
+  const ticketFlightY = doc.y + 15;
+
+  // Departure
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(28)
+    .fillColor("#000000")
+    .text(data.departureCode, 80, ticketFlightY);
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#666666")
+    .text(data.departure, 80, ticketFlightY + 35, { width: 150 });
+  doc.fontSize(9).text(data.departureDateTime, 80, ticketFlightY + 60);
+
+  // Plane icon and line
+  doc
+    .moveTo(200, ticketFlightY + 20)
+    .lineTo(280, ticketFlightY + 20)
+    .stroke("#CCCCCC");
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(24)
+    .fillColor(COLORS.PRIMARY)
+    .text("✈", 290, ticketFlightY + 5);
+  doc
+    .moveTo(320, ticketFlightY + 20)
+    .lineTo(400, ticketFlightY + 20)
+    .stroke("#CCCCCC");
+
+  // Arrival
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(28)
+    .fillColor("#000000")
+    .text(data.arrivalCode, 420, ticketFlightY);
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#666666")
+    .text(data.arrival, 420, ticketFlightY + 35, { width: 150 });
+
+  doc.y += 115;
+
+  // Check-in and Aircraft Info
+  doc.rect(50, doc.y, 240, 60).fill("#F5F5F5");
+  doc.rect(305, doc.y, 240, 60).fill("#F5F5F5");
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(9)
+    .fillColor("#666666")
+    .text("CHECK-IN TIME", 60, doc.y + 10);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .fillColor("#000000")
+    .text(data.checkInTime, 60, doc.y + 25);
+  doc
+    .font("Helvetica")
+    .fontSize(9)
+    .fillColor("#666666")
+    .text("Arrive 2 hours before departure", 60, doc.y + 42);
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(9)
+    .fillColor("#666666")
+    .text("AIRCRAFT", 315, doc.y + 10);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .fillColor("#000000")
+    .text(data.aircraft, 315, doc.y + 25);
+  doc
+    .font("Helvetica")
+    .fontSize(9)
+    .fillColor("#666666")
+    .text(`${data.seatsBooked} Passenger(s)`, 315, doc.y + 42);
+
+  doc.y += 75;
+
+  // Payment Confirmation
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor(COLORS.PRIMARY)
+    .text("PAYMENT CONFIRMED");
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
+  doc.moveDown(0.5);
+
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#000000")
+    .text(`Amount Paid: ${data.totalPaid}`)
+    .text(`Payment Date: ${data.paidAt}`)
+    .text(`Booking Reference: ${data.referenceNumber}`);
+
+  doc.moveDown();
+
+  // Terms
+  doc.rect(50, doc.y, 495, 50).fill("#E3F2FD");
+  doc
+    .font("Helvetica")
+    .fontSize(8)
+    .fillColor("#1565C0")
+    .text(
+      "✓ Please arrive at the FBO/Private Terminal at least 2 hours before departure",
+      60,
+      doc.y + 8,
+    )
+    .text(
+      "✓ Present this ticket along with a valid government-issued ID",
+      60,
+      doc.y + 20,
+    )
+    .text(
+      "✓ Contact us immediately for any changes or cancellations",
+      60,
+      doc.y + 32,
+    );
+
+  addFooter(doc);
+
+  return generatePDFBuffer(doc);
+}
