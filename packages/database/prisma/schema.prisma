@@ -285,9 +285,11 @@ model EmptyLeg {
   aircraftType        String?
   arrivalCity         String?
   arrivalCountry      String?
+  arrivalIata         String?
   arrivalIcao         String?
   departureCity       String?
   departureCountry    String?
+  departureIata       String?
   departureIcao       String?
   externalId          String?           @unique
   lastSyncedAt        DateTime?

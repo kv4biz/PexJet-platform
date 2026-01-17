@@ -85,9 +85,11 @@ export interface MappedEmptyLegData {
   externalId: string;
   slug: string;
   source: "INSTACHARTER";
+  departureIata?: string | null;
   departureIcao: string;
   departureCity: string;
   departureCountry: string | null;
+  arrivalIata?: string | null;
   arrivalIcao: string;
   arrivalCity: string;
   arrivalCountry: string | null;

@@ -23,32 +23,40 @@ interface AirportLookupResult {
   id: string;
   iataCode: string | null;
   icaoCode: string | null;
+  name: string | null;
   city: string | null;
   country: string | null;
+  region: string | null;
   latitude: number;
   longitude: number;
 }
 
 /**
- * Find airport by ICAO code (searches both icaoCode and gpsCode fields)
- * Returns full airport data for populating EmptyLeg fields
+ * Find airport by code with fallback strategy: ICAO → GPS code → local code
+ * Returns full airport data from OUR database for populating EmptyLeg fields
  */
-async function findAirportByIcao(
+async function findAirportByCode(
   prisma: PrismaClient,
   icaoCode: string | null | undefined,
 ): Promise<AirportLookupResult | null> {
   if (!icaoCode) return null;
 
-  const code = icaoCode.toUpperCase();
+  const code = icaoCode.toUpperCase().trim();
 
   try {
-    // Search both icaoCode and gpsCode fields
+    // Strategy: Try ICAO code → GPS code → local code (ident field)
     const airport = await prisma.airport.findFirst({
       where: {
-        OR: [{ icaoCode: code }, { gpsCode: code }],
+        OR: [
+          { icaoCode: code },
+          { gpsCode: code },
+          { ident: code },
+          { localCode: code },
+        ],
       },
       select: {
         id: true,
+        name: true,
         iataCode: true,
         icaoCode: true,
         municipality: true,
@@ -57,36 +65,121 @@ async function findAirportByIcao(
         country: {
           select: { name: true },
         },
+        region: {
+          select: { name: true },
+        },
       },
     });
 
     if (!airport) {
       console.log(
-        `[InstaCharter Sync] No airport found for ICAO/GPS code: ${code}`,
+        `[InstaCharter Sync] No airport found for code: ${code} (tried ICAO, GPS, ident, local)`,
+      );
+      return null;
+    }
+
+    // Validate we have the essential data from our database
+    if (!airport.iataCode && !airport.icaoCode) {
+      console.log(
+        `[InstaCharter Sync] Airport found but missing IATA/ICAO code: ${code}`,
       );
       return null;
     }
 
     console.log(
-      `[InstaCharter Sync] Found airport: ${airport.iataCode || airport.icaoCode} (${airport.municipality}) for code ${code}`,
+      `[InstaCharter Sync] Found airport: ${airport.iataCode || airport.icaoCode} - ${airport.name} (${airport.municipality}, ${airport.country?.name}) for code ${code}`,
     );
 
     return {
       id: airport.id,
       iataCode: airport.iataCode,
       icaoCode: airport.icaoCode,
+      name: airport.name,
       city: airport.municipality,
       country: airport.country?.name || null,
+      region: airport.region?.name || null,
       latitude: airport.latitude,
       longitude: airport.longitude,
     };
   } catch (error) {
     console.error(
-      `[InstaCharter Sync] Error finding airport by ICAO/GPS ${code}:`,
+      `[InstaCharter Sync] Error finding airport for code ${code}:`,
       error,
     );
     return null;
   }
+}
+
+/**
+ * Validate that a deal has all required fields for display
+ */
+function validateDealCompleteness(
+  deal: InstaCharterAvailability,
+  departureAirport: AirportLookupResult | null,
+  arrivalAirport: AirportLookupResult | null,
+  aircraftImage: string | null,
+): { valid: boolean; missingFields: string[] } {
+  const missingFields: string[] = [];
+
+  // Check departure airport (from our DB)
+  if (!departureAirport) {
+    missingFields.push("departure airport (not in our database)");
+  } else {
+    if (!departureAirport.iataCode && !departureAirport.icaoCode) {
+      missingFields.push("departure IATA/ICAO code");
+    }
+    if (!departureAirport.city) {
+      missingFields.push("departure city");
+    }
+    if (!departureAirport.country) {
+      missingFields.push("departure country");
+    }
+  }
+
+  // Check arrival airport (from our DB)
+  if (!arrivalAirport) {
+    missingFields.push("arrival airport (not in our database)");
+  } else {
+    if (!arrivalAirport.iataCode && !arrivalAirport.icaoCode) {
+      missingFields.push("arrival IATA/ICAO code");
+    }
+    if (!arrivalAirport.city) {
+      missingFields.push("arrival city");
+    }
+    if (!arrivalAirport.country) {
+      missingFields.push("arrival country");
+    }
+  }
+
+  // Check date/time
+  if (!deal.from.dateFrom) {
+    missingFields.push("departure date/time");
+  }
+
+  // Check seats
+  if (!deal.aircraft.seats || deal.aircraft.seats <= 0) {
+    missingFields.push("seats");
+  }
+
+  // Check aircraft name
+  if (!deal.aircraft.aircraft_Type) {
+    missingFields.push("aircraft name");
+  }
+
+  // Check aircraft category
+  if (!deal.aircraft.aircraft_Category) {
+    missingFields.push("aircraft category");
+  }
+
+  // Check aircraft image
+  if (!aircraftImage) {
+    missingFields.push("aircraft image");
+  }
+
+  return {
+    valid: missingFields.length === 0,
+    missingFields,
+  };
 }
 
 // =============================================================================
@@ -157,6 +250,9 @@ export async function syncInstaCharterDeals(
     );
     const apiDealIds = new Set(apiDeals.map((d) => d.id.toString()));
 
+    // Track skipped deals for reporting
+    let dealsSkipped = 0;
+
     // 3. Process each deal from API
     for (const apiDeal of apiDeals) {
       try {
@@ -164,22 +260,45 @@ export async function syncInstaCharterDeals(
         const externalId = apiDeal.id.toString();
         const existingDeal = existingDealMap.get(externalId);
 
-        // Look up airports by ICAO code (searches both icaoCode and gpsCode fields)
-        const departureAirport = await findAirportByIcao(
+        // Look up airports from OUR database (ICAO → GPS → local code fallback)
+        const departureAirport = await findAirportByCode(
           prisma,
           mappedData.departureIcao,
         );
-        const arrivalAirport = await findAirportByIcao(
+        const arrivalAirport = await findAirportByCode(
           prisma,
           mappedData.arrivalIcao,
         );
 
-        // Generate slug using city names (not ICAO codes)
-        // Use resolved city names from our database, fallback to InstaCharter city names
-        const departureCity =
-          departureAirport?.city || mappedData.departureCity || "unknown";
-        const arrivalCity =
-          arrivalAirport?.city || mappedData.arrivalCity || "unknown";
+        // Validate deal has ALL required fields
+        const validation = validateDealCompleteness(
+          apiDeal,
+          departureAirport,
+          arrivalAirport,
+          mappedData.aircraftImage,
+        );
+
+        if (!validation.valid) {
+          // Skip this deal - missing required fields
+          console.log(
+            `[InstaCharter Sync] SKIPPING deal ${externalId} - missing: ${validation.missingFields.join(", ")}`,
+          );
+          dealsSkipped++;
+
+          // If this deal exists in our DB, delete it (no longer valid)
+          if (existingDeal) {
+            await prisma.emptyLeg.delete({ where: { id: existingDeal.id } });
+            result.dealsRemoved++;
+            console.log(
+              `[InstaCharter Sync] Deleted existing incomplete deal ${externalId}`,
+            );
+          }
+          continue;
+        }
+
+        // Generate slug using city names from OUR database
+        const departureCity = departureAirport!.city || "unknown";
+        const arrivalCity = arrivalAirport!.city || "unknown";
         const dateStr = mappedData.departureDateTime
           .toISOString()
           .split("T")[0];
@@ -189,18 +308,21 @@ export async function syncInstaCharterDeals(
             .replace(/[^a-z0-9-]/g, "-")
             .replace(/-+/g, "-");
 
-        // Prepare data with resolved airport info
+        // Prepare data with ALL fields from OUR database
         const enrichedData = {
           ...mappedData,
-          // Override with resolved city/country from our database
-          departureCity: departureAirport?.city || mappedData.departureCity,
-          departureCountry:
-            departureAirport?.country || mappedData.departureCountry,
-          arrivalCity: arrivalAirport?.city || mappedData.arrivalCity,
-          arrivalCountry: arrivalAirport?.country || mappedData.arrivalCountry,
-          // Link to airport records if found
-          departureAirportId: departureAirport?.id || undefined,
-          arrivalAirportId: arrivalAirport?.id || undefined,
+          // Use IATA code preferentially, fallback to ICAO
+          departureIata: departureAirport!.iataCode,
+          departureIcao: departureAirport!.icaoCode || mappedData.departureIcao,
+          departureCity: departureAirport!.city,
+          departureCountry: departureAirport!.country,
+          arrivalIata: arrivalAirport!.iataCode,
+          arrivalIcao: arrivalAirport!.icaoCode || mappedData.arrivalIcao,
+          arrivalCity: arrivalAirport!.city,
+          arrivalCountry: arrivalAirport!.country,
+          // Link to airport records
+          departureAirportId: departureAirport!.id,
+          arrivalAirportId: arrivalAirport!.id,
         };
 
         if (existingDeal) {
@@ -239,6 +361,10 @@ export async function syncInstaCharterDeals(
         result.errors.push(errorMsg);
       }
     }
+
+    console.log(
+      `[InstaCharter Sync] Skipped ${dealsSkipped} deals due to missing required fields`,
+    );
 
     // 4. Delete deals that are no longer in InstaCharter API
     for (const [externalId, existingDeal] of Array.from(existingDealMap)) {
@@ -283,7 +409,7 @@ export async function syncInstaCharterDeals(
     });
 
     console.log(
-      `[InstaCharter Sync] Completed: ${result.dealsCreated} created, ${result.dealsUpdated} updated, ${result.dealsRemoved} removed (${result.duration}ms)`,
+      `[InstaCharter Sync] Completed: ${result.dealsCreated} created, ${result.dealsUpdated} updated, ${result.dealsRemoved} removed, ${dealsSkipped} skipped (incomplete) (${result.duration}ms)`,
     );
 
     return result;
