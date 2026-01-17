@@ -14,8 +14,20 @@ import {
  * - Notifies admin group of new messages
  */
 export async function POST(request: NextRequest) {
+  console.log("[Twilio Webhook] ========== INCOMING WEBHOOK ==========");
+
   try {
     const formData = await request.formData();
+
+    // Log all form data for debugging
+    const formDataObj: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      formDataObj[key] = String(value);
+    });
+    console.log(
+      "[Twilio Webhook] Form data:",
+      JSON.stringify(formDataObj, null, 2),
+    );
 
     // Parse Twilio webhook payload
     const messageSid = formData.get("MessageSid") as string;
@@ -185,6 +197,10 @@ async function findActiveBooking(
 ): Promise<ActiveBooking | null> {
   // Try multiple phone formats
   const phoneFormats = getPhoneFormats(phoneNumber);
+  console.log(
+    "[Twilio Webhook] Searching for booking with phone formats:",
+    phoneFormats,
+  );
 
   // Find most recent charter quote
   const charterQuote = await prisma.charterQuote.findFirst({
@@ -220,17 +236,35 @@ async function findActiveBooking(
     },
   });
 
+  console.log(
+    "[Twilio Webhook] Found charter quote:",
+    charterQuote?.referenceNumber || "none",
+  );
+  console.log(
+    "[Twilio Webhook] Found empty leg booking:",
+    emptyLegBooking?.referenceNumber || "none",
+  );
+
   // Return the most recent one
   if (charterQuote && emptyLegBooking) {
     if (charterQuote.createdAt > emptyLegBooking.createdAt) {
+      console.log("[Twilio Webhook] Using charter quote (more recent)");
       return { ...charterQuote, type: "charter" };
     }
+    console.log("[Twilio Webhook] Using empty leg booking (more recent)");
     return { ...emptyLegBooking, type: "empty_leg" };
   }
 
-  if (charterQuote) return { ...charterQuote, type: "charter" };
-  if (emptyLegBooking) return { ...emptyLegBooking, type: "empty_leg" };
+  if (charterQuote) {
+    console.log("[Twilio Webhook] Using charter quote");
+    return { ...charterQuote, type: "charter" };
+  }
+  if (emptyLegBooking) {
+    console.log("[Twilio Webhook] Using empty leg booking");
+    return { ...emptyLegBooking, type: "empty_leg" };
+  }
 
+  console.log("[Twilio Webhook] No active booking found");
   return null;
 }
 

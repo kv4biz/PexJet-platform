@@ -1,5 +1,9 @@
 import type PDFKit from "pdfkit";
+import path from "path";
 import { COLORS } from "./constants";
+
+// Font path for bundled TTF font
+const FONT_PATH = path.join(__dirname, "..", "fonts", "NotoSans-Regular.ttf");
 
 interface QuoteConfirmationData {
   referenceNumber: string;
@@ -74,9 +78,49 @@ function generatePDFBuffer(doc: PDFKit.PDFDocument): Promise<Buffer> {
 async function createPDFDocument(
   options: PDFKit.PDFDocumentOptions,
 ): Promise<PDFKit.PDFDocument> {
-  const mod: any = await import("pdfkit");
-  const PDFDocumentCtor = (mod?.default ?? mod) as any;
-  return new PDFDocumentCtor(options) as PDFKit.PDFDocument;
+  const PDFDocument = require("pdfkit");
+  const fs = require("fs");
+
+  // Check if font file exists, otherwise use built-in (for dev environments)
+  let fontPath = FONT_PATH;
+
+  // Try multiple possible font locations
+  const possiblePaths = [
+    FONT_PATH,
+    path.join(
+      process.cwd(),
+      "packages",
+      "lib",
+      "fonts",
+      "NotoSans-Regular.ttf",
+    ),
+    path.join(
+      process.cwd(),
+      "..",
+      "..",
+      "packages",
+      "lib",
+      "fonts",
+      "NotoSans-Regular.ttf",
+    ),
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      fontPath = p;
+      break;
+    }
+  }
+
+  const doc = new PDFDocument(options) as PDFKit.PDFDocument;
+
+  // Register custom font if available
+  if (fs.existsSync(fontPath)) {
+    doc.registerFont("CustomFont", fontPath);
+    doc.registerFont("CustomFont-Bold", fontPath); // Use same font, we'll fake bold with stroke
+  }
+
+  return doc;
 }
 
 /**
@@ -88,7 +132,7 @@ function addHeader(doc: PDFKit.PDFDocument, title: string): void {
 
   // Logo text (since we don't have the actual logo loaded)
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(28)
     .fillColor(COLORS.PRIMARY)
     .text("PEXJET", 50, 25);
@@ -127,12 +171,12 @@ export async function generateQuoteConfirmationPDF(
   // Reference and Date
   doc.y = 100;
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor("#000000")
     .text(`Reference: ${data.referenceNumber}`, 50);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#666666")
     .text(`Date: ${data.createdAt}`);
@@ -141,7 +185,7 @@ export async function generateQuoteConfirmationPDF(
 
   // Client Information
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("CLIENT INFORMATION");
@@ -149,7 +193,7 @@ export async function generateQuoteConfirmationPDF(
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Name: ${data.clientName}`)
@@ -160,7 +204,7 @@ export async function generateQuoteConfirmationPDF(
 
   // Flight Details
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("FLIGHT DETAILS");
@@ -168,7 +212,7 @@ export async function generateQuoteConfirmationPDF(
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Flight Type: ${data.flightType}`);
@@ -178,11 +222,11 @@ export async function generateQuoteConfirmationPDF(
   // Legs
   for (const leg of data.legs) {
     doc
-      .font("Helvetica-Bold")
+      .font("CustomFont")
       .fontSize(10)
       .text(`Leg ${leg.legNumber}: ${leg.departure} → ${leg.arrival}`);
     doc
-      .font("Helvetica")
+      .font("CustomFont")
       .fontSize(9)
       .fillColor("#666666")
       .text(`Departure: ${leg.departureDateTime}`)
@@ -197,7 +241,7 @@ export async function generateQuoteConfirmationPDF(
 
   // Total
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor("#000000")
     .text(`TOTAL: ${data.totalPrice}`, { align: "right" });
@@ -206,7 +250,7 @@ export async function generateQuoteConfirmationPDF(
 
   // Payment Information
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("PAYMENT INFORMATION");
@@ -214,7 +258,7 @@ export async function generateQuoteConfirmationPDF(
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Payment Deadline: ${data.paymentDeadline}`)
@@ -223,11 +267,11 @@ export async function generateQuoteConfirmationPDF(
   doc.moveDown();
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor(COLORS.PRIMARY)
     .text("Payment Link:")
-    .font("Helvetica")
+    .font("CustomFont")
     .fillColor("#0066CC")
     .text(data.paymentLink, { link: data.paymentLink });
 
@@ -249,12 +293,12 @@ export async function generateFlightConfirmationPDF(
   // Reference
   doc.y = 100;
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor("#000000")
     .text(`Booking Reference: ${data.referenceNumber}`, 50);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#666666")
     .text(`Payment Reference: ${data.paymentReference}`)
@@ -264,7 +308,7 @@ export async function generateFlightConfirmationPDF(
 
   // Passenger Information
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("PASSENGER INFORMATION");
@@ -272,7 +316,7 @@ export async function generateFlightConfirmationPDF(
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Name: ${data.clientName}`)
@@ -283,7 +327,7 @@ export async function generateFlightConfirmationPDF(
 
   // Flight Itinerary
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("FLIGHT ITINERARY");
@@ -298,12 +342,12 @@ export async function generateFlightConfirmationPDF(
 
     // Departure
     doc
-      .font("Helvetica-Bold")
+      .font("CustomFont")
       .fontSize(16)
       .fillColor("#000000")
       .text(leg.departureCode, 70, cardY);
     doc
-      .font("Helvetica")
+      .font("CustomFont")
       .fontSize(9)
       .fillColor("#666666")
       .text(leg.departure, 70, cardY + 20, { width: 150 });
@@ -311,24 +355,24 @@ export async function generateFlightConfirmationPDF(
 
     // Arrow
     doc
-      .font("Helvetica-Bold")
+      .font("CustomFont")
       .fontSize(14)
       .fillColor(COLORS.PRIMARY)
       .text("→", 250, cardY + 10);
     doc
-      .font("Helvetica")
+      .font("CustomFont")
       .fontSize(8)
       .fillColor("#666666")
       .text(leg.duration, 240, cardY + 30);
 
     // Arrival
     doc
-      .font("Helvetica-Bold")
+      .font("CustomFont")
       .fontSize(16)
       .fillColor("#000000")
       .text(leg.arrivalCode, 320, cardY);
     doc
-      .font("Helvetica")
+      .font("CustomFont")
       .fontSize(9)
       .fillColor("#666666")
       .text(leg.arrival, 320, cardY + 20, { width: 150 });
@@ -336,7 +380,7 @@ export async function generateFlightConfirmationPDF(
 
     // Aircraft
     doc
-      .font("Helvetica")
+      .font("CustomFont")
       .fontSize(8)
       .fillColor("#666666")
       .text(`Aircraft: ${leg.aircraft}`, 450, cardY + 10)
@@ -349,7 +393,7 @@ export async function generateFlightConfirmationPDF(
 
   // Important Notes
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("IMPORTANT NOTES");
@@ -357,7 +401,7 @@ export async function generateFlightConfirmationPDF(
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#000000")
     .text("• Please arrive at the FBO at least 30 minutes before departure")
@@ -381,12 +425,12 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Buffer> {
   // Receipt Number
   doc.y = 100;
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor("#000000")
     .text(`Receipt No: ${data.referenceNumber}`, 50);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#666666")
     .text(`Date: ${data.paidAt}`);
@@ -394,16 +438,12 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Buffer> {
   doc.moveDown(2);
 
   // Paid To
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(12)
-    .fillColor(COLORS.PRIMARY)
-    .text("PAID TO");
+  doc.font("CustomFont").fontSize(12).fillColor(COLORS.PRIMARY).text("PAID TO");
   doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text("PexJet Aviation Services")
@@ -413,7 +453,7 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Buffer> {
 
   // Received From
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("RECEIVED FROM");
@@ -421,7 +461,7 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Buffer> {
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Name: ${data.clientName}`)
@@ -432,7 +472,7 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Buffer> {
 
   // Payment Details
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("PAYMENT DETAILS");
@@ -440,7 +480,7 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Buffer> {
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Payment Type: ${data.paymentType}`)
@@ -453,12 +493,12 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Buffer> {
   // Amount Box
   doc.rect(350, doc.y, 195, 50).fill("#F5F5F5");
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor("#000000")
     .text("AMOUNT PAID", 360, doc.y + 10);
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(18)
     .fillColor(COLORS.PRIMARY)
     .text(data.amount, 360, doc.y + 25);
@@ -467,7 +507,7 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Buffer> {
 
   // Status
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor("#28A745")
     .text("✓ PAYMENT SUCCESSFUL", 50, doc.y, { align: "center" });
@@ -505,7 +545,7 @@ export async function generateEmptyLegConfirmationPDF(data: {
 
   doc.y = 100;
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor("#000000")
     .text(`Reference: ${data.referenceNumber}`, 50);
@@ -514,7 +554,7 @@ export async function generateEmptyLegConfirmationPDF(data: {
 
   // Client Info
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("CLIENT INFORMATION");
@@ -522,7 +562,7 @@ export async function generateEmptyLegConfirmationPDF(data: {
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Name: ${data.clientName}`)
@@ -533,7 +573,7 @@ export async function generateEmptyLegConfirmationPDF(data: {
 
   // Flight Details
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("FLIGHT DETAILS");
@@ -545,42 +585,42 @@ export async function generateEmptyLegConfirmationPDF(data: {
   const cardY = doc.y + 10;
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(16)
     .fillColor("#000000")
     .text(data.departureCode, 70, cardY);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#666666")
     .text(data.departure, 70, cardY + 20, { width: 150 });
   doc.fontSize(8).text(data.departureDateTime, 70, cardY + 45);
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor(COLORS.PRIMARY)
     .text("→", 250, cardY + 10);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(8)
     .fillColor("#666666")
     .text(data.duration, 240, cardY + 30);
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(16)
     .fillColor("#000000")
     .text(data.arrivalCode, 320, cardY);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#666666")
     .text(data.arrival, 320, cardY + 20, { width: 150 });
   doc.fontSize(8).text(data.estimatedArrival, 320, cardY + 45);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(8)
     .fillColor("#666666")
     .text(`Aircraft: ${data.aircraft}`, 450, cardY + 10);
@@ -589,7 +629,7 @@ export async function generateEmptyLegConfirmationPDF(data: {
 
   // Booking Summary
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("BOOKING SUMMARY");
@@ -597,7 +637,7 @@ export async function generateEmptyLegConfirmationPDF(data: {
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Seats Booked: ${data.seatsBooked}`)
@@ -606,23 +646,19 @@ export async function generateEmptyLegConfirmationPDF(data: {
   doc.moveDown();
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .text(`TOTAL: ${data.totalPrice}`, { align: "right" });
 
   doc.moveDown(2);
 
   // Payment
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(12)
-    .fillColor(COLORS.PRIMARY)
-    .text("PAYMENT");
+  doc.font("CustomFont").fontSize(12).fillColor(COLORS.PRIMARY).text("PAYMENT");
   doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Payment Deadline: ${data.paymentDeadline}`)
@@ -631,10 +667,10 @@ export async function generateEmptyLegConfirmationPDF(data: {
   doc.moveDown();
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fillColor(COLORS.PRIMARY)
     .text("Payment Link:")
-    .font("Helvetica")
+    .font("CustomFont")
     .fillColor("#0066CC")
     .text(data.paymentLink, { link: data.paymentLink });
 
@@ -672,12 +708,12 @@ export async function generateEmptyLegQuotePDF(data: {
 
   doc.y = 100;
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor("#000000")
     .text(`Quote Reference: ${data.referenceNumber}`, 50);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#666666")
     .text(
@@ -689,7 +725,7 @@ export async function generateEmptyLegQuotePDF(data: {
   // Status Badge
   doc.rect(50, doc.y, 100, 25).fill("#28A745");
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#FFFFFF")
     .text("APPROVED", 75, doc.y + 7);
@@ -697,7 +733,7 @@ export async function generateEmptyLegQuotePDF(data: {
 
   // Client Information
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("CLIENT INFORMATION");
@@ -705,7 +741,7 @@ export async function generateEmptyLegQuotePDF(data: {
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Name: ${data.clientName}`)
@@ -716,7 +752,7 @@ export async function generateEmptyLegQuotePDF(data: {
 
   // Flight Details
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("FLIGHT DETAILS");
@@ -728,35 +764,35 @@ export async function generateEmptyLegQuotePDF(data: {
   const quoteCardY = doc.y + 10;
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(18)
     .fillColor("#000000")
     .text(data.departureCode, 70, quoteCardY);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#666666")
     .text(data.departure, 70, quoteCardY + 22, { width: 140 });
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(20)
     .fillColor(COLORS.PRIMARY)
     .text("✈", 230, quoteCardY + 5);
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(18)
     .fillColor("#000000")
     .text(data.arrivalCode, 290, quoteCardY);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#666666")
     .text(data.arrival, 290, quoteCardY + 22, { width: 140 });
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#000000")
     .text(`${data.departureDateTime}`, 440, quoteCardY + 5)
@@ -766,22 +802,18 @@ export async function generateEmptyLegQuotePDF(data: {
   doc.y += 85;
 
   // Pricing
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(12)
-    .fillColor(COLORS.PRIMARY)
-    .text("PRICING");
+  doc.font("CustomFont").fontSize(12).fillColor(COLORS.PRIMARY).text("PRICING");
   doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke(COLORS.PRIMARY);
   doc.moveDown(0.5);
 
   doc.rect(350, doc.y, 195, 45).fill("#F5F5F5");
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#666666")
     .text("Total Amount Due", 360, doc.y + 8);
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(20)
     .fillColor(COLORS.PRIMARY)
     .text(data.totalPrice, 360, doc.y + 22);
@@ -790,7 +822,7 @@ export async function generateEmptyLegQuotePDF(data: {
 
   // Bank Details
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("BANK TRANSFER DETAILS");
@@ -801,7 +833,7 @@ export async function generateEmptyLegQuotePDF(data: {
   const bankY = doc.y + 10;
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text("Bank Name:", 60, bankY)
@@ -810,7 +842,7 @@ export async function generateEmptyLegQuotePDF(data: {
     .text("Sort Code:", 60, bankY + 54);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#333333")
     .text(data.bankName, 180, bankY)
@@ -822,7 +854,7 @@ export async function generateEmptyLegQuotePDF(data: {
 
   // Payment Instructions
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("PAYMENT INSTRUCTIONS");
@@ -830,7 +862,7 @@ export async function generateEmptyLegQuotePDF(data: {
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(
@@ -843,11 +875,11 @@ export async function generateEmptyLegQuotePDF(data: {
   if (data.proofOfPaymentWhatsApp) {
     doc.moveDown();
     doc
-      .font("Helvetica-Bold")
+      .font("CustomFont")
       .fontSize(10)
       .fillColor(COLORS.PRIMARY)
       .text("Send proof of payment to:")
-      .font("Helvetica")
+      .font("CustomFont")
       .text(data.proofOfPaymentWhatsApp);
   }
 
@@ -856,7 +888,7 @@ export async function generateEmptyLegQuotePDF(data: {
   // Warning
   doc.rect(50, doc.y, 495, 30).fill("#FFEBEE");
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#C62828")
     .text(
@@ -899,12 +931,12 @@ export async function generateEmptyLegTicketPDF(data: {
   // Ticket Number prominent display
   doc.rect(50, doc.y, 495, 40).fill("#000000");
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor("#FFFFFF")
     .text("TICKET NUMBER", 60, doc.y + 8);
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(16)
     .fillColor(COLORS.PRIMARY)
     .text(data.ticketNumber, 60, doc.y + 22);
@@ -913,7 +945,7 @@ export async function generateEmptyLegTicketPDF(data: {
 
   // Passenger Details
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("PASSENGER");
@@ -921,12 +953,12 @@ export async function generateEmptyLegTicketPDF(data: {
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor("#000000")
     .text(data.clientName.toUpperCase());
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#666666")
     .text(`Phone: ${data.clientPhone}`)
@@ -936,7 +968,7 @@ export async function generateEmptyLegTicketPDF(data: {
 
   // Flight Details Card
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("FLIGHT DETAILS");
@@ -949,12 +981,12 @@ export async function generateEmptyLegTicketPDF(data: {
 
   // Departure
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(28)
     .fillColor("#000000")
     .text(data.departureCode, 80, ticketFlightY);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#666666")
     .text(data.departure, 80, ticketFlightY + 35, { width: 150 });
@@ -966,7 +998,7 @@ export async function generateEmptyLegTicketPDF(data: {
     .lineTo(280, ticketFlightY + 20)
     .stroke("#CCCCCC");
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(24)
     .fillColor(COLORS.PRIMARY)
     .text("✈", 290, ticketFlightY + 5);
@@ -977,12 +1009,12 @@ export async function generateEmptyLegTicketPDF(data: {
 
   // Arrival
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(28)
     .fillColor("#000000")
     .text(data.arrivalCode, 420, ticketFlightY);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#666666")
     .text(data.arrival, 420, ticketFlightY + 35, { width: 150 });
@@ -994,33 +1026,33 @@ export async function generateEmptyLegTicketPDF(data: {
   doc.rect(305, doc.y, 240, 60).fill("#F5F5F5");
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#666666")
     .text("CHECK-IN TIME", 60, doc.y + 10);
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor("#000000")
     .text(data.checkInTime, 60, doc.y + 25);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#666666")
     .text("Arrive 2 hours before departure", 60, doc.y + 42);
 
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#666666")
     .text("AIRCRAFT", 315, doc.y + 10);
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(14)
     .fillColor("#000000")
     .text(data.aircraft, 315, doc.y + 25);
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(9)
     .fillColor("#666666")
     .text(`${data.seatsBooked} Passenger(s)`, 315, doc.y + 42);
@@ -1029,7 +1061,7 @@ export async function generateEmptyLegTicketPDF(data: {
 
   // Payment Confirmation
   doc
-    .font("Helvetica-Bold")
+    .font("CustomFont")
     .fontSize(12)
     .fillColor(COLORS.PRIMARY)
     .text("PAYMENT CONFIRMED");
@@ -1037,7 +1069,7 @@ export async function generateEmptyLegTicketPDF(data: {
   doc.moveDown(0.5);
 
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(10)
     .fillColor("#000000")
     .text(`Amount Paid: ${data.totalPaid}`)
@@ -1049,7 +1081,7 @@ export async function generateEmptyLegTicketPDF(data: {
   // Terms
   doc.rect(50, doc.y, 495, 50).fill("#E3F2FD");
   doc
-    .font("Helvetica")
+    .font("CustomFont")
     .fontSize(8)
     .fillColor("#1565C0")
     .text(

@@ -134,6 +134,9 @@ export default function EmptyLegQuoteDetailPage() {
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [showResendDialog, setShowResendDialog] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendPrice, setResendPrice] = useState("");
 
   const fetchQuote = useCallback(async () => {
     try {
@@ -392,6 +395,56 @@ export default function EmptyLegQuoteDetailPage() {
       });
     } finally {
       setConfirmingPayment(false);
+    }
+  };
+
+  const handleResendQuote = async () => {
+    if (!resendPrice || isNaN(parseFloat(resendPrice))) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid price",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setResending(true);
+      const response = await fetch(`/api/quotes/empty-leg/${quoteId}/resend`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        body: JSON.stringify({
+          totalPriceUsd: parseFloat(resendPrice),
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Quote Resent",
+          description: "Updated quote document sent to client via WhatsApp",
+        });
+        setShowResendDialog(false);
+        setResendPrice("");
+        fetchQuote();
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Error",
+          description: data.error || "Failed to resend quote",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to resend quote",
+        variant: "destructive",
+      });
+    } finally {
+      setResending(false);
     }
   };
 
@@ -954,20 +1007,33 @@ export default function EmptyLegQuoteDetailPage() {
                     </section>
                   )}
 
-                  {quote.status === "APPROVED" && quote.receiptUrl && (
-                    <Button
-                      className="w-full"
-                      onClick={() => setShowConfirmPaymentDialog(true)}
-                    >
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Confirm Payment
-                    </Button>
-                  )}
-
-                  {quote.status === "APPROVED" && !quote.receiptUrl && (
-                    <p className="text-sm text-muted-foreground text-center py-2">
-                      Waiting for client to upload payment receipt...
-                    </p>
+                  {quote.status === "APPROVED" && (
+                    <section className="space-y-3">
+                      {quote.receiptUrl ? (
+                        <Button
+                          className="w-full"
+                          onClick={() => setShowConfirmPaymentDialog(true)}
+                        >
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Confirm Payment
+                        </Button>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          Waiting for client to upload payment receipt...
+                        </p>
+                      )}
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          setResendPrice(quote.totalPriceUsd?.toString() || "");
+                          setShowResendDialog(true);
+                        }}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Resend Quote with New Price
+                      </Button>
+                    </section>
                   )}
 
                   {quote.status === "PAID" && (
@@ -1002,7 +1068,6 @@ export default function EmptyLegQuoteDetailPage() {
                 bookingType="empty_leg"
                 clientName={quote.clientName}
                 clientPhone={quote.clientPhone}
-                onMessageSent={fetchQuote}
               />
             </CardContent>
           </Card>
@@ -1090,6 +1155,49 @@ export default function EmptyLegQuoteDetailPage() {
                 <CreditCard className="h-4 w-4 mr-2" />
               )}
               Confirm & Send Flight Doc
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Resend Quote Dialog */}
+      <AlertDialog open={showResendDialog} onOpenChange={setShowResendDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resend Quote with New Price</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter the new agreed price. A new quote document will be generated
+              and sent to the client via WhatsApp.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <section className="py-4">
+            <Label htmlFor="resendPrice">New Price (USD)</Label>
+            <section className="relative mt-2">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="resendPrice"
+                type="number"
+                value={resendPrice}
+                onChange={(e) => setResendPrice(e.target.value)}
+                className="pl-9"
+                placeholder="0.00"
+              />
+            </section>
+            {quote?.totalPriceUsd && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Previous price: ${quote.totalPriceUsd.toLocaleString()}
+              </p>
+            )}
+          </section>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResendQuote} disabled={resending}>
+              {resending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Send Updated Quote
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

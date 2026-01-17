@@ -113,6 +113,24 @@ export default function BookingChat({
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
+    const messageContent = newMessage.trim();
+    const tempId = `temp-${Date.now()}`;
+
+    // Optimistically add message to UI
+    const optimisticMessage: Message = {
+      id: tempId,
+      direction: "OUTBOUND",
+      messageType: "FREEFORM",
+      content: messageContent,
+      mediaUrl: null,
+      mediaType: null,
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
+    setNewMessage("");
+
     try {
       setSending(true);
       const response = await fetch(`/api/bookings/${bookingId}/messages`, {
@@ -122,18 +140,33 @@ export default function BookingChat({
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
         body: JSON.stringify({
-          content: newMessage,
+          content: messageContent,
           type: bookingType,
         }),
       });
 
       if (response.ok) {
-        setNewMessage("");
-        fetchMessages();
-        onMessageSent?.();
+        const data = await response.json();
+        // Replace optimistic message with real one
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempId
+              ? { ...m, id: data.message?.id || tempId, status: "SENT" }
+              : m,
+          ),
+        );
+      } else {
+        // Mark as failed
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, status: "FAILED" } : m)),
+        );
       }
     } catch (error) {
       console.error("Failed to send message:", error);
+      // Mark as failed
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, status: "FAILED" } : m)),
+      );
     } finally {
       setSending(false);
     }

@@ -9,12 +9,25 @@ const nextConfig = {
   images: {
     domains: ["res.cloudinary.com"],
   },
-  webpack: (config) => {
+  experimental: {
+    // Mark pdfkit as external to prevent bundling issues with AFM font files
+    serverComponentsExternalPackages: ["pdfkit"],
+  },
+  webpack: (config, { isServer }) => {
     // Fix for react-hook-form module resolution in monorepo
     config.resolve.alias = {
       ...config.resolve.alias,
       "react-hook-form": require.resolve("react-hook-form"),
     };
+
+    // Ensure pdfkit data files are accessible
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        pdfkit: "commonjs pdfkit",
+      });
+    }
+
     return config;
   },
 };
