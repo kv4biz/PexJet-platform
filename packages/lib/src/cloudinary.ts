@@ -25,7 +25,7 @@ interface UploadResult {
  */
 export async function uploadImage(
   file: string | Buffer,
-  options: UploadOptions = {}
+  options: UploadOptions = {},
 ): Promise<UploadResult> {
   try {
     const uploadOptions: any = {
@@ -49,7 +49,10 @@ export async function uploadImage(
       uploadSource = file;
     }
 
-    const result = await cloudinary.uploader.upload(uploadSource, uploadOptions);
+    const result = await cloudinary.uploader.upload(
+      uploadSource,
+      uploadOptions,
+    );
 
     return {
       success: true,
@@ -67,7 +70,7 @@ export async function uploadImage(
  */
 export async function uploadPDF(
   file: string | Buffer,
-  options: UploadOptions = {}
+  options: UploadOptions = {},
 ): Promise<UploadResult> {
   try {
     const uploadOptions: any = {
@@ -86,7 +89,10 @@ export async function uploadPDF(
       uploadSource = file;
     }
 
-    const result = await cloudinary.uploader.upload(uploadSource, uploadOptions);
+    const result = await cloudinary.uploader.upload(
+      uploadSource,
+      uploadOptions,
+    );
 
     return {
       success: true,
@@ -104,10 +110,12 @@ export async function uploadPDF(
  */
 export async function deleteFile(
   publicId: string,
-  resourceType: "image" | "raw" = "image"
+  resourceType: "image" | "raw" = "image",
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    await cloudinary.uploader.destroy(publicId, {
+      resource_type: resourceType,
+    });
     return { success: true };
   } catch (error: any) {
     console.error("Cloudinary delete error:", error);
@@ -118,9 +126,7 @@ export async function deleteFile(
 /**
  * Generate a signed upload URL for client-side uploads
  */
-export function generateUploadSignature(
-  folder: string = "pexjet"
-): {
+export function generateUploadSignature(folder: string = "pexjet"): {
   signature: string;
   timestamp: number;
   cloudName: string;
@@ -129,7 +135,7 @@ export function generateUploadSignature(
   const timestamp = Math.round(new Date().getTime() / 1000);
   const signature = cloudinary.utils.api_sign_request(
     { timestamp, folder },
-    process.env.CLOUDINARY_API_SECRET || ""
+    process.env.CLOUDINARY_API_SECRET || "",
   );
 
   return {
@@ -150,7 +156,7 @@ export function getOptimizedImageUrl(
     height?: number;
     crop?: string;
     quality?: string;
-  } = {}
+  } = {},
 ): string {
   return cloudinary.url(publicId, {
     secure: true,
@@ -168,7 +174,7 @@ export function getOptimizedImageUrl(
 export async function uploadAircraftImage(
   file: string | Buffer,
   aircraftId: string,
-  type: "exterior" | "interior" | "thumbnail"
+  type: "exterior" | "interior" | "thumbnail",
 ): Promise<UploadResult> {
   const folder = `pexjet/aircraft/${aircraftId}/${type}`;
   const transformation =
@@ -185,16 +191,57 @@ export async function uploadAircraftImage(
 export async function uploadAvatar(
   file: string | Buffer,
   userId: string,
-  userType: "admin" | "operator"
+  userType: "admin" | "operator",
 ): Promise<UploadResult> {
   const folder = `pexjet/avatars/${userType}`;
-  const transformation = { width: 200, height: 200, crop: "fill", quality: "auto" };
+  const transformation = {
+    width: 200,
+    height: 200,
+    crop: "fill",
+    quality: "auto",
+  };
 
   return uploadImage(file, {
     folder,
     publicId: userId,
     transformation,
   });
+}
+
+/**
+ * Generic upload to Cloudinary (supports images and raw files)
+ * Used for receipts, documents, etc.
+ */
+export async function uploadToCloudinary(
+  file: string | Buffer,
+  options: {
+    folder?: string;
+    resource_type?: "image" | "raw" | "video" | "auto";
+    public_id?: string;
+  } = {},
+): Promise<{ secure_url: string; public_id: string }> {
+  const uploadOptions: any = {
+    folder: options.folder || "pexjet",
+    resource_type: options.resource_type || "auto",
+  };
+
+  if (options.public_id) {
+    uploadOptions.public_id = options.public_id;
+  }
+
+  let uploadSource: string;
+  if (Buffer.isBuffer(file)) {
+    uploadSource = `data:application/octet-stream;base64,${file.toString("base64")}`;
+  } else {
+    uploadSource = file;
+  }
+
+  const result = await cloudinary.uploader.upload(uploadSource, uploadOptions);
+
+  return {
+    secure_url: result.secure_url,
+    public_id: result.public_id,
+  };
 }
 
 export { cloudinary };

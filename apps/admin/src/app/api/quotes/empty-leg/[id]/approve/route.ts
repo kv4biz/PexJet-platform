@@ -29,11 +29,30 @@ export async function POST(
   try {
     const { id } = params;
     const body = await request.json();
-    const { totalPriceUsd } = body;
+    const {
+      totalPriceUsd,
+      clientName,
+      clientEmail,
+      clientPhone,
+      seatsRequested,
+      departureDateTime,
+      paymentDeadline: paymentDeadlineStr,
+      bankName,
+      bankAccountName,
+      bankAccountNumber,
+      bankSortCode,
+    } = body;
 
     if (!totalPriceUsd || isNaN(parseFloat(totalPriceUsd))) {
       return NextResponse.json(
         { error: "Valid price is required" },
+        { status: 400 },
+      );
+    }
+
+    if (!bankName || !bankAccountName || !bankAccountNumber) {
+      return NextResponse.json(
+        { error: "Bank details are required" },
         { status: 400 },
       );
     }
@@ -68,31 +87,37 @@ export async function POST(
       );
     }
 
-    // Get bank details from settings
-    const settings = await prisma.settings.findUnique({
-      where: { id: "default" },
-    });
+    // Calculate payment deadline
+    const paymentDeadline = paymentDeadlineStr
+      ? new Date(paymentDeadlineStr)
+      : new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    // Calculate payment deadline (24 hours from now)
-    const paymentDeadline = new Date();
-    paymentDeadline.setHours(paymentDeadline.getHours() + 24);
-
-    // Update booking
+    // Update booking with all editable fields
     const updatedBooking = await prisma.emptyLegBooking.update({
       where: { id },
       data: {
         status: "APPROVED",
         totalPriceUsd: parseFloat(totalPriceUsd),
+        clientName: clientName || booking.clientName,
+        clientEmail: clientEmail || booking.clientEmail,
+        clientPhone: clientPhone || booking.clientPhone,
+        seatsRequested: seatsRequested || booking.seatsRequested,
         approvedById: payload.sub,
         approvedAt: new Date(),
         paymentDeadline,
         paymentMethod: "BANK_TRANSFER",
-        bankName: settings?.bankName,
-        bankAccountName: settings?.bankAccountName,
-        bankAccountNumber: settings?.bankAccountNumber,
-        bankSortCode: settings?.bankCode,
+        bankName,
+        bankAccountName,
+        bankAccountNumber,
+        bankSortCode: bankSortCode || "",
       },
     });
+
+    // Use updated client info for PDF and WhatsApp
+    const finalClientName = clientName || booking.clientName;
+    const finalClientEmail = clientEmail || booking.clientEmail;
+    const finalClientPhone = clientPhone || booking.clientPhone;
+    const finalSeatsRequested = seatsRequested || booking.seatsRequested;
 
     // Format flight details for WhatsApp message
     const depCity =
@@ -119,29 +144,28 @@ export async function POST(
       hour12: true,
     });
 
-    // Generate Quote PDF
+    // Generate Quote PDF using form data
     const pdfBuffer = await generateEmptyLegQuotePDF({
       referenceNumber: booking.referenceNumber,
-      clientName: booking.clientName,
-      clientEmail: booking.clientEmail,
-      clientPhone: booking.clientPhone,
+      clientName: finalClientName,
+      clientEmail: finalClientEmail,
+      clientPhone: finalClientPhone,
       departure: depCity,
       departureCode: booking.emptyLeg.departureAirport?.icaoCode || "",
       arrival: arrCity,
       arrivalCode: booking.emptyLeg.arrivalAirport?.icaoCode || "",
       departureDateTime: `${flightDate} at ${flightTime}`,
       aircraft: booking.emptyLeg.aircraft?.name || "TBA",
-      seatsRequested: booking.seatsRequested,
+      seatsRequested: finalSeatsRequested,
       totalPrice: `$${parseFloat(totalPriceUsd).toLocaleString()} USD`,
       paymentDeadline: paymentDeadline.toLocaleString("en-US", {
         dateStyle: "full",
         timeStyle: "short",
       }),
-      bankName: settings?.bankName || "TBA",
-      bankAccountName: settings?.bankAccountName || "TBA",
-      bankAccountNumber: settings?.bankAccountNumber || "TBA",
-      bankSortCode: settings?.bankCode || "TBA",
-      proofOfPaymentWhatsApp: settings?.proofOfPaymentWhatsApp,
+      bankName,
+      bankAccountName,
+      bankAccountNumber,
+      bankSortCode: bankSortCode || "",
     });
 
     // Upload PDF to Cloudinary
@@ -159,7 +183,7 @@ export async function POST(
     // Send WhatsApp confirmation with PDF to client
     const whatsappMessage = `✈️ *QUOTE APPROVED - ${booking.referenceNumber}*
 
-Dear ${booking.clientName},
+Dear ${finalClientName},
 
 Your empty leg booking has been approved!
 
@@ -168,20 +192,20 @@ Your empty leg booking has been approved!
 📅 Date: ${flightDate}
 🕐 Time: ${flightTime}
 ✈️ Aircraft: ${booking.emptyLeg.aircraft?.name || "TBA"}
-👥 Seats: ${booking.seatsRequested}
+👥 Seats: ${finalSeatsRequested}
 
 *Total Price: $${parseFloat(totalPriceUsd).toLocaleString()} USD*
 
 Please find attached your Quote Confirmation document with bank transfer details.
 
-⏰ Payment must be completed within 24 hours.
+⏰ Payment Deadline: ${paymentDeadline.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
 
 After payment, please send your payment receipt to this number.
 
 Thank you for choosing PexJet!`;
 
     await sendWhatsAppMessage({
-      to: booking.clientPhone,
+      to: finalClientPhone,
       message: whatsappMessage,
       mediaUrl: pdfUpload.url,
     });

@@ -253,7 +253,7 @@ function getPhoneFormats(phone: string): string[] {
     formats.push("234" + cleaned.slice(1));
   }
 
-  return [...new Set(formats)];
+  return Array.from(new Set(formats));
 }
 
 function isImageType(contentType: string | null): boolean {
