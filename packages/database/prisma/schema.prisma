@@ -501,6 +501,7 @@ model Settings {
   dealDeadlineMinutes       Int      @default(30)
   minimumBookingNoticeHours Int      @default(24)
   defaultOperatorCommission Float    @default(10)
+  usdToNgnRate              Float    @default(1650)
   cancellationPolicy        String?
   termsAndConditions        String?
   privacyPolicy             String?
