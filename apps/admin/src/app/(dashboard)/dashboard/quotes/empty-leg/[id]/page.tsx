@@ -169,8 +169,8 @@ export default function EmptyLegQuoteDetailPage() {
   const [flightDocData, setFlightDocData] = useState({
     eTicketNumber: "",
     checkinTime: "",
-    terminal: "",
-    gate: "",
+    terminalInfo: "",
+    gateInfo: "",
     boardingTime: "",
     crewInformation: "",
     luggageInformation: "",
@@ -541,7 +541,7 @@ export default function EmptyLegQuoteDetailPage() {
         bankName: settings?.bankName || "",
         accountName: settings?.bankAccountName || "",
         accountNumber: settings?.bankAccountNumber || "",
-        bankCode: settings?.bankCode || "",
+        bankCode: settings?.bankSortCode || "",
         paymentDeadline: quote?.paymentDeadline
           ? new Date(quote.paymentDeadline).toLocaleDateString()
           : "",
@@ -557,8 +557,8 @@ export default function EmptyLegQuoteDetailPage() {
               minute: "2-digit",
             })
           : "",
-        terminal: flightDocData.terminal,
-        gate: flightDocData.gate,
+        terminal: flightDocData.terminalInfo,
+        gate: flightDocData.gateInfo,
         boardingTime: flightDocData.boardingTime
           ? new Date(flightDocData.boardingTime).toLocaleTimeString([], {
               hour: "2-digit",
@@ -637,8 +637,8 @@ export default function EmptyLegQuoteDetailPage() {
         setFlightDocData({
           eTicketNumber: "",
           checkinTime: "",
-          terminal: "",
-          gate: "",
+          terminalInfo: "",
+          gateInfo: "",
           boardingTime: "",
           crewInformation: "",
           luggageInformation: "",
@@ -1669,28 +1669,28 @@ export default function EmptyLegQuoteDetailPage() {
                   />
                 </section>
                 <section className="space-y-2">
-                  <Label htmlFor="terminal">Terminal</Label>
+                  <Label htmlFor="terminalInfo">Terminal</Label>
                   <Input
-                    id="terminal"
-                    value={flightDocData.terminal}
+                    id="terminalInfo"
+                    value={flightDocData.terminalInfo}
                     onChange={(e) =>
                       setFlightDocData({
                         ...flightDocData,
-                        terminal: e.target.value,
+                        terminalInfo: e.target.value,
                       })
                     }
                     placeholder="e.g. Terminal 2"
                   />
                 </section>
                 <section className="space-y-2">
-                  <Label htmlFor="gate">Gate</Label>
+                  <Label htmlFor="gateInfo">Gate</Label>
                   <Input
-                    id="gate"
-                    value={flightDocData.gate}
+                    id="gateInfo"
+                    value={flightDocData.gateInfo}
                     onChange={(e) =>
                       setFlightDocData({
                         ...flightDocData,
-                        gate: e.target.value,
+                        gateInfo: e.target.value,
                       })
                     }
                     placeholder="e.g. Gate B12"
