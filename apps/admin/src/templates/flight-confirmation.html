@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flight Confirmation - {{referenceNumber}}</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+        color: #1a1a1a;
+        line-height: 1.5;
+        background: #fff;
+        padding: 0;
+      }
+      .document {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border: 1px solid #e5e5e5;
+      }
+
+      /* Header */
+      .header {
+        background: #1f2937;
+        padding: 24px 32px;
+        border-bottom: 2px solid #e5e5e5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .header-left {
+        text-align: left;
+      }
+      .header-title {
+        font-size: 20px;
+        font-weight: bold;
+        color: white;
+        margin-bottom: 8px;
+        letter-spacing: 0.05em;
+      }
+      .header-ref {
+        font-size: 14px;
+        color: #e5e5e5;
+        font-weight: 500;
+      }
+      .header-date {
+        font-size: 12px;
+        color: #9ca3af;
+      }
+      .header-logo {
+        height: 48px;
+        width: auto;
+      }
+
+      /* Content */
+      .content {
+        background: white;
+      }
+
+      /* Section */
+      .section {
+        padding: 16px 32px;
+        border-bottom: 1px solid #e5e5e5;
+      }
+      .section-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #1a1a1a;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #d1d5db;
+      }
+
+      /* Client Information */
+      .client-info {
+        background: #f3f4f6;
+      }
+      .info-grid {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+      }
+      .info-item {
+        flex: 1;
+      }
+      .info-label {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .info-value {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1a1a1a;
+      }
+
+      /* Flight Route */
+      .flight-route {
+        padding: 16px 32px;
+      }
+      .route-container {
+        background: #f9fafb;
+        border: 1px solid #d1d5db;
+        padding: 8px;
+      }
+      .route-display {
+        display: flex;
+        gap: 32px;
+        border-bottom: 1px solid #d1d5db;
+        padding-bottom: 8px;
+      }
+      .route-left {
+        flex: 3;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+      }
+      .route-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        width: 100%;
+      }
+      .airport {
+        flex: 1;
+      }
+      .airport-code {
+        font-size: 28px;
+        font-weight: bold;
+        color: #1a1a1a;
+        letter-spacing: 0.05em;
+      }
+      .airport-icao {
+        font-size: 12px;
+        color: #6b7280;
+      }
+      .airport-name {
+        font-size: 14px;
+        color: #4b5563;
+      }
+      .airport-city {
+        font-size: 14px;
+        font-weight: 500;
+        color: #374151;
+      }
+      .route-arrow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .route-icon {
+        font-size: 20px;
+        color: #1a1a1a;
+      }
+      .route-right {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-left: 1px solid #d1d5db;
+        padding: 8px 0;
+      }
+      .flight-times {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .time-label {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .time-value {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1a1a1a;
+      }
+
+      /* Aircraft */
+      .aircraft {
+        padding-top: 8px;
+      }
+      .aircraft-display {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+      .aircraft-image {
+        width: auto;
+        height: 150px;
+        object-fit: cover;
+        border: 1px solid #9ca3af;
+        flex-shrink: 0;
+      }
+      .aircraft-info {
+        flex: 1;
+      }
+      .aircraft-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin-bottom: 8px;
+      }
+      .aircraft-category {
+        display: inline-block;
+        background: #1a1a1a;
+        color: white;
+        font-size: 12px;
+        padding: 4px 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 500;
+      }
+      .aircraft-class {
+        margin-top: 8px;
+      }
+      .class-label {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .class-value {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1a1a1a;
+      }
+
+      /* Booking Details */
+      .booking-details {
+        background: white;
+      }
+      .details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .detail-item {
+        display: flex;
+        flex-direction: column;
+      }
+      .detail-label {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .detail-value {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1a1a1a;
+      }
+      .status-confirmed {
+        color: #16a34a;
+      }
+
+      /* Check-in & Boarding */
+      .checkin-boarding {
+        background: white;
+      }
+      .checkin-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .checkin-info {
+        background: #f9fafb;
+        border: 1px solid #d1d5db;
+        padding: 16px;
+      }
+      .info-section {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e5e5e5;
+      }
+      .info-title {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+      }
+      .info-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .info-item-text {
+        font-size: 14px;
+        color: #4b5563;
+        white-space: pre-wrap;
+      }
+
+      /* Important Information */
+      .important-info {
+        background: white;
+      }
+      .info-container {
+        background: #f9fafb;
+        border: 1px solid #d1d5db;
+        padding: 16px;
+      }
+      .info-sections {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .info-section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1a1a1a;
+      }
+      .info-section-content {
+        font-size: 14px;
+        color: #4b5563;
+      }
+
+      /* Footer */
+      .footer {
+        background: #1f2937;
+        padding: 16px 40px;
+        text-align: center;
+        border-top: 2px solid #e5e5e5;
+      }
+      .footer-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: white;
+      }
+      .footer-address {
+        font-size: 12px;
+        color: white;
+      }
+      .footer-phone {
+        font-size: 12px;
+        color: white;
+      }
+      .footer-email {
+        font-size: 12px;
+        color: white;
+      }
+      .footer-copyright {
+        font-size: 12px;
+        color: #9ca3af;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #d1d5db;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="document">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-left">
+          <h1 class="header-title">FLIGHT CONFIRMATION</h1>
+          <div class="header-ref">Ref: {{referenceNumber}}</div>
+          <div class="header-date">E-Ticket: {{eTicketNumber}}</div>
+          <div class="header-date">Confirmed: {{confirmationDate}}</div>
+        </div>
+        <div class="header-right">
+          <img
+            src="https://res.cloudinary.com/dikzx4eyh/image/upload/v1768755279/white-gold_jxa13v.png"
+            alt="PexJet"
+            class="header-logo"
+          />
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <!-- Client Information -->
+        <div class="section client-info">
+          <h2 class="section-title">Passenger Information</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Full Name</div>
+              <div class="info-value">{{clientName}}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Email Address</div>
+              <div class="info-value">{{clientEmail}}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Phone Number</div>
+              <div class="info-value">{{clientPhone}}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Passengers</div>
+              <div class="info-value">{{passengers}}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flight Route -->
+        <div class="flight-route">
+          <h2 class="section-title">Flight ITERNARY</h2>
+          <div class="route-container">
+            <!-- Routes -->
+            <div class="route-display">
+              <!-- Left Section - Route Ticket (3/4 width) -->
+              <div class="route-left">
+                <div class="route-content">
+                  <!-- Departure -->
+                  <div class="airport">
+                    <div class="airport-code">{{departureIata}}</div>
+                    <div class="airport-icao">{{departureIcao}}</div>
+                    <div class="airport-name">{{departureAirport}}</div>
+                    <div class="airport-city">{{departureCity}}</div>
+                  </div>
+
+                  <!-- Arrow -->
+                  <div class="route-arrow">
+                    <div class="route-icon">✈</div>
+                  </div>
+
+                  <!-- Arrival -->
+                  <div class="airport" style="text-align: right">
+                    <div class="airport-code">{{arrivalIata}}</div>
+                    <div class="airport-icao">{{arrivalIcao}}</div>
+                    <div class="airport-name">{{arrivalAirport}}</div>
+                    <div class="airport-city">{{arrivalCity}}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Section - Flight Times (1/4 width) -->
+              <div class="route-right">
+                <div class="flight-times">
+                  <div>
+                    <div class="time-label">Departure Date</div>
+                    <div class="time-value">{{departureDate}}</div>
+                  </div>
+                  <div>
+                    <div class="time-label">Departure Time</div>
+                    <div class="time-value">{{departureTime}}</div>
+                  </div>
+                  <div>
+                    <div class="time-label">Est. Arrival</div>
+                    <div class="time-value">{{arrivalTime}}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Aircraft -->
+            <div class="aircraft">
+              <div class="aircraft-display">
+                <img
+                  src="{{aircraftImage}}"
+                  alt="{{aircraftName}}"
+                  class="aircraft-image"
+                />
+                <div class="aircraft-info">
+                  <div class="aircraft-name">{{aircraftName}}</div>
+                  <span class="aircraft-category">{{aircraftCategory}}</span>
+                  <div class="aircraft-class">
+                    <div class="class-label">Class</div>
+                    <div class="class-value">Private</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Booking Details -->
+        <div class="section booking-details">
+          <h2 class="section-title">Booking Details</h2>
+          <div class="details-grid">
+            <div class="detail-item">
+              <div class="detail-label">Booking Reference</div>
+              <div class="detail-value">{{referenceNumber}}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Booking Status</div>
+              <div class="detail-value status-confirmed">CONFIRMED</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Total Amount Paid</div>
+              <div class="detail-value">${{totalAmount}}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Payment Date</div>
+              <div class="detail-value">{{paymentDate}}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Check-in & Boarding -->
+        <div class="section checkin-boarding">
+          <h2 class="section-title">Check-in & Boarding</h2>
+          <div class="checkin-info">
+            <div class="checkin-grid">
+              <div class="detail-item">
+                <div class="detail-label">Check-in Time</div>
+                <div class="detail-value">{{checkinTime}}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Terminal</div>
+                <div class="detail-value">{{terminal}}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Gate</div>
+                <div class="detail-value">{{gate}}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Boarding Time</div>
+                <div class="detail-value">{{boardingTime}}</div>
+              </div>
+            </div>
+
+            <div class="info-section">
+              <div class="checkin-grid">
+                <div>
+                  <div class="info-title">Crew Information</div>
+                  <div class="info-list">
+                    <div class="info-item-text">{{crewInformation}}</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="info-title">Luggage Information</div>
+                  <div class="info-list">
+                    <div class="info-item-text">{{luggageInformation}}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Important Information -->
+        <div class="section important-info">
+          <h2 class="section-title">Important Information</h2>
+          <div class="info-container">
+            <div class="info-sections">
+              <div>
+                <div class="info-section-title">FLIGHT STATUS</div>
+                <div class="info-section-content">
+                  Before your flight, please confirm your flight status by
+                  contacting pexjet Support:<br />
+                  +234 818 211 3089 | +234 911 110 1123
+                </div>
+              </div>
+              <div>
+                <div class="info-section-title">BAGGAGE CHECK-IN</div>
+                <div class="info-section-content">
+                  Please arrive on time for baggage drop and document
+                  verification before the scheduled cut-off. Passengers
+                  travelling without checked baggage may proceed directly for
+                  boarding as advised by the pexjet team.
+                </div>
+              </div>
+              <div>
+                <div class="info-section-title">BOARDING CLOSURE</div>
+                <div class="info-section-content">
+                  Passengers will not be accepted for travel once boarding is
+                  closed.
+                </div>
+              </div>
+              <div>
+                <div class="info-section-title">DANGEROUS GOODS</div>
+                <div class="info-section-content">
+                  For safety reasons, dangerous goods or hazardous materials are
+                  not permitted in hand luggage or checked baggage.
+                </div>
+              </div>
+              <div>
+                <div class="info-section-title">EMERGENCY EXIT SEATING</div>
+                <div class="info-section-content">
+                  Passengers seated near emergency exits must comply with all
+                  safety instructions and requirements.
+                </div>
+              </div>
+              <div>
+                <div class="info-section-title">FITNESS TO TRAVEL</div>
+                <div class="info-section-content">
+                  All passengers must be fit to travel. Medical clearance may be
+                  required for passengers with health-related conditions.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="footer-title">Perspective Executive Jets Limited</div>
+        <div class="footer-address">
+          H8GG+Q7X, Dominion Hangar Murtala Mohammed International Airport,
+          Lagos, Nigeria
+        </div>
+        <div class="footer-phone">+234 818 211 3089, +234 911 110 1123</div>
+        <div class="footer-email">charter@pexjet.com, finances@pexjet.com</div>
+        <div class="footer-copyright">
+          © 2026 PERSPECTIVE EXECUTIVE JETS LIMITED. All rights reserved.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

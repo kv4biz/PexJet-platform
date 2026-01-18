@@ -267,8 +267,8 @@ export default function BookingChat({
                         <article
                           className={`max-w-[80%] rounded-lg px-3 py-2 ${
                             msg.direction === "OUTBOUND"
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
+                              ? "bg-gray-400 text-white"
+                              : "bg-gray-300 text-gray-900"
                           }`}
                         >
                           {msg.mediaUrl && (
@@ -313,8 +313,8 @@ export default function BookingChat({
                             <span
                               className={`text-xs ${
                                 msg.direction === "OUTBOUND"
-                                  ? "text-primary-foreground/70"
-                                  : "text-muted-foreground"
+                                  ? "text-white/70"
+                                  : "text-gray-600"
                               }`}
                             >
                               {formatTime(msg.createdAt)}

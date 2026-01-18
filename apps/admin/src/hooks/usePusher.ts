@@ -154,3 +154,25 @@ export function useQuoteUpdates(callbacks: {
     enabled: !!callbacks.onPaymentConfirmed,
   });
 }
+
+/**
+ * Hook to subscribe to admin-specific notifications (for the logged-in admin only)
+ */
+export function useAdminPersonalNotifications(
+  adminId: string | null,
+  onClientMessage: (data: {
+    bookingId: string;
+    bookingType: string;
+    referenceNumber: string;
+    clientName: string;
+    message: string;
+    timestamp: string;
+  }) => void,
+) {
+  usePusher({
+    channel: adminId ? `admin-${adminId}` : "",
+    event: "new-client-message",
+    onEvent: onClientMessage,
+    enabled: !!adminId,
+  });
+}

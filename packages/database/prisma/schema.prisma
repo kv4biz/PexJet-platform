@@ -349,6 +349,11 @@ model EmptyLegBooking {
   pilotName           String?
   terminalInfo        String?
   ticketNumber        String?
+  eTicketNumber        String?
+  crewInformation      String?
+  luggageInformation   String?
+  paymentDate          DateTime?
+  boardingTime         DateTime?
   totalPriceUsd       Float
   bankAccountName     String?
   bankAccountNumber   String?

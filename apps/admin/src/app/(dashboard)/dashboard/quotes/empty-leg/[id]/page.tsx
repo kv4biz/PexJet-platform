@@ -46,6 +46,8 @@ import {
   Send,
   Building2,
   Clock,
+  FileText,
+  Briefcase,
 } from "lucide-react";
 import BookingChat from "@/components/quotes/BookingChat";
 
@@ -62,23 +64,46 @@ interface EmptyLegQuote {
   receiptUrl?: string | null;
   paymentDeadline?: string | null;
   source: string;
+  approvedBy?: {
+    id: string;
+    fullName: string;
+    phone: string;
+  } | null;
   emptyLeg: {
     id: string;
     departureDateTime: string;
     departureCity?: string;
     departureIcao?: string;
+    departureIata?: string;
     arrivalCity?: string;
     arrivalIcao?: string;
+    arrivalIata?: string;
+    totalSeats?: number;
+    availableSeats?: number;
+    aircraftName?: string;
+    aircraftCategory?: string;
+    aircraftImage?: string;
+    priceUsd?: number | null;
     departureAirport?: {
       name: string;
       icaoCode: string;
+      iataCode?: string;
       municipality?: string;
+      country?: { name: string };
     };
-    arrivalAirport?: { name: string; icaoCode: string; municipality?: string };
-    aircraft?: { name: string; manufacturer?: string } | null;
-    aircraftName?: string;
-    priceUsd?: number | null;
-    availableSeats?: number;
+    arrivalAirport?: {
+      name: string;
+      icaoCode: string;
+      iataCode?: string;
+      municipality?: string;
+      country?: { name: string };
+    };
+    aircraft?: {
+      name: string;
+      manufacturer?: string;
+      category?: string;
+      image?: string;
+    } | null;
   };
 }
 
@@ -137,6 +162,27 @@ export default function EmptyLegQuoteDetailPage() {
   const [showResendDialog, setShowResendDialog] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendPrice, setResendPrice] = useState("");
+
+  // Flight document dialog states
+  const [showFlightDocDialog, setShowFlightDocDialog] = useState(false);
+  const [sendingFlightDoc, setSendingFlightDoc] = useState(false);
+  const [flightDocData, setFlightDocData] = useState({
+    eTicketNumber: "",
+    checkinTime: "",
+    terminal: "",
+    gate: "",
+    boardingTime: "",
+    crewInformation: "",
+    luggageInformation: "",
+  });
+
+  // Template preview states
+  const [showTemplatePreview, setShowTemplatePreview] = useState(false);
+  const [templateType, setTemplateType] = useState<
+    "quote" | "flight-confirmation"
+  >("quote");
+  const [previewHtml, setPreviewHtml] = useState("");
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   const fetchQuote = useCallback(async () => {
     try {
@@ -448,6 +494,175 @@ export default function EmptyLegQuoteDetailPage() {
     }
   };
 
+  // Template preview functions
+  const handlePreviewTemplate = async (
+    type: "quote" | "flight-confirmation",
+  ) => {
+    try {
+      setLoadingPreview(true);
+      setTemplateType(type);
+
+      // Prepare template data
+      const templateData = {
+        // Client Information
+        clientName: quote?.clientName || "",
+        clientEmail: quote?.clientEmail || "",
+        clientPhone: quote?.clientPhone || "",
+        passengers: quote?.seatsRequested?.toString() || "1",
+
+        // Flight Information
+        departureIata: getDepartureIata(),
+        departureIcao: getDepartureIcao(),
+        departureAirport: quote?.emptyLeg.departureAirport?.name || "",
+        departureCity: getDepartureCity(),
+        arrivalIata: getArrivalIata(),
+        arrivalIcao: getArrivalIcao(),
+        arrivalAirport: quote?.emptyLeg.arrivalAirport?.name || "",
+        arrivalCity: getArrivalCity(),
+        departureDate: new Date(
+          quote?.emptyLeg.departureDateTime || "",
+        ).toLocaleDateString(),
+        departureTime: new Date(
+          quote?.emptyLeg.departureDateTime || "",
+        ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        arrivalTime: "", // Calculate based on flight duration
+        aircraftName: getAircraftName(),
+        aircraftCategory: getAircraftCategory(),
+        aircraftImage: getAircraftImage() || "",
+
+        // Quote Information
+        referenceNumber: quote?.referenceNumber || "",
+        issueDate: new Date().toLocaleDateString(),
+        totalPrice: quote?.totalPriceUsd?.toString() || "",
+        originalPrice: quote?.emptyLeg.priceUsd?.toString() || "",
+        flightDescription: `Private Charter Flight: ${getDepartureIata()} to ${getArrivalIata()}`,
+
+        // Payment Information
+        bankName: settings?.bankName || "",
+        accountName: settings?.bankAccountName || "",
+        accountNumber: settings?.bankAccountNumber || "",
+        bankCode: settings?.bankCode || "",
+        paymentDeadline: quote?.paymentDeadline
+          ? new Date(quote.paymentDeadline).toLocaleDateString()
+          : "",
+
+        // Flight Confirmation Specific
+        eTicketNumber: flightDocData.eTicketNumber,
+        confirmationDate: new Date().toLocaleDateString(),
+        bookingStatus: "CONFIRMED",
+        paymentDate: "", // Will be set when payment is confirmed
+        checkinTime: flightDocData.checkinTime
+          ? new Date(flightDocData.checkinTime).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "",
+        terminal: flightDocData.terminal,
+        gate: flightDocData.gate,
+        boardingTime: flightDocData.boardingTime
+          ? new Date(flightDocData.boardingTime).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "",
+        crewInformation: flightDocData.crewInformation,
+        luggageInformation: flightDocData.luggageInformation,
+      };
+
+      const response = await fetch("/api/templates/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        body: JSON.stringify({
+          templateType: type,
+          data: templateData,
+        }),
+      });
+
+      if (response.ok) {
+        const html = await response.text();
+        setPreviewHtml(html);
+        setShowTemplatePreview(true);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to generate template preview",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate template preview",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const handleSendFlightDocument = async () => {
+    if (!flightDocData.eTicketNumber) {
+      toast({
+        title: "Error",
+        description: "Please fill in e-ticket number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSendingFlightDoc(true);
+      const response = await fetch(
+        `/api/quotes/empty-leg/${quoteId}/send-flight-doc`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+          body: JSON.stringify(flightDocData),
+        },
+      );
+
+      if (response.ok) {
+        toast({
+          title: "Flight Document Sent",
+          description:
+            "Flight confirmation document sent to client via WhatsApp",
+        });
+        setShowFlightDocDialog(false);
+        setFlightDocData({
+          eTicketNumber: "",
+          checkinTime: "",
+          terminal: "",
+          gate: "",
+          boardingTime: "",
+          crewInformation: "",
+          luggageInformation: "",
+        });
+        fetchQuote();
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Error",
+          description: data.error || "Failed to send flight document",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send flight document",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingFlightDoc(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -482,13 +697,34 @@ export default function EmptyLegQuoteDetailPage() {
     );
   };
 
-  const getDepartureCode = () => {
+  const getDepartureCountry = () => {
+    if (!quote) return "";
+    return quote.emptyLeg.departureAirport?.country?.name || "";
+  };
+
+  const getDepartureIata = () => {
+    if (!quote) return "";
+    return (
+      quote.emptyLeg.departureIata ||
+      quote.emptyLeg.departureAirport?.iataCode ||
+      ""
+    );
+  };
+
+  const getDepartureIcao = () => {
     if (!quote) return "";
     return (
       quote.emptyLeg.departureIcao ||
       quote.emptyLeg.departureAirport?.icaoCode ||
       ""
     );
+  };
+
+  const getDepartureCode = () => {
+    const iata = getDepartureIata();
+    const icao = getDepartureIcao();
+    if (iata && icao) return `${iata}/${icao}`;
+    return iata || icao || "";
   };
 
   const getArrivalCity = () => {
@@ -501,7 +737,21 @@ export default function EmptyLegQuoteDetailPage() {
     );
   };
 
-  const getArrivalCode = () => {
+  const getArrivalCountry = () => {
+    if (!quote) return "";
+    return quote.emptyLeg.arrivalAirport?.country?.name || "";
+  };
+
+  const getArrivalIata = () => {
+    if (!quote) return "";
+    return (
+      quote.emptyLeg.arrivalIata ||
+      quote.emptyLeg.arrivalAirport?.iataCode ||
+      ""
+    );
+  };
+
+  const getArrivalIcao = () => {
     if (!quote) return "";
     return (
       quote.emptyLeg.arrivalIcao ||
@@ -510,11 +760,38 @@ export default function EmptyLegQuoteDetailPage() {
     );
   };
 
+  const getArrivalCode = () => {
+    const iata = getArrivalIata();
+    const icao = getArrivalIcao();
+    if (iata && icao) return `${iata}/${icao}`;
+    return iata || icao || "";
+  };
+
   const getAircraftName = () => {
     if (!quote) return "TBA";
     return (
       quote.emptyLeg.aircraftName || quote.emptyLeg.aircraft?.name || "TBA"
     );
+  };
+
+  const getAircraftCategory = () => {
+    if (!quote) return "";
+    const category =
+      quote.emptyLeg.aircraftCategory || quote.emptyLeg.aircraft?.category;
+    if (!category) return "";
+    return category.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  const getAircraftImage = () => {
+    if (!quote) return null;
+    return (
+      quote.emptyLeg.aircraftImage || quote.emptyLeg.aircraft?.image || null
+    );
+  };
+
+  const getTotalSeats = () => {
+    if (!quote) return 0;
+    return quote.emptyLeg.totalSeats || quote.emptyLeg.availableSeats || 0;
   };
 
   if (loading) {
@@ -638,23 +915,29 @@ export default function EmptyLegQuoteDetailPage() {
                   <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                     Flight Details
                   </h3>
+
+                  {/* Route Display */}
+                  <section className="flex items-center justify-center gap-4 py-3 bg-muted/50 rounded-lg">
+                    <section className="text-center">
+                      <p className="text-lg font-bold">
+                        {getDepartureIata() || getDepartureIcao()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {getDepartureCity()}
+                      </p>
+                    </section>
+                    <Plane className="h-5 w-5 text-muted-foreground" />
+                    <section className="text-center">
+                      <p className="text-lg font-bold">
+                        {getArrivalIata() || getArrivalIcao()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {getArrivalCity()}
+                      </p>
+                    </section>
+                  </section>
+
                   <section className="grid gap-4 md:grid-cols-2">
-                    <section className="space-y-2">
-                      <Label>Departure</Label>
-                      <Input
-                        value={`${getDepartureCity()} (${getDepartureCode()})`}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </section>
-                    <section className="space-y-2">
-                      <Label>Arrival</Label>
-                      <Input
-                        value={`${getArrivalCity()} (${getArrivalCode()})`}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </section>
                     <section className="space-y-2">
                       <Label htmlFor="departureDateTime">Date & Time</Label>
                       <Input
@@ -670,19 +953,19 @@ export default function EmptyLegQuoteDetailPage() {
                       />
                     </section>
                     <section className="space-y-2">
-                      <Label>Aircraft</Label>
-                      <Input
-                        value={getAircraftName()}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </section>
-                    <section className="space-y-2">
-                      <Label htmlFor="seatsRequested">Seats Requested</Label>
+                      <Label htmlFor="seatsRequested">
+                        Seats Requested
+                        {getTotalSeats() > 0 && (
+                          <span className="text-muted-foreground font-normal ml-1">
+                            (max: {getTotalSeats()})
+                          </span>
+                        )}
+                      </Label>
                       <Input
                         id="seatsRequested"
                         type="number"
                         min="1"
+                        max={getTotalSeats() || undefined}
                         value={formData.seatsRequested}
                         onChange={(e) =>
                           setFormData({
@@ -691,6 +974,28 @@ export default function EmptyLegQuoteDetailPage() {
                           })
                         }
                       />
+                    </section>
+                  </section>
+
+                  {/* Aircraft Info (Read-only) */}
+                  <section className="space-y-2">
+                    <Label>Aircraft (Read-only)</Label>
+                    <section className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                      {getAircraftImage() && (
+                        <img
+                          src={getAircraftImage()!}
+                          alt={getAircraftName()}
+                          className="w-20 h-14 object-cover rounded"
+                        />
+                      )}
+                      <section>
+                        <p className="font-medium">{getAircraftName()}</p>
+                        {getAircraftCategory() && (
+                          <Badge variant="secondary" className="text-xs">
+                            {getAircraftCategory()}
+                          </Badge>
+                        )}
+                      </section>
                     </section>
                   </section>
                 </section>
@@ -741,66 +1046,102 @@ export default function EmptyLegQuoteDetailPage() {
 
                 <Separator />
 
-                {/* Bank Details */}
+                {/* Payment Method */}
                 <section className="space-y-4">
                   <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Bank Transfer Details
+                    <CreditCard className="h-4 w-4" />
+                    Payment Method
                   </h3>
-                  <section className="grid gap-4 md:grid-cols-2">
-                    <section className="space-y-2">
-                      <Label htmlFor="bankName">Bank Name</Label>
-                      <Input
-                        id="bankName"
-                        value={formData.bankName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, bankName: e.target.value })
-                        }
-                        placeholder="e.g. First Bank"
+
+                  {/* Payment Toggle - PayStack disabled for now */}
+                  <section className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                    <section className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        id="paymentBank"
+                        name="paymentMethod"
+                        checked={true}
+                        readOnly
+                        className="h-4 w-4"
                       />
+                      <Label
+                        htmlFor="paymentBank"
+                        className="cursor-pointer font-normal"
+                      >
+                        Bank Transfer
+                      </Label>
                     </section>
-                    <section className="space-y-2">
-                      <Label htmlFor="bankAccountName">Account Name</Label>
-                      <Input
-                        id="bankAccountName"
-                        value={formData.bankAccountName}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            bankAccountName: e.target.value,
-                          })
-                        }
-                        placeholder="e.g. PexJet Ltd"
+                    <section className="flex items-center gap-2 opacity-50">
+                      <input
+                        type="radio"
+                        id="paymentPaystack"
+                        name="paymentMethod"
+                        disabled
+                        className="h-4 w-4"
                       />
+                      <Label
+                        htmlFor="paymentPaystack"
+                        className="cursor-not-allowed font-normal"
+                      >
+                        PayStack Link
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          Coming Soon
+                        </Badge>
+                      </Label>
                     </section>
-                    <section className="space-y-2">
-                      <Label htmlFor="bankAccountNumber">Account Number</Label>
-                      <Input
-                        id="bankAccountNumber"
-                        value={formData.bankAccountNumber}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            bankAccountNumber: e.target.value,
-                          })
-                        }
-                        placeholder="e.g. 0123456789"
-                      />
+                  </section>
+
+                  {/* Bank Details - Read Only from Settings */}
+                  <section className="space-y-3">
+                    <section className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Bank Transfer Details
+                      </Label>
+                      <Badge variant="secondary" className="text-xs">
+                        From Settings
+                      </Badge>
                     </section>
-                    <section className="space-y-2">
-                      <Label htmlFor="bankSortCode">Sort/Bank Code</Label>
-                      <Input
-                        id="bankSortCode"
-                        value={formData.bankSortCode}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            bankSortCode: e.target.value,
-                          })
-                        }
-                        placeholder="e.g. 011"
-                      />
+                    <section className="grid gap-3 md:grid-cols-2 p-3 bg-muted rounded-lg">
+                      <section>
+                        <p className="text-xs text-muted-foreground">
+                          Bank Name
+                        </p>
+                        <p className="font-medium">
+                          {formData.bankName || "Not configured"}
+                        </p>
+                      </section>
+                      <section>
+                        <p className="text-xs text-muted-foreground">
+                          Account Name
+                        </p>
+                        <p className="font-medium">
+                          {formData.bankAccountName || "Not configured"}
+                        </p>
+                      </section>
+                      <section>
+                        <p className="text-xs text-muted-foreground">
+                          Account Number
+                        </p>
+                        <p className="font-medium">
+                          {formData.bankAccountNumber || "Not configured"}
+                        </p>
+                      </section>
+                      <section>
+                        <p className="text-xs text-muted-foreground">
+                          Sort/Bank Code
+                        </p>
+                        <p className="font-medium">
+                          {formData.bankSortCode || "Not configured"}
+                        </p>
+                      </section>
                     </section>
+                    {(!formData.bankName || !formData.bankAccountNumber) && (
+                      <p className="text-xs text-destructive">
+                        ⚠️ Bank details not configured. Please update in
+                        Settings.
+                      </p>
+                    )}
                   </section>
                 </section>
 
@@ -874,24 +1215,49 @@ export default function EmptyLegQuoteDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Route */}
-                  <section className="flex items-center justify-center gap-4 py-4 bg-muted/50 rounded-lg">
+                  {/* Route with IATA/ICAO codes */}
+                  <section className="flex items-center justify-center gap-6 py-4 bg-muted/50 rounded-lg">
                     <section className="text-center">
-                      <p className="text-2xl font-bold">{getDepartureCode()}</p>
+                      <p className="text-2xl font-bold">
+                        {getDepartureIata() || getDepartureIcao()}
+                      </p>
+                      {getDepartureIata() && getDepartureIcao() && (
+                        <p className="text-xs text-muted-foreground">
+                          ({getDepartureIcao()})
+                        </p>
+                      )}
                       <p className="text-sm text-muted-foreground">
                         {getDepartureCity()}
                       </p>
+                      {getDepartureCountry() && (
+                        <p className="text-xs text-muted-foreground">
+                          {getDepartureCountry()}
+                        </p>
+                      )}
                     </section>
-                    <Plane className="h-6 w-6 text-[#D4AF37]" />
+                    <Plane className="h-6 w-6 text-muted-foreground" />
                     <section className="text-center">
-                      <p className="text-2xl font-bold">{getArrivalCode()}</p>
+                      <p className="text-2xl font-bold">
+                        {getArrivalIata() || getArrivalIcao()}
+                      </p>
+                      {getArrivalIata() && getArrivalIcao() && (
+                        <p className="text-xs text-muted-foreground">
+                          ({getArrivalIcao()})
+                        </p>
+                      )}
                       <p className="text-sm text-muted-foreground">
                         {getArrivalCity()}
                       </p>
+                      {getArrivalCountry() && (
+                        <p className="text-xs text-muted-foreground">
+                          {getArrivalCountry()}
+                        </p>
+                      )}
                     </section>
                   </section>
 
-                  <section className="grid gap-4 md:grid-cols-3">
+                  {/* Date & Time */}
+                  <section className="grid gap-4 md:grid-cols-2">
                     <section>
                       <p className="text-sm text-muted-foreground">
                         Date & Time
@@ -904,14 +1270,42 @@ export default function EmptyLegQuoteDetailPage() {
                       </section>
                     </section>
                     <section>
-                      <p className="text-sm text-muted-foreground">Aircraft</p>
-                      <p className="font-medium">{getAircraftName()}</p>
-                    </section>
-                    <section>
-                      <p className="text-sm text-muted-foreground">
-                        Seats Requested
+                      <p className="text-sm text-muted-foreground">Seats</p>
+                      <p className="font-medium">
+                        {quote.seatsRequested} requested
+                        {getTotalSeats() > 0 && (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            / {getTotalSeats()} available
+                          </span>
+                        )}
                       </p>
-                      <p className="font-medium">{quote.seatsRequested}</p>
+                    </section>
+                  </section>
+
+                  <Separator />
+
+                  {/* Aircraft Info with Image */}
+                  <section className="space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                      Aircraft
+                    </p>
+                    <section className="flex gap-4">
+                      {getAircraftImage() && (
+                        <img
+                          src={getAircraftImage()!}
+                          alt={getAircraftName()}
+                          className="w-32 h-20 object-cover rounded"
+                        />
+                      )}
+                      <section>
+                        <p className="font-medium">{getAircraftName()}</p>
+                        {getAircraftCategory() && (
+                          <Badge variant="secondary" className="mt-1">
+                            {getAircraftCategory()}
+                          </Badge>
+                        )}
+                      </section>
                     </section>
                   </section>
                 </CardContent>
@@ -1037,9 +1431,18 @@ export default function EmptyLegQuoteDetailPage() {
                   )}
 
                   {quote.status === "PAID" && (
-                    <p className="text-sm text-center py-2 text-green-600 font-medium">
-                      ✓ Payment confirmed - Flight confirmation sent to client
-                    </p>
+                    <section className="space-y-3">
+                      <p className="text-sm text-center py-2 text-green-600 font-medium">
+                        ✓ Payment confirmed
+                      </p>
+                      <Button
+                        className="w-full"
+                        onClick={() => setShowFlightDocDialog(true)}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Send Flight Document
+                      </Button>
+                    </section>
                   )}
 
                   {quote.status === "REJECTED" && (
@@ -1198,6 +1601,181 @@ export default function EmptyLegQuoteDetailPage() {
                 <Send className="h-4 w-4 mr-2" />
               )}
               Send Updated Quote
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Flight Document Dialog */}
+      <AlertDialog
+        open={showFlightDocDialog}
+        onOpenChange={setShowFlightDocDialog}
+      >
+        <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Send Flight Confirmation Document
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Fill in the flight details to generate and send the confirmation
+              document to the client.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <section className="py-4 space-y-4">
+            {/* Passenger Information */}
+            <section className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Passenger Information
+              </h4>
+              <section className="grid gap-3 md:grid-cols-2">
+                <section className="space-y-2">
+                  <Label htmlFor="eTicketNumber">E-Ticket Number *</Label>
+                  <Input
+                    id="eTicketNumber"
+                    value={flightDocData.eTicketNumber}
+                    onChange={(e) =>
+                      setFlightDocData({
+                        ...flightDocData,
+                        eTicketNumber: e.target.value,
+                      })
+                    }
+                    placeholder="e.g. PEX-2024-001234"
+                  />
+                </section>
+              </section>
+            </section>
+
+            <Separator />
+
+            {/* Check-in & Boarding */}
+            <section className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Check-in & Boarding
+              </h4>
+              <section className="grid gap-3 md:grid-cols-3">
+                <section className="space-y-2">
+                  <Label htmlFor="checkinTime">Check-in Time</Label>
+                  <Input
+                    id="checkinTime"
+                    type="datetime-local"
+                    value={flightDocData.checkinTime}
+                    onChange={(e) =>
+                      setFlightDocData({
+                        ...flightDocData,
+                        checkinTime: e.target.value,
+                      })
+                    }
+                  />
+                </section>
+                <section className="space-y-2">
+                  <Label htmlFor="terminal">Terminal</Label>
+                  <Input
+                    id="terminal"
+                    value={flightDocData.terminal}
+                    onChange={(e) =>
+                      setFlightDocData({
+                        ...flightDocData,
+                        terminal: e.target.value,
+                      })
+                    }
+                    placeholder="e.g. Terminal 2"
+                  />
+                </section>
+                <section className="space-y-2">
+                  <Label htmlFor="gate">Gate</Label>
+                  <Input
+                    id="gate"
+                    value={flightDocData.gate}
+                    onChange={(e) =>
+                      setFlightDocData({
+                        ...flightDocData,
+                        gate: e.target.value,
+                      })
+                    }
+                    placeholder="e.g. Gate B12"
+                  />
+                </section>
+              </section>
+              <section className="space-y-2">
+                <Label htmlFor="boardingTime">Boarding Time</Label>
+                <Input
+                  id="boardingTime"
+                  type="datetime-local"
+                  value={flightDocData.boardingTime}
+                  onChange={(e) =>
+                    setFlightDocData({
+                      ...flightDocData,
+                      boardingTime: e.target.value,
+                    })
+                  }
+                />
+              </section>
+            </section>
+
+            <Separator />
+
+            {/* Luggage Information */}
+            <section className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                Luggage Information
+              </h4>
+              <section className="space-y-2">
+                <Label htmlFor="luggageInformation">
+                  Luggage Allowance & Details
+                </Label>
+                <Textarea
+                  id="luggageInformation"
+                  value={flightDocData.luggageInformation}
+                  onChange={(e) =>
+                    setFlightDocData({
+                      ...flightDocData,
+                      luggageInformation: e.target.value,
+                    })
+                  }
+                  placeholder="e.g. 2 checked bags (23kg each), 1 carry-on (8kg)\nSpecial items: Golf bag, Ski equipment"
+                  rows={3}
+                />
+              </section>
+            </section>
+
+            <Separator />
+
+            {/* Crew Information */}
+            <section className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Crew Information
+              </h4>
+              <section className="space-y-2">
+                <Label htmlFor="crewInformation">Crew Information</Label>
+                <Textarea
+                  id="crewInformation"
+                  value={flightDocData.crewInformation}
+                  onChange={(e) =>
+                    setFlightDocData({
+                      ...flightDocData,
+                      crewInformation: e.target.value,
+                    })
+                  }
+                  placeholder="Captain: James Wilson\nFirst Officer: Sarah Chen\nFlight Attendant: Michael Roberts\nGround Crew: David Lee"
+                  rows={4}
+                />
+              </section>
+            </section>
+          </section>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSendFlightDocument}
+              disabled={sendingFlightDoc}
+            >
+              {sendingFlightDoc ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Send Flight Document
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

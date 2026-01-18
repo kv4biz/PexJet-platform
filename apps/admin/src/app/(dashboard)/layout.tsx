@@ -25,6 +25,7 @@ import {
   Activity,
   Building2,
   User,
+  MessageSquare,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import {
@@ -43,6 +44,7 @@ import {
   Badge,
 } from "@pexjet/ui";
 import { cn, useToast } from "@pexjet/ui";
+import { useAdminPersonalNotifications } from "@/hooks/usePusher";
 
 interface NavItem {
   title: string;
@@ -97,6 +99,50 @@ export default function DashboardLayout({
 
   // Check if user is super admin
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
+
+  // Listen for client messages directed to this specific admin
+  const handleClientMessage = useCallback(
+    (data: {
+      bookingId: string;
+      bookingType: string;
+      referenceNumber: string;
+      clientName: string;
+      message: string;
+      timestamp: string;
+    }) => {
+      toast({
+        title: (
+          <span className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            New message from {data.clientName}
+          </span>
+        ) as any,
+        description: (
+          <span>
+            {data.referenceNumber}: "{data.message}"
+          </span>
+        ) as any,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const path =
+                data.bookingType === "charter"
+                  ? `/dashboard/quotes/${data.bookingId}`
+                  : `/dashboard/quotes/empty-leg/${data.bookingId}`;
+              router.push(path);
+            }}
+          >
+            View
+          </Button>
+        ) as any,
+      });
+    },
+    [toast, router],
+  );
+
+  useAdminPersonalNotifications(user?.id || null, handleClientMessage);
 
   // Fetch unseen notification count
   const fetchUnseenCount = async () => {

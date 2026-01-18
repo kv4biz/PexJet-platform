@@ -35,6 +35,7 @@ export async function GET(
                 icaoCode: true,
                 iataCode: true,
                 municipality: true,
+                country: { select: { name: true } },
               },
             },
             arrivalAirport: {
@@ -44,6 +45,7 @@ export async function GET(
                 icaoCode: true,
                 iataCode: true,
                 municipality: true,
+                country: { select: { name: true } },
               },
             },
             aircraft: {
@@ -51,6 +53,8 @@ export async function GET(
                 id: true,
                 name: true,
                 manufacturer: true,
+                category: true,
+                image: true,
               },
             },
           },
@@ -66,6 +70,7 @@ export async function GET(
           select: {
             id: true,
             fullName: true,
+            phone: true,
           },
         },
       },

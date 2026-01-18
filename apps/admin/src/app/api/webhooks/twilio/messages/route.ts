@@ -4,6 +4,8 @@ import {
   uploadToCloudinary,
   notifyNewMessage,
   notifyReceiptUploaded,
+  sendWhatsAppMessage,
+  triggerPusherEvent,
 } from "@pexjet/lib";
 
 /**
@@ -149,6 +151,11 @@ export async function POST(request: NextRequest) {
       sentAt: message.sentAt,
     });
 
+    // Notify the specific admin handling this booking
+    if (booking.approvedBy) {
+      await notifyHandlingAdmin(booking, body, !!mediaUrl);
+    }
+
     // If receipt uploaded, send receipt notification
     if (isReceipt) {
       await notifyReceiptUploaded({
@@ -190,6 +197,11 @@ interface ActiveBooking {
   referenceNumber: string;
   clientPhone: string;
   clientName: string;
+  approvedBy?: {
+    id: string;
+    fullName: string;
+    phone: string;
+  } | null;
 }
 
 async function findActiveBooking(
@@ -216,6 +228,13 @@ async function findActiveBooking(
       clientPhone: true,
       clientName: true,
       createdAt: true,
+      approvedBy: {
+        select: {
+          id: true,
+          fullName: true,
+          phone: true,
+        },
+      },
     },
   });
 
@@ -233,6 +252,13 @@ async function findActiveBooking(
       clientPhone: true,
       clientName: true,
       createdAt: true,
+      approvedBy: {
+        select: {
+          id: true,
+          fullName: true,
+          phone: true,
+        },
+      },
     },
   });
 
@@ -373,4 +399,60 @@ async function storeOrphanMessage(
       },
     },
   });
+}
+
+/**
+ * Notify the specific admin handling this booking via WhatsApp and Pusher toast
+ */
+async function notifyHandlingAdmin(
+  booking: ActiveBooking,
+  messageContent: string | null,
+  hasMedia: boolean,
+) {
+  if (!booking.approvedBy) return;
+
+  const admin = booking.approvedBy;
+  const truncatedMessage = messageContent
+    ? messageContent.substring(0, 50) +
+      (messageContent.length > 50 ? "..." : "")
+    : hasMedia
+      ? "[Media attachment]"
+      : "[Empty message]";
+
+  try {
+    // 1. Send WhatsApp notification to the admin
+    const whatsappMessage = `📩 New message from ${booking.clientName} (${booking.referenceNumber}):\n\n"${truncatedMessage}"\n\nLogin to admin dashboard to respond.`;
+
+    await sendWhatsAppMessage({
+      to: admin.phone,
+      message: whatsappMessage,
+    });
+
+    console.log(
+      `[Twilio Webhook] WhatsApp notification sent to admin ${admin.fullName} (${admin.phone})`,
+    );
+
+    // 2. Send Pusher event to this specific admin for toast notification
+    await triggerPusherEvent({
+      channel: `admin-${admin.id}`,
+      event: "new-client-message",
+      data: {
+        bookingId: booking.id,
+        bookingType: booking.type,
+        referenceNumber: booking.referenceNumber,
+        clientName: booking.clientName,
+        message: truncatedMessage,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+    console.log(
+      `[Twilio Webhook] Pusher toast notification sent to admin ${admin.id}`,
+    );
+  } catch (error) {
+    console.error(
+      `[Twilio Webhook] Failed to notify admin ${admin.id}:`,
+      error,
+    );
+  }
 }
