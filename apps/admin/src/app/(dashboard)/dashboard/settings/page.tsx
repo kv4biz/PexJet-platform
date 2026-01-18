@@ -26,7 +26,7 @@ interface Settings {
   bankName?: string;
   bankAccountName?: string;
   bankAccountNumber?: string;
-  bankSortCode?: string;
+  bankCode?: string;
 }
 
 export default function SettingsPage() {
@@ -41,7 +41,7 @@ export default function SettingsPage() {
     bankName: "",
     bankAccountName: "",
     bankAccountNumber: "",
-    bankSortCode: "",
+    bankCode: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -361,12 +361,12 @@ export default function SettingsPage() {
             </fieldset>
 
             <fieldset className="grid gap-2">
-              <Label htmlFor="bankSortCode">Sort Code</Label>
+              <Label htmlFor="bankCode">Bank Code/Sort Code</Label>
               <Input
-                id="bankSortCode"
-                value={settings.bankSortCode || ""}
+                id="bankCode"
+                value={settings.bankCode || ""}
                 onChange={(e) =>
-                  setSettings({ ...settings, bankSortCode: e.target.value })
+                  setSettings({ ...settings, bankCode: e.target.value })
                 }
                 placeholder="e.g. 011"
               />
