@@ -45,7 +45,7 @@ interface Payment {
   confirmedAt?: string;
   confirmedById?: string;
   client: {
-    name: string;
+    fullName: string;
     email: string;
     phone: string;
   };
@@ -340,7 +340,7 @@ export default function PaymentDetailPage() {
           <CardContent className="space-y-4">
             <section className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Name</span>
-              <span className="font-medium">{payment.client.name}</span>
+              <span className="font-medium">{payment.client.fullName}</span>
             </section>
             <section className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Email</span>

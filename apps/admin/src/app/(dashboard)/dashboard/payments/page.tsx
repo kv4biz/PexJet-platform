@@ -63,7 +63,7 @@ interface Payment {
   confirmedAt?: string;
   confirmedById?: string;
   client: {
-    name: string;
+    fullName: string;
     email: string;
     phone: string;
   };
@@ -310,7 +310,9 @@ export default function PaymentsPage() {
                       </TableCell>
                       <TableCell>
                         <article>
-                          <p className="font-medium">{payment.client.name}</p>
+                          <p className="font-medium">
+                            {payment.client.fullName}
+                          </p>
                           <p className="text-sm text-muted-foreground">
                             {payment.client.email}
                           </p>

@@ -147,7 +147,7 @@ export default function EmptyLegQuoteDetailPage() {
     bankName: "",
     bankAccountName: "",
     bankAccountNumber: "",
-    bankSortCode: "",
+    bankCode: "",
   });
 
   // Dialog states
@@ -231,7 +231,7 @@ export default function EmptyLegQuoteDetailPage() {
           bankName: "",
           bankAccountName: "",
           bankAccountNumber: "",
-          bankSortCode: "",
+          bankCode: "",
         });
       } else {
         toast({
@@ -270,7 +270,7 @@ export default function EmptyLegQuoteDetailPage() {
           bankName: data.settings?.bankName || "",
           bankAccountName: data.settings?.bankAccountName || "",
           bankAccountNumber: data.settings?.bankAccountNumber || "",
-          bankSortCode: data.settings?.bankCode || "",
+          bankCode: data.settings?.bankCode || "",
         }));
       }
     } catch (error) {
@@ -325,7 +325,7 @@ export default function EmptyLegQuoteDetailPage() {
           bankName: formData.bankName,
           bankAccountName: formData.bankAccountName,
           bankAccountNumber: formData.bankAccountNumber,
-          bankSortCode: formData.bankSortCode,
+          bankCode: formData.bankCode,
         }),
       });
 
@@ -541,7 +541,7 @@ export default function EmptyLegQuoteDetailPage() {
         bankName: settings?.bankName || "",
         accountName: settings?.bankAccountName || "",
         accountNumber: settings?.bankAccountNumber || "",
-        bankCode: settings?.bankSortCode || "",
+        bankCode: settings?.bankCode || "",
         paymentDeadline: quote?.paymentDeadline
           ? new Date(quote.paymentDeadline).toLocaleDateString()
           : "",
@@ -1132,7 +1132,7 @@ export default function EmptyLegQuoteDetailPage() {
                           Sort/Bank Code
                         </p>
                         <p className="font-medium">
-                          {formData.bankSortCode || "Not configured"}
+                          {formData.bankCode || "Not configured"}
                         </p>
                       </section>
                     </section>
