@@ -22,6 +22,11 @@ interface Settings {
   defaultOperatorCommission: number;
   supportEmail: string;
   supportPhone: string;
+  // Bank details for Super Admin
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankSortCode?: string;
 }
 
 export default function SettingsPage() {
@@ -33,13 +38,36 @@ export default function SettingsPage() {
     defaultOperatorCommission: 10,
     supportEmail: "",
     supportPhone: "",
+    bankName: "",
+    bankAccountName: "",
+    bankAccountNumber: "",
+    bankSortCode: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     fetchSettings();
+    fetchUser();
   }, []);
+
+  const fetchUser = async () => {
+    try {
+      const response = await fetch("/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -200,7 +228,9 @@ export default function SettingsPage() {
           </fieldset>
 
           <fieldset className="grid gap-2">
-            <Label htmlFor="bookingNotice">Minimum Booking Notice (hours)</Label>
+            <Label htmlFor="bookingNotice">
+              Minimum Booking Notice (hours)
+            </Label>
             <Input
               id="bookingNotice"
               type="number"
@@ -280,6 +310,70 @@ export default function SettingsPage() {
           </fieldset>
         </CardContent>
       </Card>
+
+      {/* Bank Details - Super Admin Only */}
+      {user?.role === "SUPER_ADMIN" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Bank Details</CardTitle>
+            <CardDescription>
+              Configure bank account information for payment processing
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <fieldset className="grid gap-2">
+              <Label htmlFor="bankName">Bank Name</Label>
+              <Input
+                id="bankName"
+                value={settings.bankName || ""}
+                onChange={(e) =>
+                  setSettings({ ...settings, bankName: e.target.value })
+                }
+                placeholder="e.g. First Bank of Nigeria"
+              />
+            </fieldset>
+
+            <fieldset className="grid gap-2">
+              <Label htmlFor="bankAccountName">Account Name</Label>
+              <Input
+                id="bankAccountName"
+                value={settings.bankAccountName || ""}
+                onChange={(e) =>
+                  setSettings({ ...settings, bankAccountName: e.target.value })
+                }
+                placeholder="e.g. PexJet Aviation Services"
+              />
+            </fieldset>
+
+            <fieldset className="grid gap-2">
+              <Label htmlFor="bankAccountNumber">Account Number</Label>
+              <Input
+                id="bankAccountNumber"
+                value={settings.bankAccountNumber || ""}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    bankAccountNumber: e.target.value,
+                  })
+                }
+                placeholder="e.g. 1234567890"
+              />
+            </fieldset>
+
+            <fieldset className="grid gap-2">
+              <Label htmlFor="bankSortCode">Sort Code</Label>
+              <Input
+                id="bankSortCode"
+                value={settings.bankSortCode || ""}
+                onChange={(e) =>
+                  setSettings({ ...settings, bankSortCode: e.target.value })
+                }
+                placeholder="e.g. 011"
+              />
+            </fieldset>
+          </CardContent>
+        </Card>
+      )}
     </section>
   );
 }

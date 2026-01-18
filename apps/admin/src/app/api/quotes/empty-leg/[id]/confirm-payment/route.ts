@@ -83,6 +83,26 @@ export async function POST(
       },
     });
 
+    // Create payment record in database
+    const payment = await prisma.payment.create({
+      data: {
+        referenceNumber: `PAY-${booking.referenceNumber}`,
+        clientId: booking.clientId,
+        type: "EMPTY_LEG",
+        emptyLegBookingId: id,
+        status: "SUCCESS",
+        amountUsd: booking.totalPriceUsd,
+        method: "BANK_TRANSFER",
+        bankTransferConfirmed: true,
+        paidAt: new Date(),
+        confirmedAt: new Date(),
+        confirmedById: payload.sub,
+        // Calculate commission split (90% to operator, 10% to admin by default)
+        adminAmountUsd: booking.totalPriceUsd * 0.1,
+        operatorAmountUsd: booking.totalPriceUsd * 0.9,
+      },
+    });
+
     // Format flight details
     const depCity =
       booking.emptyLeg.departureAirport?.municipality ||
@@ -196,10 +216,11 @@ Thank you for flying with PexJet! ✈️`;
         adminId: payload.sub,
         targetType: "EmptyLegBooking",
         targetId: id,
-        description: `Confirmed payment for ${booking.referenceNumber}, ticket: ${ticketNumber}`,
+        description: `Confirmed payment for ${booking.referenceNumber}, ticket: ${ticketNumber}, payment: ${payment.referenceNumber}`,
         ipAddress: request.headers.get("x-forwarded-for") || "unknown",
         metadata: {
           ticketNumber,
+          paymentReference: payment.referenceNumber,
           totalPriceUsd: booking.totalPriceUsd,
           clientPhone: booking.clientPhone,
         },
@@ -210,6 +231,7 @@ Thank you for flying with PexJet! ✈️`;
       success: true,
       booking: updatedBooking,
       ticketNumber,
+      paymentReference: payment.referenceNumber,
     });
   } catch (error) {
     console.error("Failed to confirm payment:", error);

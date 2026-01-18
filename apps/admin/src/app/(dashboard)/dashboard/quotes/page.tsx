@@ -86,7 +86,7 @@ interface EmptyLegQuote {
 }
 
 export default function QuotesPage() {
-  const [activeTab, setActiveTab] = useState("charter");
+  const [activeTab, setActiveTab] = useState("empty-leg");
 
   // Charter quotes state
   const [charterQuotes, setCharterQuotes] = useState<CharterQuote[]>([]);
@@ -224,7 +224,7 @@ export default function QuotesPage() {
         className="space-y-6"
       >
         <TabsList>
-          <TabsTrigger value="charter" className="gap-2">
+          <TabsTrigger value="charter" className="gap-2" disabled>
             <Plane className="h-4 w-4" />
             Charter Quotes
           </TabsTrigger>
