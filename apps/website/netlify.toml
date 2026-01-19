@@ -1,0 +1,9 @@
+[build]
+  command = "cd ../.. && npm install && npm run build --filter=website"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
