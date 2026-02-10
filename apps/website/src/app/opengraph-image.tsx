@@ -12,6 +12,7 @@ import {
 } from "@/data";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export const alt = "PexJet - Private Jet Charter & Luxury Air Travel";
 export const size = {
@@ -211,7 +212,7 @@ export default async function Image({ params, searchParams }: Props) {
 
       {/* Dynamic content based on page type */}
       {pageType === "empty-leg" && specificData && (
-        <div style={{ textAlign: "center", zIndex: 1 }}>
+        <div style={{ display: "flex", flexDirection: "column", textAlign: "center", zIndex: 1 }}>
           <div
             style={{
               fontSize: 32,
@@ -282,7 +283,7 @@ export default async function Image({ params, searchParams }: Props) {
       )}
 
       {pageType === "aircraft" && specificData && (
-        <div style={{ textAlign: "center", zIndex: 1 }}>
+        <div style={{ display: "flex", flexDirection: "column", textAlign: "center", zIndex: 1 }}>
           <div
             style={{
               fontSize: 32,
@@ -314,7 +315,7 @@ export default async function Image({ params, searchParams }: Props) {
       )}
 
       {pageType === "charter" && (
-        <div style={{ textAlign: "center", zIndex: 1 }}>
+        <div style={{ display: "flex", flexDirection: "column", textAlign: "center", zIndex: 1 }}>
           <div
             style={{
               fontSize: 36,
@@ -358,7 +359,7 @@ export default async function Image({ params, searchParams }: Props) {
 
       {/* Default content */}
       {(!pageType || pageType === "home") && (
-        <div style={{ textAlign: "center", zIndex: 1 }}>
+        <div style={{ display: "flex", flexDirection: "column", textAlign: "center", zIndex: 1 }}>
           <div
             style={{
               fontSize: 36,
