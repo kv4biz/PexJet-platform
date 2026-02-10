@@ -562,18 +562,18 @@ export const aboutCompanyPageData = {
   hero: {
     title: "Perspective Executive Jets Limited",
     subtitle:
-      "A private aviation company providing safe and efficient air services in Nigeria and beyond.",
+      "A global private aviation company delivering safe, efficient, and seamless air travel worldwide.",
     backgroundImage:
       "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2574",
   },
 
   mission: {
     label: "What We Do",
-    title: "Safe and Reliable Private Air Travel",
+    title: "Safe, Reliable Private Air Travel",
     paragraphs: [
-      "Perspective Executive Jets Limited started out as Perspective Transport and Logistics Limited, bringing over 20 years of expertise in private jet aviation to the table.",
-      "We're on a mission to be the most reliable and trusted private jet operator in Nigeria and Africa. Safety, reliability, comfort, and smooth travel are at the heart of what we do for every client, whether for business or personal needs.",
-      "We're known for trust, integrity, and excellence that's how we fly.",
+      "Perspective Executive Jets Limited evolved from Perspective Transport and Logistics Limited, bringing over 20 years of expertise in private aviation.",
+      "Our mission is to be one of the world’s most trusted and dependable private jet operators. Safety, reliability, comfort, and seamless travel are at the core of every journey we deliver, whether for business or personal travel.",
+      "We are defined by trust, integrity, and excellence — that’s how we fly.",
     ],
     image:
       "https://images.unsplash.com/photo-1583416750470-965b2707b355?q=80&w=2574",
@@ -582,11 +582,12 @@ export const aboutCompanyPageData = {
       href: "/contact",
     },
   },
+
   stats: [
     { value: "500+", label: "Aircraft Network" },
-    { value: "20+", label: "Years of Experiences" },
+    { value: "20+", label: "Years of Experience" },
     { value: "10K+", label: "Flights Completed" },
-    { value: "50+", label: "Countries" },
+    { value: "50+", label: "Countries Served" },
   ],
 
   values: {
@@ -597,25 +598,25 @@ export const aboutCompanyPageData = {
         icon: "Shield",
         title: "Safety",
         description:
-          "We uphold the highest safety standards to ensure every flight is secure and dependable.",
+          "We maintain the highest safety standards to ensure every flight is secure and dependable.",
       },
       {
         icon: "Users",
         title: "Trust",
         description:
-          "We earn trust through transparency, reliability, and consistent service delivery.",
+          "We build lasting trust through transparency, reliability, and consistent service delivery.",
       },
       {
         icon: "Award",
         title: "Integrity",
         description:
-          "We act with honesty, accountability, and professionalism in everything we do.",
+          "We operate with honesty, accountability, and professionalism at all times.",
       },
       {
         icon: "Star",
         title: "Excellence",
         description:
-          "We pursue excellence by delivering premium service and exceptional travel experiences.",
+          "We strive for excellence by delivering premium service and exceptional travel experiences.",
       },
     ],
   },
@@ -1052,20 +1053,23 @@ export const aircraftManagementPageData = {
 export const seoData = {
   siteName: "PexJet",
   siteUrl: "https://pexjet.com",
+
   defaultTitle:
-    "PexJet – Nigeria's Premier Private Jet Charter & Empty Leg Flights",
+    "PexJet – Global Private Jet Charter & Exclusive Empty Leg Flights",
+
   defaultDescription:
-    "Experience luxury private aviation with PexJet. Book private jet charters, discover exclusive empty leg deals with up to 75% savings, and travel across Africa and beyond in comfort and style.",
+    "Experience world-class private aviation with PexJet. Book luxury private jet charters, access exclusive empty leg opportunities with savings of up to 75%, and travel worldwide in comfort, style, and efficiency.",
+
   keywords: [
-    "private jet charter Nigeria",
-    "private jet hire Lagos",
-    "empty leg flights Africa",
+    "private jet charter",
+    "global private jet hire",
+    "empty leg flights",
     "luxury private aviation",
     "business jet charter",
-    "private plane rental Nigeria",
+    "private aircraft rental",
     "executive jet services",
-    "affordable private jet",
-    "last minute private jet deals",
+    "affordable private jet charter",
+    "last-minute private jet deals",
     "PexJet",
   ],
 
@@ -1093,49 +1097,58 @@ export const seoData = {
 
   pages: {
     home: {
-      title: "PexJet – Private Jet Charter Nigeria",
+      title: "PexJet – Global Private Jet Charter",
       description:
-        "Nigeria's leading private jet charter company. Book luxury flights, find empty leg deals with up to 75% off, and experience premium aviation services.",
+        "A leading global private jet charter provider. Book luxury flights, access exclusive empty leg deals with up to 75% savings, and enjoy premium aviation services worldwide.",
     },
+
     charter: {
       title: "Private Jet Charter Services",
       description:
-        "Charter a private jet anywhere in the world. Flexible schedules, dedicated service, and access to 500+ aircraft. Request a quote in minutes.",
+        "Charter a private jet anywhere in the world with flexible scheduling, dedicated support, and access to over 500 aircraft. Request a quote in minutes.",
     },
+
     emptyLegs: {
       title: "Empty Leg Flights – Save Up to 75%",
       description:
-        "Discover exclusive empty leg flight deals across Africa and beyond. Fly private at a fraction of the cost with PexJet's discounted repositioning flights.",
+        "Discover exclusive empty leg flight opportunities worldwide. Fly private at a fraction of the standard cost with PexJet’s discounted repositioning flights.",
     },
+
     aircraft: {
       title: "Our Aircraft Fleet",
       description:
-        "Browse our diverse fleet of private jets – from light jets to heavy long-range aircraft. Find the perfect aircraft for your journey.",
+        "Explore our diverse fleet of private jets, from light aircraft to long-range heavy jets. Find the ideal aircraft for your journey.",
     },
+
     aircraftManagement: {
       title: "Aircraft Management Services",
       description:
-        "Professional aircraft management services. We handle operations, maintenance, crew, and compliance—so you can focus on flying.",
+        "Comprehensive aircraft management solutions. We oversee operations, maintenance, crew, and compliance—so you can enjoy complete peace of mind.",
     },
+
     services: {
       title: "Private Aviation Services",
       description:
-        "Comprehensive private aviation solutions including jet charter, empty leg flights, aircraft management, and acquisition services.",
+        "End-to-end private aviation solutions, including jet charter, empty leg flights, aircraft management, and acquisition services.",
     },
+
     aboutCompany: {
-      title: "About PexJet – 20+ Years of Excellence",
+      title: "About PexJet – Over 20 Years of Aviation Excellence",
       description:
-        "Discover PexJet's story – over 20 years of safe, reliable private aviation in Nigeria and Africa. Trust, integrity, and excellence in every flight.",
+        "Discover PexJet’s story—more than two decades of safe, reliable, and world-class private aviation. Built on trust, integrity, and excellence in every flight.",
     },
+
     aboutAsset: {
       title: "Aircraft Acquisition & Financing",
       description:
-        "Expert aircraft acquisition, sales, and financing solutions. Let PexJet guide your aviation investment with industry expertise.",
+        "Specialist aircraft acquisition, sales, and financing solutions. PexJet provides expert guidance to support your aviation investments.",
     },
+
     contact: {
       title: "Contact PexJet",
       description:
-        "Get in touch with PexJet for private jet bookings, quotes, or enquiries. Our team is available 24/7 to assist you.",
+        "Get in touch with PexJet for private jet bookings, charter quotes, or general enquiries. Our team is available 24/7 to assist you worldwide.",
     },
   },
 };
+

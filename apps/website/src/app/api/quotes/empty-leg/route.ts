@@ -430,8 +430,21 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Empty leg quote submission error:", error);
+    const msg = error?.message || "";
+
+    // Detect common Postgres 'column does not exist' error caused by schema drift
+    if (/column .* does not exist/i.test(msg) || /does not exist/i.test(msg)) {
+      return NextResponse.json(
+        {
+          error:
+            "Database schema mismatch: a required column is missing. Please apply the DB migrations (see packages/database/migrations/add_template_fields.sql).",
+        },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json(
-      { error: error.message || "Failed to submit quote request" },
+      { error: msg || "Failed to submit quote request" },
       { status: 500 },
     );
   }
