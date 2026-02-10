@@ -11,7 +11,7 @@ import {
   emptyLegsPageData,
 } from "@/data";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export const alt = "PexJet - Private Jet Charter & Luxury Air Travel";
 export const size = {
