@@ -11,5 +11,12 @@
     "outDir": "./dist"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist"],
+  "name": "@pexjet/lib",
+  "main": "./src/index.ts",
+  "types": "./src/**/*.ts",
+  "exports": {
+    ".": "./src/**/*.ts",
+    "./external-auth": "./src/external-auth.ts"
+  }
 }
