@@ -39,16 +39,7 @@ export async function GET(request: NextRequest) {
               country: { select: { name: true } },
             },
           },
-          aircraft: {
-            select: {
-              id: true,
-              name: true,
-              manufacturer: true,
-              category: true,
-              maxPax: true,
-              image: true,
-            },
-          },
+          aircraft: true,
         },
       }),
       prisma.emptyLeg.count({ where: { status: "PUBLISHED" } }),
@@ -80,16 +71,7 @@ export async function GET(request: NextRequest) {
         longitude: leg.arrivalAirport?.longitude ?? 0,
       },
 
-      aircraft: leg.aircraft
-        ? {
-            id: leg.aircraft.id,
-            name: leg.aircraft.name,
-            manufacturer: leg.aircraft.manufacturer,
-            category: leg.aircraft.category,
-            maxPassengers: leg.aircraft.maxPax,
-            images: leg.aircraft.image ? [leg.aircraft.image] : [],
-          }
-        : null,
+      aircraft: leg.aircraft || null,
 
       departureDate: leg.departureDateTime.toISOString(),
       availableSeats: leg.availableSeats,

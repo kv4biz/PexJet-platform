@@ -34,16 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
             country: { select: { name: true } },
           },
         },
-        aircraft: {
-          select: {
-            id: true,
-            name: true,
-            manufacturer: true,
-            category: true,
-            maxPax: true,
-            image: true,
-          },
-        },
+        aircraft: true,
       },
     });
 
@@ -54,13 +45,7 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
     return NextResponse.json({
       id: emptyLeg.id,
       slug: emptyLeg.slug,
-      aircraft: emptyLeg.aircraft
-        ? {
-            id: emptyLeg.aircraft.id,
-            name: emptyLeg.aircraft.name,
-            images: emptyLeg.aircraft.image ? [emptyLeg.aircraft.image] : [],
-          }
-        : null,
+      aircraft: emptyLeg.aircraft || null,
       departureDate: emptyLeg.departureDateTime.toISOString(),
     });
   } catch (error) {
