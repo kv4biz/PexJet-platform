@@ -71,7 +71,58 @@ export async function GET(request: NextRequest) {
         longitude: leg.arrivalAirport?.longitude ?? 0,
       },
 
-      aircraft: leg.aircraft || null,
+      aircraft: leg.aircraft
+        ? {
+            id: leg.aircraft.id,
+            name: leg.aircraft.name,
+            manufacturer: leg.aircraft.manufacturer,
+            category: leg.aircraft.category,
+            maxPax: leg.aircraft.maxPax,
+            image: leg.aircraft.image,
+
+            cabinLengthFt: leg.aircraft.cabinLengthFt,
+            cabinWidthFt: leg.aircraft.cabinWidthFt,
+            cabinHeightFt: leg.aircraft.cabinHeightFt,
+
+            exteriorLengthFt: leg.aircraft.exteriorLengthFt,
+            exteriorWingspanFt: leg.aircraft.exteriorWingspanFt,
+            exteriorHeightFt: leg.aircraft.exteriorHeightFt,
+
+            baggageCuFt: leg.aircraft.baggageCuFt,
+            fuelCapacityGal: leg.aircraft.fuelCapacityGal,
+            rangeNm: leg.aircraft.rangeNm,
+            cruiseSpeedKnots: leg.aircraft.cruiseSpeedKnots,
+
+            availability: leg.aircraft.availability,
+
+            createdAt: leg.aircraft.createdAt,
+            updatedAt: leg.aircraft.updatedAt,
+          }
+        : leg.aircraftName
+          ? {
+              id: null,
+              name: leg.aircraftName,
+              manufacturer: null,
+              category: leg.aircraftCategory,
+              maxPax: leg.totalSeats,
+              image: leg.aircraftImage,
+
+              cabinLengthFt: null,
+              cabinWidthFt: null,
+              cabinHeightFt: null,
+              exteriorLengthFt: null,
+              exteriorWingspanFt: null,
+              exteriorHeightFt: null,
+              baggageCuFt: null,
+              fuelCapacityGal: null,
+              rangeNm: null,
+              cruiseSpeedKnots: null,
+              availability: null,
+
+              createdAt: null,
+              updatedAt: null,
+            }
+          : null,
 
       departureDate: leg.departureDateTime.toISOString(),
       availableSeats: leg.availableSeats,
