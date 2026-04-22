@@ -1,4 +1,5 @@
 // apps/website/src/middleware.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { verifyExternalToken } from "@/lib/external-auth";
 
@@ -14,24 +15,16 @@ export function middleware(request: NextRequest) {
   }
 
   const token = authHeader.replace("Bearer ", "");
-  const payload = verifyExternalToken(token);
 
-  if (!payload) {
-    return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+  const isValid = verifyExternalToken(token);
+
+  if (!isValid) {
+    return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
   }
 
-  // Optional: forward project id
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-external-project-id", payload.sub);
-
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  return NextResponse.next();
 }
 
-// 🔥 IMPORTANT: limit middleware to only external routes
 export const config = {
   matcher: ["/api/external/:path*"],
 };
